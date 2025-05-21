@@ -1,0 +1,16 @@
+.pageTitle {
+  font-family: 'AmericanCaptain';
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.glow {
+  text-shadow:
+    0 0 5px rgba(59, 166, 255, 0.7),
+    0 0 10px rgba(59, 166, 255, 0.5),
+    0 0 20px rgba(59, 166, 255, 0.3);
+}

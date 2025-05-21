@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom fonts */
+@font-face {
+  font-family: 'AmericanCaptain';
+  src: url('/fonts/american_captain.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FuturaMedium';
+  src: url('/fonts/futura_medium.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BarberChop';
+  src: url('/fonts/barber_chop.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* CSS Variables */
+:root {
+  --primary-blue: #3BA6FF;
+  --accent-blue: #0A98FE;
+  --dark-blue: #061428;
+  --dark: #000000;
+  --light: #FFFFFF;
+}
+
+/* Global styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'FuturaMedium', sans-serif;
+  background-color: var(--dark);
+  color: var(--light);
+  overflow-x: hidden;
+}
+
+/* Custom classes */
+.game-title {
+  font-family: 'MorpheusBold', serif;
+}
+
+.btn {
+  @apply px-6 py-2 rounded-md transition-all duration-300 inline-flex items-center justify-center;
+}
+
+.btn-primary {
+  @apply bg-[#3BA6FF] text-white hover:bg-[#2196f3];
+}
+
+.btn-outline {
+  @apply border border-[#3BA6FF] text-[#3BA6FF] hover:bg-[#3BA6FF]/10;
+}
+
+.parallax {
+  transition: transform 0.3s ease-out;
+}
+
+.glow {
+  text-shadow: 0 0 10px rgba(59, 166, 255, 0.7);
+}
+
+.nav-link {
+  @apply relative 
+    after:absolute 
+    after:bottom-0 
+    after:left-0 
+    after:w-0 
+    after:h-0.5 
+    after:bg-[#3BA6FF]
+    after:transition-all 
+    after:duration-300 
+    hover:after:w-full;
+}
+
+.animated-bg {
+  background: linear-gradient(-45deg, #061428, #000000, #061428, #0A2642);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
+}
