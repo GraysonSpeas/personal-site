@@ -5,16 +5,25 @@ import MoreInfo from "./MoreInfo";
 import Downloads from "./Downloads";
 import Footer from "./Footer";
 import LoadingScreen from "./LoadingScreen";
+import PlayerButton from "./PlayerButton";
 
-export default function WrapperWithLoading() {
-  const [loading, setLoading] = useState(false);
+interface WrapperWithLoadingProps {
+  useLoading?: boolean;
+}
+
+export default function WrapperWithLoading({ useLoading = true }: WrapperWithLoadingProps) {
+  const [loading, setLoading] = useState(useLoading);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (useLoading) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 2500);
+      return () => clearTimeout(timer);
+    } else {
       setLoading(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  }, [useLoading]);
 
   return (
     <div className="bg-black min-h-screen text-white overflow-hidden">

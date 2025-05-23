@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import PlayerButton from "./PlayerButton";
 
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -25,10 +26,18 @@ const Header = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-        scrolled ? "bg-black/80 backdrop-blur-lg py-2" : "bg-transparent py-4"
-      }`}
-    >
+  className="fixed top-0 left-0 w-full z-50"
+  style={{
+    background: scrolled
+      ? "linear-gradient(to bottom, rgba(0,0,0,.95), rgba(0,0,0,.7))"
+      : "linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0))",
+    padding: scrolled ? "0.4rem 1rem" : "1rem 1rem 2.5rem",
+    transition: "background 0.5s ease, padding 0.5s ease",
+    willChange: "background, padding",
+  }}
+>
+      <div className="absolute bottom-0 left-0 w-full h-0 bg-gradient-to-b from-transparent to-black/10 pointer-events-none" />
+
       <div className="container mx-auto px-4 flex justify-between items-center">
         <a href="/" className="flex items-center">
           <img
@@ -51,8 +60,9 @@ const Header = () => {
           ))}
         </nav>
 
-        {/* Language and Account */}
+        {/* Player, Language, Account */}
         <div className="hidden md:flex items-center gap-4">
+          <PlayerButton />
           <button className="btn btn-outline rounded-full text-sm">English</button>
           <a href="#login" className="text-white/90 hover:text-white">
             <svg
