@@ -21,8 +21,8 @@ const LoadingScreen = () => {
     <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
       <div className="w-full h-full absolute top-0 left-0 animated-bg opacity-30" />
       <img
-        src="https://wutheringwaves.kurogames.com/static4.0/assets/logo-en-398c8e54.png"
-        alt="Wuthering Waves Logo"
+        src="/assets/logo.png"
+        alt="Grayson Logo"
         className="h-20 md:h-24 mb-12 relative z-10 animate-pulse"
       />
       <div className="w-64 h-1 bg-gray-800 rounded-full mb-4 relative z-10">

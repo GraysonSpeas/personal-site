@@ -27,7 +27,7 @@ const Hero = () => {
           playsInline
           className="w-full h-full object-cover"
         >
-          <source src="/assets/video_background.mp4" type="video/mp4" />
+          <source src="/assets/video_bg.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
         {/* Overlay */}
