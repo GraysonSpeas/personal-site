@@ -1,6 +1,7 @@
+// src/components/AuthModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "./AuthProvider";
-import { API_BASE } from "../config";
+import { API_BASE } from "../config"; // ✅ Make sure this path is correct
 
 type AuthModalProps = {
   onClose: () => void;
@@ -20,7 +21,6 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
   const { user, refetch, logout } = useAuth();
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // ⛔️ Only attach outside click handler if NOT inline
   useEffect(() => {
     if (!inline) {
       function handleClickOutside(e: MouseEvent) {
@@ -52,8 +52,8 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
       if (!response.ok) {
         setError(data.message || "Something went wrong");
       } else {
-        await refetch(); // Refresh global user state without reload
-        onClose();       // ✅ Close modal after successful login/signup
+        await refetch(); // Refresh global user state
+        onClose();       // ✅ Close modal
       }
     } catch {
       setError("Network error");
