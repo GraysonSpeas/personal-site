@@ -10,16 +10,18 @@ type Env = {
 
 const app = new Hono<Env>();
 
-// Allow cross-origin requests from your frontend
+// ✅ CORS config for dev and production
 app.use(
   '*',
   cors({
-    origin: 'https://localhost:4321', // Use your real frontend URL in prod
+    origin: (origin) => {
+      const allowed = ['https://localhost:4321', 'https://speas.org'];
+      return allowed.includes(origin ?? '') ? origin : '';
+    },
     credentials: true,
   })
 );
 
-// CORS preflight
 app.options('*', (c) => c.text('ok'));
 
 // 🔐 Hash password with SHA-256
@@ -47,12 +49,11 @@ app.post('/auth/signup', async (c) => {
     .bind(email, password_hash, name || null)
     .run();
 
-  // Set session cookie
   setCookie(c, 'session', btoa(email), {
     httpOnly: true,
-    secure: true, // ✅ Set to true in prod (HTTPS)
+    secure: true,
     path: '/',
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: 60 * 60 * 24,
     sameSite: 'Lax',
   });
 
@@ -78,24 +79,21 @@ app.post('/auth/login', async (c) => {
     return c.json({ message: 'Invalid credentials' }, 401);
   }
 
-  // Set secure session cookie
   setCookie(c, 'session', btoa(email), {
     httpOnly: true,
-    secure: true, // ✅ Required for HTTPS
+    secure: true,
     path: '/',
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: 60 * 60 * 24,
     sameSite: 'Lax',
   });
 
   return c.json({ message: 'Logged in' });
 });
 
-// 🧠 /auth/account — returns full user info
+// 🧠 Full account info
 app.get('/auth/account', async (c) => {
   const session = getCookie(c, 'session');
-  if (!session) {
-    return c.json({ message: 'Not logged in' }, 401);
-  }
+  if (!session) return c.json({ message: 'Not logged in' }, 401);
 
   const email = atob(session);
   const user = await c.env.DB.prepare('SELECT email, name, created_at FROM users WHERE email = ?')
@@ -106,7 +104,7 @@ app.get('/auth/account', async (c) => {
   return c.json({ user });
 });
 
-// 👤 /auth/me — light check (for quick refetch)
+// 👤 Lightweight session check
 app.get('/auth/me', (c) => {
   const session = getCookie(c, 'session');
   if (!session) return c.json({ user: null });
