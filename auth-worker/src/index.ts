@@ -1,90 +1,126 @@
 import { Hono } from 'hono';
-import { setCookie, getCookie } from 'hono/cookie';
+import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { cors } from 'hono/cors';
 
-// Type for environment bindings
 type Env = {
   Bindings: {
-    USERS: KVNamespace;
+    DB: D1Database;
   };
 };
 
-// Create app
 const app = new Hono<Env>();
 
-// ✅ Enable CORS (adjust origin to match your frontend)
+// Allow cross-origin requests from your frontend
 app.use(
   '*',
   cors({
-    origin: 'http://localhost:4321', // change this to your Astro/Vite dev origin
+    origin: 'https://localhost:4321', // Use your real frontend URL in prod
     credentials: true,
-    allowHeaders: ['Content-Type'],
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
   })
 );
 
-// Utility: Hash password with SHA-256
-function hashPassword(password: string): Promise<string> {
-  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(password)).then((buf) =>
-    Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
-  );
+// CORS preflight
+app.options('*', (c) => c.text('ok'));
+
+// 🔐 Hash password with SHA-256
+async function hashPassword(password: string): Promise<string> {
+  const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+  return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// POST /auth/signup
+// 📝 Signup route
 app.post('/auth/signup', async (c) => {
-  const { email, password } = await c.req.json();
-
+  const { email, password, name } = await c.req.json();
   if (!email || !password) {
     return c.json({ message: 'Missing fields' }, 400);
   }
 
-  const existing = await c.env.USERS.get(email);
+  const existing = await c.env.DB.prepare('SELECT 1 FROM users WHERE email = ?')
+    .bind(email)
+    .first();
   if (existing) {
     return c.json({ message: 'User already exists' }, 400);
   }
 
-  const hash = await hashPassword(password);
-  await c.env.USERS.put(email, JSON.stringify({ email, password: hash }));
+  const password_hash = await hashPassword(password);
+  await c.env.DB.prepare('INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)')
+    .bind(email, password_hash, name || null)
+    .run();
 
-  return c.json({ message: 'Signed up' });
+  // Set session cookie
+  setCookie(c, 'session', btoa(email), {
+    httpOnly: true,
+    secure: true, // ✅ Set to true in prod (HTTPS)
+    path: '/',
+    maxAge: 60 * 60 * 24, // 1 day
+    sameSite: 'Lax',
+  });
+
+  return c.json({ message: 'User created' });
 });
 
-// POST /auth/login
+// 🔐 Login route
 app.post('/auth/login', async (c) => {
   const { email, password } = await c.req.json();
-  const user = await c.env.USERS.get(email);
+  if (!email || !password) {
+    return c.json({ message: 'Missing credentials' }, 400);
+  }
+
+  const user = await c.env.DB.prepare('SELECT * FROM users WHERE email = ?')
+    .bind(email)
+    .first();
   if (!user) {
     return c.json({ message: 'Invalid credentials' }, 401);
   }
 
-  const parsed = JSON.parse(user);
-  const inputHash = await hashPassword(password);
-
-  if (parsed.password !== inputHash) {
+  const password_hash = await hashPassword(password);
+  if (user.password_hash !== password_hash) {
     return c.json({ message: 'Invalid credentials' }, 401);
   }
 
-  // 🔁 In dev, set secure to false (important if you're not on HTTPS)
+  // Set secure session cookie
   setCookie(c, 'session', btoa(email), {
-    path: '/',
-    maxAge: 60 * 60 * 24,
     httpOnly: true,
-    secure: false, // 🔁 Set to true in production!
+    secure: true, // ✅ Required for HTTPS
+    path: '/',
+    maxAge: 60 * 60 * 24, // 1 day
     sameSite: 'Lax',
   });
 
   return c.json({ message: 'Logged in' });
 });
 
-// GET /account
-app.get('/account', (c) => {
+// 🧠 /auth/account — returns full user info
+app.get('/auth/account', async (c) => {
   const session = getCookie(c, 'session');
   if (!session) {
     return c.json({ message: 'Not logged in' }, 401);
   }
 
   const email = atob(session);
-  return c.json({ message: `Welcome, ${email}` });
+  const user = await c.env.DB.prepare('SELECT email, name, created_at FROM users WHERE email = ?')
+    .bind(email)
+    .first();
+
+  if (!user) return c.json({ message: 'User not found' }, 404);
+  return c.json({ user });
+});
+
+// 👤 /auth/me — light check (for quick refetch)
+app.get('/auth/me', (c) => {
+  const session = getCookie(c, 'session');
+  if (!session) return c.json({ user: null });
+  return c.json({ user: { email: atob(session) } });
+});
+
+// 🚪 Logout
+app.post('/auth/logout', (c) => {
+  deleteCookie(c, 'session', {
+    path: '/',
+    secure: true,
+    sameSite: 'Lax',
+  });
+  return c.json({ message: 'Logged out' });
 });
 
 export default app;

@@ -1,12 +1,16 @@
 {
   "name": "auth-worker",
   "main": "src/index.ts",
-  "compatibility_date": "2024-05-01",
-  "kv_namespaces": [
+  "compatibility_date": "2024-05-31",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // D1 database binding
+  "d1_databases": [
     {
-      "binding": "USERS", // must match c.env.USERS
-      "id": "2eeb27d0df4042c0a57ed6e010f454fd", // production KV
-      "preview_id": "ddaa5fdf81bf4e6fb71c2383f5240911" // ← this is the dev KV
+      "binding": "DB", // accessible as env.DB
+      "database_name": "accounts",
+      "database_id": "32931a93-d28c-4c1c-80e9-351a54a033c2",
+      "migrations_dir": "./migrations"
     }
   ]
 }
