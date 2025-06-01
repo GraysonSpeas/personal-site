@@ -1,0 +1,17 @@
+### Test login
+POST http://127.0.0.1:8787/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "new@example.com",
+  "password": "newpass456"
+}
+
+### Test signup
+POST http://127.0.0.1:8787/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "new@example.com",
+  "password": "newpass456"
+}

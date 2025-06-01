@@ -1,0 +1,12 @@
+{
+  "name": "auth-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-05-01",
+  "kv_namespaces": [
+    {
+      "binding": "USERS", // must match c.env.USERS
+      "id": "2eeb27d0df4042c0a57ed6e010f454fd", // production KV
+      "preview_id": "ddaa5fdf81bf4e6fb71c2383f5240911" // ← this is the dev KV
+    }
+  ]
+}
