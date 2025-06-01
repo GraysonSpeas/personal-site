@@ -1,7 +1,6 @@
-// src/components/AuthProvider.tsx
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { API_BASE } from "../config"; // ✅ Adjust path if needed
+import { API_BASE } from "../config";
 
 type User = {
   email: string;
@@ -33,10 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("🔄 fetchUser called");
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/account`, {
+      const res = await fetch(`${API_BASE}/auth/account`, {
         credentials: "include",
       });
-      console.log("🔍 /account status:", res.status);
+      console.log("🔍 /auth/account status:", res.status);
 
       if (res.ok) {
         const data = await res.json();
@@ -58,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     console.log("🚪 logout called");
     try {
-      await fetch(`${API_BASE}/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -73,8 +72,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchUser();
   }, []);
-
-  console.log("👤 AuthProvider render - user:", user, "loading:", loading);
 
   return (
     <AuthContext.Provider value={{ user, loading, refetch: fetchUser, logout }}>

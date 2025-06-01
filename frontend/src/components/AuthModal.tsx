@@ -1,7 +1,6 @@
-// src/components/AuthModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "./AuthProvider";
-import { API_BASE } from "../config"; // ✅ Make sure this path is correct
+import { API_BASE } from "../config";
 
 type AuthModalProps = {
   onClose: () => void;
@@ -40,7 +39,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/${isLogin ? "login" : "signup"}`, {
+      const response = await fetch(`${API_BASE}/auth/${isLogin ? "login" : "signup"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -52,8 +51,8 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
       if (!response.ok) {
         setError(data.message || "Something went wrong");
       } else {
-        await refetch(); // Refresh global user state
-        onClose();       // ✅ Close modal
+        await refetch();
+        onClose();
       }
     } catch {
       setError("Network error");

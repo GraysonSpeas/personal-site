@@ -1,4 +1,3 @@
-// src/components/AuthWrapper.tsx
 import { AuthProvider } from "./AuthProvider";
 import type { ReactNode } from "react";
 

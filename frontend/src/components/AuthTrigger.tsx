@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AuthModal from './AuthModal';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthProvider';
 
 const AuthTrigger = () => {
   const [showModal, setShowModal] = useState(false);
