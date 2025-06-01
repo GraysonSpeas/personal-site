@@ -1,0 +1,17 @@
+---
+import WrapperWithLoading from "../components/WrapperWithLoading";
+
+// Set this to false to skip loading screen
+const showLoading = false;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Grayson Speas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <WrapperWithLoading client:load useLoading={showLoading} />
+  </body>
+</html>

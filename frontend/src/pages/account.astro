@@ -1,0 +1,31 @@
+---
+// Mark this page as server-rendered (so it has access to request headers/cookies)
+export const prerender = false;
+
+const session = Astro.cookies.get("session");
+let email: string | null = null;
+
+if (session?.value) {
+  try {
+    email = atob(session.value);
+  } catch {
+    email = null;
+  }
+}
+
+if (!email) {
+  return Astro.redirect("/");
+}
+---
+
+<html lang="en">
+  <head>
+    <title>Account</title>
+  </head>
+  <body class="text-black bg-white">
+    <main class="p-8">
+      <h1 class="text-3xl font-bold">Welcome, {email}!</h1>
+      <p class="mt-4">This is your account dashboard.</p>
+    </main>
+  </body>
+</html>
