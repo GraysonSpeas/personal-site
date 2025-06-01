@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "./AuthProvider";
+import { API_BASE } from "../config";
 
 type AuthModalProps = {
   onClose: () => void;
@@ -9,15 +11,28 @@ type AuthResponse = {
   message: string;
 };
 
-const AuthModal = ({ onClose, inline = false }: AuthModalProps) => {
+export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { user, refetch, logout } = useAuth();
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  // 👇 Local worker endpoint
-  const API_BASE = "http://127.0.0.1:8787/auth";
+  // ⛔️ Only attach outside click handler if NOT inline
+  useEffect(() => {
+    if (!inline) {
+      function handleClickOutside(e: MouseEvent) {
+        if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+          onClose();
+        }
+      }
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [inline, onClose]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,29 +44,59 @@ const AuthModal = ({ onClose, inline = false }: AuthModalProps) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
-        credentials: "include", // 🔥 Needed for cookies
+        credentials: "include",
       });
 
       const data = (await response.json()) as AuthResponse;
 
       if (!response.ok) {
-        console.error("❌ Auth error:", data);
         setError(data.message || "Something went wrong");
       } else {
-        console.log("✅ Auth success:", data);
-        window.location.href = "/account"; // ✅ Redirect on success
+        await refetch(); // Refresh global user state without reload
+        onClose();       // ✅ Close modal after successful login/signup
       }
-    } catch (err) {
-      console.error("❌ Network error:", err);
+    } catch {
       setError("Network error");
     } finally {
       setLoading(false);
     }
   }
 
+  const handleLogout = async () => {
+    await logout();
+    onClose();
+  };
+
+  if (user) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div
+          ref={modalRef}
+          className="bg-white rounded-lg max-w-md w-full p-6 relative"
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"
+          >
+            &times;
+          </button>
+          <p className="text-lg mb-4">Logged in as @{user.email}</p>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white py-2 rounded hover:bg-red-700"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const FormContent = (
     <>
-      <h2 className="text-2xl mb-4 text-black">{isLogin ? "Login" : "Sign Up"}</h2>
+      <h2 className="text-2xl mb-4 text-black">
+        {isLogin ? "Login" : "Sign Up"}
+      </h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input
           type="email"
@@ -92,12 +137,16 @@ const AuthModal = ({ onClose, inline = false }: AuthModalProps) => {
   );
 
   if (inline) {
-    return <div className="bg-white p-6 rounded shadow">{FormContent}</div>;
+    return (
+      <div className="bg-white p-6 rounded shadow" ref={modalRef}>
+        {FormContent}
+      </div>
+    );
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 relative" ref={modalRef}>
         <button
           onClick={onClose}
           className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"
@@ -108,6 +157,4 @@ const AuthModal = ({ onClose, inline = false }: AuthModalProps) => {
       </div>
     </div>
   );
-};
-
-export default AuthModal;
+}
