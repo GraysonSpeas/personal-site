@@ -95,7 +95,7 @@ app.post('/auth/signup', async (c) => {
      VALUES (?, ?, ?, 0, ?, ?)`
   ).bind(email, password_hash, name || null, verification_token, verification_token_expiry).run();
 
-  const verificationUrl = `${c.env.BASE_URL}/auth/verify?token=${verification_token}`;
+  const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${verification_token}`;
 
   try {
     await sendEmail(
@@ -131,12 +131,21 @@ app.get('/auth/verify', async (c) => {
   const token = c.req.query('token') as string | undefined;
   if (!token) return c.json({ message: 'Missing token' }, 400);
 
-  const user: { email: string; verification_token_expiry: string } | null = await c.env.DB.prepare(
-    'SELECT email, verification_token_expiry FROM users WHERE verification_token = ?'
+  const user: {
+    email: string;
+    email_verified: number;
+    verification_token_expiry: string;
+  } | null = await c.env.DB.prepare(
+    'SELECT email, email_verified, verification_token_expiry FROM users WHERE verification_token = ?'
   ).bind(token).first();
 
   if (!user) return c.json({ message: 'Invalid token' }, 400);
-  if (new Date() > new Date(user.verification_token_expiry)) return c.json({ message: 'Token expired' }, 400);
+  if (user.email_verified) {
+    return c.json({ message: 'Email already verified' });
+  }
+  if (new Date() > new Date(user.verification_token_expiry)) {
+    return c.json({ message: 'Token expired' }, 400);
+  }
 
   await c.env.DB.prepare(
     `UPDATE users SET email_verified = 1, verification_token = NULL, verification_token_expiry = NULL WHERE email = ?`
@@ -274,6 +283,37 @@ app.post('/auth/reset-password', async (c) => {
   ).bind(new_hash, user.email).run();
 
   return c.json({ message: 'Password reset successful' });
+});
+
+// --- API VERIFY EMAIL (POST) ---
+app.post('/auth/verify-email', async (c) => {
+  const { token } = await c.req.json();
+
+  if (!token) {
+    return c.json({ success: false, message: 'Missing token' }, 400);
+  }
+
+  const user: {
+    email: string;
+    email_verified: number;
+    verification_token_expiry: string;
+  } | null = await c.env.DB.prepare(
+    'SELECT email, email_verified, verification_token_expiry FROM users WHERE verification_token = ?'
+  ).bind(token).first();
+
+  if (!user) return c.json({ success: false, message: 'Invalid token' }, 400);
+  if (user.email_verified) {
+    return c.json({ success: true, message: 'Email already verified' });
+  }
+  if (new Date() > new Date(user.verification_token_expiry)) {
+    return c.json({ success: false, message: 'Token expired' }, 400);
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE users SET email_verified = 1, verification_token = NULL, verification_token_expiry = NULL WHERE email = ?`
+  ).bind(user.email).run();
+
+  return c.json({ success: true, message: 'Email verified successfully!' });
 });
 
 export default app;
