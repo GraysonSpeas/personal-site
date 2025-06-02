@@ -17,6 +17,7 @@
   // regular variables, accessible as env.SENDER_EMAIL and env.SENDER_DOMAIN
   "vars": {
     "SENDER_EMAIL": "welcome@speas.org",
-    "SENDER_DOMAIN": "speas.org"
+    "SENDER_DOMAIN": "speas.org",
+    "BASE_URL": "https://speas.org"
   }
 }

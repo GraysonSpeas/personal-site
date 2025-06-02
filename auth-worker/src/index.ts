@@ -6,7 +6,7 @@ import type { Context } from 'hono';
 type Bindings = {
   DB: D1Database;
   SENDGRID_API_KEY: string;
-  FROM_EMAIL: string;
+  SENDER_EMAIL: string;
   BASE_URL: string;
 };
 
@@ -55,13 +55,17 @@ async function sendEmail(
 ) {
   const body = {
     personalizations: [{ to: [{ email: toEmail }] }],
-    from: { email: c.env.FROM_EMAIL },
+
+    // Fix the 'from' field to include both email and name.
+    from: { email: c.env.SENDER_EMAIL, name: 'Speas.org' },
+
     subject,
     content: [
       { type: 'text/plain', value: text },
       { type: 'text/html', value: html },
     ],
   };
+  
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: {
@@ -70,7 +74,9 @@ async function sendEmail(
     },
     body: JSON.stringify(body),
   });
+
   if (!res.ok) {
+    // Handle any errors from SendGrid
     throw new Error(`SendGrid error: ${await res.text()}`);
   }
 }
