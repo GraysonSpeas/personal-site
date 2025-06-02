@@ -8,7 +8,12 @@ export default defineConfig({
   vite: {
     server: {
       proxy: {
-        '/auth': 'http://127.0.0.1:8787', // still useful for local dev
+        // Proxy /api/* requests to your Worker running on localhost:8787
+        '/api': {
+          target: 'http://127.0.0.1:8787',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
       },
     },
   },

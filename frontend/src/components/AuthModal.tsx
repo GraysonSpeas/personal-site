@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "./AuthProvider";
 import { API_BASE } from "../config";
 
@@ -27,7 +27,6 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
           onClose();
         }
       }
-
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
@@ -93,9 +92,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
 
   const FormContent = (
     <>
-      <h2 className="text-2xl mb-4 text-black">
-        {isLogin ? "Login" : "Sign Up"}
-      </h2>
+      <h2 className="text-2xl mb-4 text-black">{isLogin ? "Login" : "Sign Up"}</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input
           type="email"
@@ -136,11 +133,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
   );
 
   if (inline) {
-    return (
-      <div className="bg-white p-6 rounded shadow" ref={modalRef}>
-        {FormContent}
-      </div>
-    );
+    return <div className="bg-white p-6 rounded shadow" ref={modalRef}>{FormContent}</div>;
   }
 
   return (

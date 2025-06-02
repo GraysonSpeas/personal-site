@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { API_BASE } from "../config";  // adjust path if needed
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { API_BASE } from '../config'; // adjust path as needed
 
 type User = { email: string } | null;
 
@@ -24,13 +24,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUser = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/me`, {
+      const res = await fetch(`${API_BASE}/auth/me`, {
         credentials: 'include',
       });
+      if (!res.ok) throw new Error('Failed to fetch user');
       const data = await res.json();
-      setUser(data.user);
+      setUser(data.user ?? null);
     } catch (err) {
-      console.error('Error fetching user', err);
+      console.error('Error fetching user:', err);
       setUser(null);
     } finally {
       setLoading(false);
@@ -42,11 +43,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const logout = async () => {
-    await fetch(`${API_BASE}/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    setUser(null);
+    try {
+      const res = await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Logout failed');
+      setUser(null);
+    } catch (err) {
+      console.error('Error during logout:', err);
+    }
   };
 
   return (

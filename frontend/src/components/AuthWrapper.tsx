@@ -1,10 +1,7 @@
-import { AuthProvider } from "./AuthProvider";
+import React from "react";
 import type { ReactNode } from "react";
+import { AuthProvider } from "./AuthProvider";
 
 export default function AuthWrapper({ children }: { children: ReactNode }) {
-  return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  );
+  return <AuthProvider>{children}</AuthProvider>;
 }
