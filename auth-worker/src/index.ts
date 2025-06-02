@@ -27,7 +27,9 @@ app.options('*', (c) => c.text('ok'));
 
 async function hashPassword(password: string): Promise<string> {
   const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
-  return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 function validatePassword(password: string): boolean {
@@ -44,7 +46,13 @@ function generateToken(length = 48): string {
   return token;
 }
 
-async function sendEmail(c: Context<{ Bindings: Bindings }>, toEmail: string, subject: string, text: string, html: string) {
+async function sendEmail(
+  c: Context<{ Bindings: Bindings }>,
+  toEmail: string,
+  subject: string,
+  text: string,
+  html: string
+) {
   const body = {
     personalizations: [{ to: [{ email: toEmail }] }],
     from: { email: c.env.FROM_EMAIL },
@@ -76,9 +84,13 @@ app.post('/auth/signup', async (c) => {
   }
 
   if (!validatePassword(password)) {
-    return c.json({
-      message: 'Password must be at least 8 characters long, contain at least one uppercase letter and one symbol',
-    }, 400);
+    return c.json(
+      {
+        message:
+          'Password must be at least 8 characters long, contain at least one uppercase letter and one symbol',
+      },
+      400
+    );
   }
 
   const existing = await c.env.DB.prepare('SELECT 1 FROM users WHERE email = ?').bind(email).first();
@@ -90,10 +102,13 @@ app.post('/auth/signup', async (c) => {
   const verification_token = generateToken();
   const verification_token_expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-  await c.env.DB.prepare(
-    `INSERT INTO users (email, password_hash, name, email_verified, verification_token, verification_token_expiry)
-     VALUES (?, ?, ?, 0, ?, ?)`
-  ).bind(email, password_hash, name || null, verification_token, verification_token_expiry).run();
+  await c.env.DB
+    .prepare(
+      `INSERT INTO users (email, password_hash, name, email_verified, verification_token, verification_token_expiry)
+       VALUES (?, ?, ?, 0, ?, ?)`
+    )
+    .bind(email, password_hash, name || null, verification_token, verification_token_expiry)
+    .run();
 
   const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${verification_token}`;
 
@@ -135,9 +150,10 @@ app.get('/auth/verify', async (c) => {
     email: string;
     email_verified: number;
     verification_token_expiry: string;
-  } | null = await c.env.DB.prepare(
-    'SELECT email, email_verified, verification_token_expiry FROM users WHERE verification_token = ?'
-  ).bind(token).first();
+  } | null = await c.env.DB
+    .prepare('SELECT email, email_verified, verification_token_expiry FROM users WHERE verification_token = ?')
+    .bind(token)
+    .first();
 
   if (!user) return c.json({ message: 'Invalid token' }, 400);
   if (user.email_verified) {
@@ -147,9 +163,12 @@ app.get('/auth/verify', async (c) => {
     return c.json({ message: 'Token expired' }, 400);
   }
 
-  await c.env.DB.prepare(
-    `UPDATE users SET email_verified = 1, verification_token = NULL, verification_token_expiry = NULL WHERE email = ?`
-  ).bind(user.email).run();
+  await c.env.DB
+    .prepare(
+      `UPDATE users SET email_verified = 1, verification_token = NULL, verification_token_expiry = NULL WHERE email = ?`
+    )
+    .bind(user.email)
+    .run();
 
   return c.json({ message: 'Email verified successfully' });
 });
@@ -190,9 +209,10 @@ app.get('/auth/account', async (c) => {
     return c.json({ message: 'Invalid session' }, 401);
   }
 
-  const user = await c.env.DB.prepare(
-    'SELECT email, name, created_at, email_verified FROM users WHERE email = ?'
-  ).bind(email).first();
+  const user = await c.env.DB
+    .prepare('SELECT email, name, created_at, email_verified FROM users WHERE email = ?')
+    .bind(email)
+    .first();
 
   if (!user) return c.json({ message: 'User not found' }, 404);
 
@@ -232,25 +252,40 @@ app.post('/auth/request-password-reset', async (c) => {
   const user = await c.env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
   if (!user) return c.json({ message: 'If that email exists, a reset email was sent' });
 
-  const reset_token = generateToken();
-  const reset_token_expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+  // Generate new token and expiry each time (invalidate old tokens)
+  const token = generateToken();
+  const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-  await c.env.DB.prepare(
-    `UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?`
-  ).bind(reset_token, reset_token_expiry, email).run();
+  await c.env.DB
+    .prepare('UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?')
+    .bind(token, expiry, email)
+    .run();
 
-  const resetUrl = `${c.env.BASE_URL}/auth/reset-password?token=${reset_token}`;
+  const resetUrl = `${c.env.BASE_URL}/auth/reset-password?token=${token}`;
 
   try {
     await sendEmail(
       c,
       email,
-      'Password Reset Request',
-      `Click here to reset your password: ${resetUrl}`,
-      `<p>Click <a href="${resetUrl}">here</a> to reset your password.</p>`
+      'Password Reset Request - Speas.org',
+      `Click this link to reset your password: ${resetUrl}`,
+      `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+        <h2 style="color: #111;">Password Reset</h2>
+        <p>Click the button below to reset your password:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background: #6366f1; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Reset Password</a>
+        </p>
+        <p>If the button doesn’t work, copy and paste this URL into your browser:</p>
+        <p><a href="${resetUrl}" style="color: #6366f1;">${resetUrl}</a></p>
+        <hr />
+        <p style="font-size: 12px; color: #999;">If you didn’t request this email, you can safely ignore it.</p>
+      </div>
+      `
     );
   } catch (err) {
     console.error('SendGrid error:', err);
+    return c.json({ message: 'Failed to send password reset email' }, 500);
   }
 
   return c.json({ message: 'If that email exists, a reset email was sent' });
@@ -259,61 +294,107 @@ app.post('/auth/request-password-reset', async (c) => {
 // --- RESET PASSWORD ---
 app.post('/auth/reset-password', async (c) => {
   const { token, newPassword } = await c.req.json();
+  if (!token || !newPassword) return c.json({ message: 'Missing fields' }, 400);
 
-  if (!token || !newPassword) return c.json({ message: 'Missing token or new password' }, 400);
   if (!validatePassword(newPassword)) {
-    return c.json({
-      message: 'Password must be at least 8 characters long, contain at least one uppercase letter and one symbol',
-    }, 400);
+    return c.json(
+      {
+        message:
+          'Password must be at least 8 characters long, contain at least one uppercase letter and one symbol',
+      },
+      400
+    );
   }
 
-  const user: { email: string; reset_token_expiry: string | null } | null = await c.env.DB.prepare(
-    'SELECT email, reset_token_expiry FROM users WHERE reset_token = ?'
-  ).bind(token).first();
+  const user = await c.env.DB
+    .prepare('SELECT email, reset_token_expiry FROM users WHERE reset_token = ?')
+    .bind(token)
+    .first();
 
-  if (!user) return c.json({ message: 'Invalid token' }, 400);
-  if (!user.reset_token_expiry || new Date() > new Date(user.reset_token_expiry)) {
+  if (!user) return c.json({ message: 'Invalid or expired token' }, 400);
+
+  // Validate reset_token_expiry field
+  if (
+    !user.reset_token_expiry ||
+    typeof user.reset_token_expiry !== 'string'
+  ) {
+    return c.json({ message: 'Invalid or expired token' }, 400);
+  }
+
+  const expiryDate = new Date(user.reset_token_expiry);
+  if (isNaN(expiryDate.getTime())) {
+    return c.json({ message: 'Invalid token expiry date' }, 400);
+  }
+
+  if (new Date() > expiryDate) {
     return c.json({ message: 'Token expired' }, 400);
   }
 
-  const new_hash = await hashPassword(newPassword);
+  const password_hash = await hashPassword(newPassword);
 
-  await c.env.DB.prepare(
-    `UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE email = ?`
-  ).bind(new_hash, user.email).run();
+  await c.env.DB
+    .prepare(
+      `UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE email = ?`
+    )
+    .bind(password_hash, user.email)
+    .run();
 
   return c.json({ message: 'Password reset successful' });
 });
 
-// --- API VERIFY EMAIL (POST) ---
-app.post('/auth/verify-email', async (c) => {
-  const { token } = await c.req.json();
 
-  if (!token) {
-    return c.json({ success: false, message: 'Missing token' }, 400);
+// --- RESEND VERIFICATION EMAIL ---
+app.post('/auth/resend-verification', async (c) => {
+  const { email } = await c.req.json();
+  if (!email) return c.json({ message: 'Email required' }, 400);
+
+  const user = await c.env.DB
+    .prepare('SELECT email, name, email_verified FROM users WHERE email = ?')
+    .bind(email)
+    .first();
+
+  if (!user) return c.json({ message: 'If that email exists, a verification email was sent' });
+  if (user.email_verified) return c.json({ message: 'Email already verified' });
+
+  const newVerificationToken = generateToken();
+  const newExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  await c.env.DB
+    .prepare(
+      `UPDATE users SET verification_token = ?, verification_token_expiry = ? WHERE email = ?`
+    )
+    .bind(newVerificationToken, newExpiry, email)
+    .run();
+
+  const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${newVerificationToken}`;
+
+  try {
+    await sendEmail(
+      c,
+      email,
+      'Resend Verification Email - Speas.org',
+      `Hi ${user.name || ''},\n\nClick this link to verify your email: ${verificationUrl}`,
+      `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+        <h2 style="color: #111;">Verify Your Email at <span style="color: #6366f1;">Speas.org</span></h2>
+        <p>Hi ${user.name || ''},</p>
+        <p>Please verify your email by clicking the button below:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${verificationUrl}" style="background: #6366f1; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Verify Email</a>
+        </p>
+        <p>If the button doesn’t work, copy and paste this URL into your browser:</p>
+        <p><a href="${verificationUrl}" style="color: #6366f1;">${verificationUrl}</a></p>
+        <hr />
+        <p style="font-size: 12px; color: #999;">If you didn’t request this email, you can safely ignore it.</p>
+      </div>
+      `
+    );
+  } catch (err) {
+    console.error('SendGrid error:', err);
+    return c.json({ message: 'Failed to send verification email' }, 500);
   }
 
-  const user: {
-    email: string;
-    email_verified: number;
-    verification_token_expiry: string;
-  } | null = await c.env.DB.prepare(
-    'SELECT email, email_verified, verification_token_expiry FROM users WHERE verification_token = ?'
-  ).bind(token).first();
-
-  if (!user) return c.json({ success: false, message: 'Invalid token' }, 400);
-  if (user.email_verified) {
-    return c.json({ success: true, message: 'Email already verified' });
-  }
-  if (new Date() > new Date(user.verification_token_expiry)) {
-    return c.json({ success: false, message: 'Token expired' }, 400);
-  }
-
-  await c.env.DB.prepare(
-    `UPDATE users SET email_verified = 1, verification_token = NULL, verification_token_expiry = NULL WHERE email = ?`
-  ).bind(user.email).run();
-
-  return c.json({ success: true, message: 'Email verified successfully!' });
+  return c.json({ message: 'Verification email resent' });
 });
 
 export default app;

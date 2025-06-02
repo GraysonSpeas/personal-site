@@ -20,6 +20,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [showResendVerification, setShowResendVerification] = useState(false);
   const { user, refetch, logout } = useAuth();
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +41,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
     setLoading(true);
     setError(null);
     setInfoMessage(null);
+    setShowResendVerification(false); // reset resend button visibility on submit
 
     try {
       let endpoint = "";
@@ -66,6 +68,14 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
 
       if (!response.ok || data.success === false) {
         setError(data.message || "Something went wrong");
+
+        // Show resend verification if login error says to verify email
+        if (
+          mode === "login" &&
+          data.message === "Please verify your email before logging in"
+        ) {
+          setShowResendVerification(true);
+        }
       } else {
         if (mode === "login") {
           await refetch();
@@ -77,6 +87,36 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
         } else if (mode === "forgotPassword") {
           setInfoMessage(data.message || "Password reset email sent! Check your inbox.");
         }
+      }
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    if (!email) {
+      setError("Please enter your email to resend verification.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setInfoMessage(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/resend-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        credentials: "include",
+      });
+      const data = (await response.json()) as AuthResponse;
+      if (!response.ok || data.success === false) {
+        setError(data.message || "Failed to resend verification email.");
+      } else {
+        setInfoMessage(data.message || "Verification email resent. Check your inbox.");
+        setShowResendVerification(false); // optionally hide resend button after success
       }
     } catch {
       setError("Network error");
@@ -141,6 +181,19 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
               className="border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             {error && <p className="text-red-600">{error}</p>}
+            {showResendVerification && (
+              <>
+                {infoMessage && <p className="text-green-600">{infoMessage}</p>}
+                <button
+                  onClick={handleResendVerification}
+                  disabled={loading}
+                  type="button"
+                  className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                >
+                  {loading ? "Resending..." : "Resend Verification Email"}
+                </button>
+              </>
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -153,6 +206,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
             onClick={() => {
               setError(null);
               setInfoMessage(null);
+              setShowResendVerification(false);
               setMode("forgotPassword");
             }}
             className="mt-2 text-sm text-blue-600 hover:underline"
@@ -166,6 +220,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
               onClick={() => {
                 setError(null);
                 setInfoMessage(null);
+                setShowResendVerification(false);
                 setMode("signup");
               }}
               className="text-blue-600 hover:underline"
@@ -214,6 +269,7 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
               onClick={() => {
                 setError(null);
                 setInfoMessage(null);
+                setShowResendVerification(false);
                 setMode("login");
               }}
               className="text-blue-600 hover:underline"
@@ -246,13 +302,14 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
               disabled={loading}
               className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
             >
-              {loading ? "Please wait..." : "Send Reset Link"}
+              {loading ? "Sending..." : "Send Reset Link"}
             </button>
           </form>
           <button
             onClick={() => {
               setError(null);
               setInfoMessage(null);
+              setShowResendVerification(false);
               setMode("login");
             }}
             className="mt-2 text-sm text-blue-600 hover:underline"
@@ -268,25 +325,39 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
       formContent = (
         <>
           <h2 className="text-2xl mb-4 text-black">Verify Your Email</h2>
-          {infoMessage && <p className="text-green-600">{infoMessage}</p>}
+          {infoMessage && <p className="mb-4 text-green-600">{infoMessage}</p>}
+          <p className="mb-4 text-black">
+            Please check your email ({email}) and click the verification link to
+            complete your signup.
+          </p>
           <button
-            onClick={onClose}
-            className="mt-4 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            onClick={() => setMode("login")}
+            className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            type="button"
           >
-            Close
+            Back to Login
           </button>
         </>
       );
       break;
+
+    default:
+      formContent = null;
   }
 
   if (inline) {
-    return <div className="bg-white p-6 rounded shadow" ref={modalRef}>{formContent}</div>;
+    return <div className="w-full max-w-md mx-auto">{formContent}</div>;
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 relative" ref={modalRef}>
+      <div
+        ref={modalRef}
+        className="bg-white rounded-lg max-w-md w-full p-6 relative"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-modal-title"
+      >
         <button
           onClick={onClose}
           className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"

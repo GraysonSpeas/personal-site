@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from '../config'; // Adjust the import path as needed
+import { API_BASE } from '../config'; // Ensure this path is correct
 
 export default function VerifyEmailComp() {
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [message, setMessage] = useState<string>('');
 
   useEffect(() => {
+    console.log('API_BASE:', API_BASE);
+
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
 
@@ -15,35 +17,43 @@ export default function VerifyEmailComp() {
       return;
     }
 
-    async function verifyEmail() {
+    async function verifyEmail(token: string) {
       try {
-        const res = await fetch(`${API_BASE}/auth/verify-email`, {
-          method: 'POST',
+        console.log('Verifying token:', token);
+
+        const res = await fetch(`${API_BASE}/auth/verify?token=${encodeURIComponent(token)}`, {
+          method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
         });
 
-        if (!res.ok) {
-          throw new Error(`Server error: ${res.status}`);
+        console.log('Response status:', res.status);
+
+        let data;
+        try {
+          data = await res.json();
+          console.log('Response data:', data);
+        } catch (jsonError) {
+          throw new Error('Invalid JSON response from server.');
         }
 
-        const data = await res.json();
-
-        if (data.success) {
+        // Treat as success if res.ok and either data.success === true OR message contains "verified"
+        if (
+          res.ok &&
+          (data?.success === true || data?.message?.toLowerCase().includes('verified'))
+        ) {
           setStatus('success');
           setMessage(data.message || 'Email verified successfully!');
         } else {
-          setStatus('error');
-          setMessage(data.message || 'Verification failed.');
+          throw new Error(data?.message || 'Verification failed.');
         }
-      } catch (error) {
+      } catch (error: any) {
         setStatus('error');
-        setMessage('Network error. Please try again.');
+        setMessage(error.message || 'Network error. Please try again.');
         console.error('Verification error:', error);
       }
     }
 
-    verifyEmail();
+    verifyEmail(token);
   }, []);
 
   return (

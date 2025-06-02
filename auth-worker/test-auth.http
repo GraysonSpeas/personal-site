@@ -1,35 +1,46 @@
-### Signup
+### Signup new user
 POST http://localhost:8787/auth/signup
 Content-Type: application/json
 
 {
-  "email": "a@speas.org",
-  "password": "Password@123",
-  "name": "Grayson"
+  "email": "11@speas.org",
+  "password": "Password!1",
+  "name": "Test User"
 }
 
-### Request Password Reset
-POST http://localhost:8787/auth/request-password-reset
-Content-Type: application/json
-
-{
-  "email": "a@speas.org"
-}
-
-### Reset Password
-POST http://localhost:8787/auth/reset-password
-Content-Type: application/json
-
-{
-  "token": "ZbTsANStagqjRg1j6q0AXXIiBKn8VUscPSaHLTUXIEvLSQSv",
-  "newPassword": "MyNewPassword@123"
-}
-
-### Login
+### Login user
 POST http://localhost:8787/auth/login
 Content-Type: application/json
 
 {
-  "email": "a@speas.org",
-  "password": "MyNewPassword@123"
+  "email": "testuser@example.com",
+  "password": "Password!1"
 }
+
+### Request password reset
+POST http://localhost:8787/auth/request-password-reset
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com"
+}
+
+### Reset password (replace token with actual token from email)
+POST http://localhost:8787/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "REPLACE_WITH_RESET_TOKEN",
+  "newPassword": "NewPass!2"
+}
+
+### Resend verification email
+POST http://localhost:8787/auth/resend-verification
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com"
+}
+
+### Verify email (replace token with actual token from email)
+GET http://localhost:8787/auth/verify?token=4EzI3apRC1sezCOm6XeKbkeHi6nPuQ3FE52kDIynOd7xLzsw
