@@ -1,17 +1,35 @@
-### Test login
-POST http://127.0.0.1:8787/api/auth/login
+### Signup
+POST http://localhost:8787/auth/signup
 Content-Type: application/json
 
 {
-  "email": "new@example.com",
-  "password": "newpass456"
+  "email": "a@speas.org",
+  "password": "Password@123",
+  "name": "Grayson"
 }
 
-### Test signup
-POST http://127.0.0.1:8787/api/auth/signup
+### Request Password Reset
+POST http://localhost:8787/auth/request-password-reset
 Content-Type: application/json
 
 {
-  "email": "new@example.com",
-  "password": "newpass456"
+  "email": "a@speas.org"
+}
+
+### Reset Password
+POST http://localhost:8787/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "ZbTsANStagqjRg1j6q0AXXIiBKn8VUscPSaHLTUXIEvLSQSv",
+  "newPassword": "MyNewPassword@123"
+}
+
+### Login
+POST http://localhost:8787/auth/login
+Content-Type: application/json
+
+{
+  "email": "a@speas.org",
+  "password": "MyNewPassword@123"
 }

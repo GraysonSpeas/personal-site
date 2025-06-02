@@ -12,5 +12,11 @@
       "database_id": "32931a93-d28c-4c1c-80e9-351a54a033c2",
       "migrations_dir": "./migrations"
     }
-  ]
+  ],
+
+  // regular variables, accessible as env.SENDER_EMAIL and env.SENDER_DOMAIN
+  "vars": {
+    "SENDER_EMAIL": "welcome@speas.org",
+    "SENDER_DOMAIN": "speas.org"
+  }
 }
