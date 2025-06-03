@@ -2,8 +2,19 @@ import { useState, useEffect, useRef } from "react";
 import PlayerButton from "./PlayerButton";
 import AuthModal from "./AuthModal";
 import { useAuth } from "./AuthProvider";
+import type { Page } from "../types/pages";
 
-const Header = () => {
+type MenuItem = {
+  label: string;
+  page?: Page;     // internal SPA page navigation
+  href?: string;   // external link or fallback anchor
+};
+
+type HeaderProps = {
+  onNavigate?: (page: Page) => void;
+};
+
+const Header = ({ onNavigate }: HeaderProps) => {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -11,27 +22,25 @@ const Header = () => {
 
   const { user, logout, loading } = useAuth();
 
-  const menuItems = [
-    "Home",
-    "Resume",
-    "Projects",
-    "For Fun",
-    "Random",
-    "Pictures",
+  const menuItems: MenuItem[] = [
+    { label: "Home", page: "home", href: "/" },  // <-- Added href here
+    { label: "Resume", page: "resume" },
+    { label: "Projects", page: "projects" },
+    { label: "For Fun", page: "forfun" },
+    { label: "Azuki", page: "azuki" },
+    { label: "Pictures", page: "pictures" },
   ];
 
-  // Handle scroll background
+  // Scroll effect to toggle header background & padding
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 100);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 100);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   // Close auth modal on outside click
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const onClickOutside = (e: MouseEvent) => {
       if (
         authModalOpen &&
         containerRef.current &&
@@ -40,12 +49,22 @@ const Header = () => {
         setAuthModalOpen(false);
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
   }, [authModalOpen]);
+
+  // Handle navigation clicks for SPA or external
+ const handleMenuItemClick = (e: React.MouseEvent, item: MenuItem) => {
+  console.log("Menu item clicked:", item);
+  if (item.page) {
+    e.preventDefault();
+    onNavigate?.(item.page);
+    setMenuOpen(false);
+  } else if (item.href) {
+    setMenuOpen(false);
+  }
+};
+
 
   return (
     <header
@@ -59,21 +78,34 @@ const Header = () => {
       }}
     >
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <a href="/" className="flex items-center">
+        {/* Logo */}
+        <a
+          href="/"
+          className="flex items-center"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate?.("home");
+            setMenuOpen(false);
+          }}
+        >
           <img src="/assets/logo.png" alt="Site Logo" className="h-10 md:h-12" />
         </a>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex gap-8">
-          {menuItems.map((item) => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase().replace(/\s+/g, "")}`}
-              className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
-            >
-              {item}
-            </a>
-          ))}
+          {menuItems.map((item) => {
+            const href = item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
+            return (
+              <a
+                key={item.label}
+                href={href}
+                className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
+                onClick={(e) => handleMenuItemClick(e, item)}
+              >
+                {item.label}
+              </a>
+            );
+          })}
         </nav>
 
         {/* Right side buttons */}
@@ -81,7 +113,7 @@ const Header = () => {
           <PlayerButton />
           <button className="btn btn-outline rounded-full text-sm">English</button>
 
-          {/* Account icon + modal */}
+          {/* Account icon and modal */}
           <div className="relative inline-block" ref={containerRef}>
             <button
               onClick={() => setAuthModalOpen((prev) => !prev)}
@@ -137,7 +169,7 @@ const Header = () => {
         {/* Mobile Hamburger */}
         <button
           className="md:hidden text-white"
-          onClick={() => setMenuOpen(!menuOpen)}
+          onClick={() => setMenuOpen((prev) => !prev)}
           aria-label="Toggle menu"
         >
           <svg
@@ -165,16 +197,19 @@ const Header = () => {
       {menuOpen && (
         <div className="md:hidden bg-black/95 backdrop-blur-lg py-4 px-4 absolute top-full left-0 w-full">
           <nav className="flex flex-col gap-4">
-            {menuItems.map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase().replace(/\s+/g, "")}`}
-                className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
-                onClick={() => setMenuOpen(false)}
-              >
-                {item}
-              </a>
-            ))}
+            {menuItems.map((item) => {
+              const href = item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
+              return (
+                <a
+                  key={item.label}
+                  href={href}
+                  className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
+                  onClick={(e) => handleMenuItemClick(e, item)}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
           </nav>
         </div>
       )}
