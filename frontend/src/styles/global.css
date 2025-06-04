@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom fonts */
+/* ─── Custom Fonts ─── */
 @font-face {
   font-family: 'AmericanCaptain';
-  src: url('/fonts/american_captain.woff2') format('woff2');
+  src: url('/fonts/AmericanCaptain.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -13,7 +13,7 @@
 
 @font-face {
   font-family: 'FuturaMedium';
-  src: url('/fonts/futura_medium.woff2') format('woff2');
+  src: url('/fonts/Futura-Medium.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -27,7 +27,7 @@
   font-display: swap;
 }
 
-/* CSS Variables */
+/* ─── CSS Variables ─── */
 :root {
   --primary-blue: #3BA6FF;
   --accent-blue: #0A98FE;
@@ -36,7 +36,7 @@
   --light: #FFFFFF;
 }
 
-/* Global styles */
+/* ─── Global Base Styles ─── */
 html {
   scroll-behavior: smooth;
 }
@@ -50,50 +50,57 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom classes */
-.game-title {
-  font-family: 'MorpheusBold', serif;
+/* ─── Utilities Layer (Tailwind Safe) ─── */
+@layer utilities {
+  .game-title {
+    font-family: 'MorpheusBold', serif;
+  }
+
+  .btn {
+    @apply px-6 py-2 rounded-md transition-all duration-300 inline-flex items-center justify-center;
+  }
+
+  .btn-primary {
+    @apply bg-[#3BA6FF] text-white hover:bg-[#2196f3];
+  }
+
+  .btn-outline {
+    @apply border border-[#3BA6FF] text-[#3BA6FF] hover:bg-[#3BA6FF]/10;
+  }
+
+  .parallax {
+    transition: transform 0.3s ease-out;
+  }
+
+  .glow {
+    text-shadow: 0 0 10px rgba(59, 166, 255, 0.7);
+  }
+
+  .nav-link {
+    @apply relative;
+  }
+
+  .nav-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-[#3BA6FF] transition-all duration-300;
+  }
+
+  .nav-link:hover::after {
+    width: 100%;
+  }
+
+  .animated-bg {
+    background: linear-gradient(-45deg, #061428, #000000, #061428, #0A2642);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  .float {
+    animation: float 4s ease-in-out infinite;
+  }
 }
 
-.btn {
-  @apply px-6 py-2 rounded-md transition-all duration-300 inline-flex items-center justify-center;
-}
-
-.btn-primary {
-  @apply bg-[#3BA6FF] text-white hover:bg-[#2196f3];
-}
-
-.btn-outline {
-  @apply border border-[#3BA6FF] text-[#3BA6FF] hover:bg-[#3BA6FF]/10;
-}
-
-.parallax {
-  transition: transform 0.3s ease-out;
-}
-
-.glow {
-  text-shadow: 0 0 10px rgba(59, 166, 255, 0.7);
-}
-
-.nav-link {
-  @apply relative 
-    after:absolute 
-    after:bottom-0 
-    after:left-0 
-    after:w-0 
-    after:h-0.5 
-    after:bg-[#3BA6FF]
-    after:transition-all 
-    after:duration-300 
-    hover:after:w-full;
-}
-
-.animated-bg {
-  background: linear-gradient(-45deg, #061428, #000000, #061428, #0A2642);
-  background-size: 400% 400%;
-  animation: gradient 15s ease infinite;
-}
-
+/* ─── Keyframes ─── */
 @keyframes gradient {
   0% {
     background-position: 0% 50%;
@@ -116,126 +123,4 @@ body {
   100% {
     transform: translateY(0px);
   }
-}
-
-.float {
-  animation: float 4s ease-in-out infinite;
-}
-
-/* Custom Styles for Azuki Header */
-.azuki-header {
-  @apply fixed top-0 left-0 w-full bg-black z-50; /* Tailwind utility classes */
-  padding: 16px; /* Custom padding */
-}
-
-.azuki-header .logo {
-  @apply flex items-center justify-start; /* Tailwind: center logo */
-}
-
-.azuki-header .logo img {
-  @apply h-10; /* Make logo image smaller */
-}
-
-.azuki-header .nav-links {
-  @apply lg:flex space-x-6 text-white; /* Removed hidden, use directly in HTML */
-}
-
-.azuki-header .nav-links a {
-  @apply uppercase text-sm font-medium cursor-pointer hover:text-[#3BA6FF]; /* Tailwind for hover effects */
-}
-
-.azuki-header .hamburger-menu {
-  @apply lg:hidden; /* Hide hamburger on larger screens */
-}
-
-.azuki-header .hamburger-menu button {
-  @apply text-white; /* Button styles */
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  position: relative;
-  z-index: 51;
-}
-
-.azuki-header .hamburger-menu .bar {
-  position: relative;
-  width: 24px;
-  height: 2px;
-  background: white;
-  display: block;
-  transition: all 0.3s ease;
-}
-
-.azuki-header .hamburger-menu .bar::before,
-.azuki-header .hamburger-menu .bar::after {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 2px;
-  background: white;
-  transition: all 0.3s ease;
-}
-
-.azuki-header .hamburger-menu .bar::before {
-  top: -8px;
-}
-
-.azuki-header .hamburger-menu .bar::after {
-  top: 8px;
-}
-
-.azuki-header .hamburger-menu .bar.open {
-  background: transparent;
-}
-
-.azuki-header .hamburger-menu .bar.open::before {
-  transform: rotate(45deg);
-  top: 0;
-}
-
-.azuki-header .hamburger-menu .bar.open::after {
-  transform: rotate(-45deg);
-  top: 0;
-}
-
-/* Mobile Menu */
-.azuki-header .mobile-menu {
-  @apply fixed top-16 left-0 bg-black text-white w-full p-6; /* Removed hidden, use directly in HTML */
-  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-  transform: translateY(-100%);  /* Ensure the menu starts off-screen */
-  opacity: 0;
-}
-
-.azuki-header .mobile-menu.hidden {
-  transform: translateY(-100%);  /* Slide the menu out of view */
-  opacity: 0;
-}
-
-.azuki-header .mobile-menu.visible {
-  transform: translateY(0);  /* Slide the menu into view */
-  opacity: 1;
-}
-
-.azuki-header .mobile-menu a {
-  @apply block py-2; /* Space out the menu items */
-}
-
-.azuki-header .mobile-menu button {
-  @apply py-2 px-6 mt-4 bg-[#3BA6FF] text-white rounded-md; /* Button for "Connect" */
-}
-
-/* Enhanced Transition for Mobile Menu */
-.azuki-header .hamburger-menu.open .bar {
-  background-color: transparent; /* Remove original bar background */
-}
-
-.azuki-header .hamburger-menu.open .bar::before {
-  transform: rotate(45deg);
-  top: 0;
-}
-
-.azuki-header .hamburger-menu.open .bar::after {
-  transform: rotate(-45deg);
-  top: 0;
 }

@@ -59,26 +59,27 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
   };
 
   return (
-    <div className="bg-black min-h-screen text-white overflow-hidden">
-      {/* Pass the onNavigate handler */}
+    <div
+      className={`bg-black min-h-screen text-white overflow-x-hidden ${
+        page === "azuki" ? "overflow-y-hidden" : "overflow-y-auto"
+      }`}
+    >
       {page === "azuki" ? (
-  <AzukiHeader onLogoClick={() => setPage("home")} />
-) : (
-  <Header onNavigate={handleNavigate} />
-)}
-
+        <AzukiHeader onLogoClick={() => setPage("home")} />
+      ) : (
+        <Header onNavigate={handleNavigate} />
+      )}
 
       {page === "home" && (
         <main>
           <Hero />
           <MoreInfo />
           <Downloads />
+          <Footer />
         </main>
       )}
 
       {page === "azuki" && <AzukiWorld />}
-
-      <Footer />
     </div>
   );
 }

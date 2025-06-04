@@ -1,49 +1,71 @@
-import { useState } from 'react'
+import React, { useState } from 'react';
 
 interface WorldSectionProps {
-  title: string
-  backgroundImage: string
-  hasNewBadge?: boolean
-  onClick?: () => void
+  title: string;
+  backgroundImageHorizontal: string;
+  backgroundImageVertical: string;
+  hasNewBadge?: boolean;
+  onClick?: () => void;
+  className?: string; // accept extra classes
 }
 
-export const WorldSection = ({ title, backgroundImage, hasNewBadge, onClick }: WorldSectionProps) => {
-  const [isHovered, setIsHovered] = useState(false)
+export const WorldSection = ({
+  title,
+  backgroundImageHorizontal,
+  backgroundImageVertical,
+  hasNewBadge,
+  onClick,
+  className = '',
+}: WorldSectionProps) => {
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
-      className="border-0 group cursor-pointer relative h-full md:h-[calc(100vh-8px)] md:w-full overflow-hidden hover:z-50 border-4 hover:border-solid border-white/0 hover:border-white/100 transition-all duration-300"
+      className={`
+        group cursor-pointer relative
+        flex-grow basis-0 max-w-[33.3333%]
+        h-full
+        overflow-hidden rounded-lg
+        border-4 border-transparent hover:border-white transition-all duration-300
+        ${className}
+      `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
+      style={{ minWidth: 0 }} // prevents flexbox overflow issues with text/content
     >
-      {/* Background Image */}
+      {/* Desktop Horizontal Background */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 group-hover:scale-105"
+        className="absolute inset-0 bg-cover bg-center hidden md:block transition-transform duration-500 group-hover:scale-105"
         style={{
-          backgroundImage: `url(${backgroundImage})`,
-          filter: 'brightness(0.8)'
+          backgroundImage: `url(${backgroundImageHorizontal})`,
+          filter: 'brightness(0.75)',
         }}
       />
-
-      {/* Overlay for better text visibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-azukigray-900/80 via-transparent to-transparent" />
+      {/* Mobile Vertical Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center block md:hidden transition-transform duration-500 group-hover:scale-105"
+        style={{
+          backgroundImage: `url(${backgroundImageVertical})`,
+          filter: 'brightness(0.75)',
+        }}
+      />
+      {/* Overlay for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
       {/* Title */}
-      <h1 className={`
-        transition-transform flex flex-row duration-500
-        ${isHovered ? 'md:translate-y-[0px]' : 'md:translate-y-[100%]'}
-        text-white gap-2 md:gap-[.4vw] px-3 py-2 md:px-[1vw] md:py-[.6vw]
-        bg-azukigray-900 ease-out absolute md:left-[-2px] md:right-[-2px] bottom-0
-        font-800 uppercase text-2xl md:text-[2.5vw] font-black
-      `}>
-        {title}
+      <h1
+        className={`absolute bottom-0 left-0 right-0 px-3 py-2 bg-black bg-opacity-70 text-white uppercase font-black text-xl md:text-[2vw] flex items-center justify-between gap-2 transition-transform duration-500 ${
+          isHovered ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
+        <span>{title}</span>
         {hasNewBadge && (
-          <p className="goldentext font-mono-medium font-bold text-xs md:text-[1vw] translate-y-[4px] md:translate-y-[.6vw] uppercase">
+          <span className="goldentext font-mono font-bold text-xs md:text-[1vw] uppercase translate-y-1">
             New
-          </p>
+          </span>
         )}
       </h1>
     </div>
-  )
-}
+  );
+};
