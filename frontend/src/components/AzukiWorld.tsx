@@ -8,7 +8,7 @@ import { useWindowWidth } from "../hooks/useWindowWidth";
 
 export default function AzukiWorld() {
   const windowWidth = useWindowWidth();
-  const isHorizontal = windowWidth >= 1024; // Horizontal on large screens
+  const isVertical = windowWidth < 1024;
 
   const [modalData, setModalData] = useState<{
     title: string;
@@ -19,7 +19,7 @@ export default function AzukiWorld() {
     const slug = title.toLowerCase();
     setModalData({
       title,
-      imageSrc: `/assets/worlds/${slug}-${isHorizontal ? "horizontal" : "vertical"}.jpg`,
+      imageSrc: `/assets/worlds/${slug}-${isVertical ? "vertical" : "horizontal"}.jpg`,
     });
   };
 
@@ -47,36 +47,37 @@ export default function AzukiWorld() {
   ];
 
   return (
-    <div className="bg-black text-white fixed top-0 left-0 w-screen h-screen flex flex-col overflow-hidden">
+    <div className="bg-black text-white fixed top-0 left-0 w-screen h-screen flex flex-col">
       <ScrollToExplore />
 
       <main
-        className={`
-          flex
-          ${isHorizontal ? "flex-row overflow-x-auto overflow-y-hidden" : "flex-col overflow-y-auto overflow-x-hidden"}
-          ${isHorizontal ? "space-x-6" : "space-y-6"}
-          pt-16 px-4 pb-6 flex-grow min-h-0 no-scrollbar
-        `}
-      >
-        {sections.map(({ title, hasNewBadge }) => {
-          const slug = title.toLowerCase();
-          return (
-            <WorldSection
-              key={title}
-              title={title}
-              backgroundImageHorizontal={`/assets/worlds/${slug}-horizontal.jpg`}
-              backgroundImageVertical={`/assets/worlds/${slug}-vertical.jpg`}
-              hasNewBadge={hasNewBadge}
-              onClick={() => handleClick(title)}
-              className={`flex-shrink-0 ${
-                isHorizontal
-                  ? "w-[400px] h-full"
-                  : "w-full h-[250px]"
-              }`}
-            />
-          );
-        })}
-      </main>
+  className={`
+    flex
+    ${isVertical ? "flex-col items-center overflow-y-auto" : "flex-row overflow-x-auto overflow-y-hidden"}
+    ${isVertical ? "" : "w-[150vw] h-full"}
+    pt-16 flex-grow no-scrollbar
+  `}
+>
+  {sections.map(({ title, hasNewBadge }) => {
+    const slug = title.toLowerCase();
+    return (
+      <WorldSection
+        key={title}
+        title={title}
+        backgroundImageHorizontal={`/assets/worlds/${slug}-horizontal.jpg`}
+        backgroundImageVertical={`/assets/worlds/${slug}-vertical.jpg`}
+        hasNewBadge={hasNewBadge}
+        onClick={() => handleClick(title)}
+        className={`flex-shrink-0 relative ${
+          isVertical
+            ? "w-full max-w-[300px] h-[250px]" // <- This line limits width to 600px
+            : "w-[200px] h-[calc(100vh-64px)]"
+        }`}
+      />
+    );
+  })}
+</main>
+
 
       <FullscreenModal
         isOpen={!!modalData}
