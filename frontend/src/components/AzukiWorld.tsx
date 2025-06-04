@@ -4,31 +4,22 @@ import {
   FullscreenModal,
   ScrollToExplore,
 } from "../components/AzukiComponents";
+import { useWindowWidth } from "../hooks/useWindowWidth";
 
 export default function AzukiWorld() {
+  const windowWidth = useWindowWidth();
+  const isHorizontal = windowWidth >= 1024; // Horizontal on large screens
+
   const [modalData, setModalData] = useState<{
     title: string;
     imageSrc: string;
   } | null>(null);
 
-  const handleAzukiClick = () => {
+  const handleClick = (title: string) => {
+    const slug = title.toLowerCase();
     setModalData({
-      title: "Azuki",
-      imageSrc: "/assets/worlds/azuki-horizontal.jpg",
-    });
-  };
-
-  const handleBeanzClick = () => {
-    setModalData({
-      title: "Beanz",
-      imageSrc: "/assets/worlds/beanz-horizontal.jpg",
-    });
-  };
-
-  const handleElementalsClick = () => {
-    setModalData({
-      title: "Elementals",
-      imageSrc: "/assets/worlds/elementals-horizontal.jpg",
+      title,
+      imageSrc: `/assets/worlds/${slug}-${isHorizontal ? "horizontal" : "vertical"}.jpg`,
     });
   };
 
@@ -37,46 +28,54 @@ export default function AzukiWorld() {
     document.body.classList.remove("modal-open");
   };
 
-  const openModal = () => {
-    document.body.classList.add("modal-open");
-  };
-
   useEffect(() => {
     if (modalData) {
-      openModal();
+      document.body.classList.add("modal-open");
     }
     return () => {
       document.body.classList.remove("modal-open");
     };
   }, [modalData]);
 
+  const sections = [
+    { title: "Azuki", hasNewBadge: true },
+    { title: "Beanz" },
+    { title: "Elementals" },
+    { title: "Garden" },
+    { title: "Alley" },
+    { title: "Ruins" },
+  ];
+
   return (
     <div className="bg-black text-white fixed top-0 left-0 w-screen h-screen flex flex-col overflow-hidden">
       <ScrollToExplore />
 
-      <main className="flex flex-row space-x-6 pt-16 flex-grow min-h-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-        <WorldSection
-          title="Azuki"
-          backgroundImageHorizontal="/assets/worlds/azuki-horizontal.jpg"
-          backgroundImageVertical="/assets/worlds/azuki-vertical.jpg"
-          hasNewBadge={true}
-          onClick={handleAzukiClick}
-          className="flex-shrink-0 w-[80vw] sm:w-[90vw] md:w-[100vw]"
-        />
-        <WorldSection
-          title="Beanz"
-          backgroundImageHorizontal="/assets/worlds/beanz-horizontal.jpg"
-          backgroundImageVertical="/assets/worlds/beanz-vertical.jpg"
-          onClick={handleBeanzClick}
-          className="flex-shrink-0 w-[80vw] sm:w-[90vw] md:w-[100vw]"
-        />
-        <WorldSection
-          title="Elementals"
-          backgroundImageHorizontal="/assets/worlds/elementals-horizontal.jpg"
-          backgroundImageVertical="/assets/worlds/elementals-vertical.jpg"
-          onClick={handleElementalsClick}
-          className="flex-shrink-0 w-[80vw] sm:w-[90vw] md:w-[100vw]"
-        />
+      <main
+        className={`
+          flex
+          ${isHorizontal ? "flex-row overflow-x-auto overflow-y-hidden" : "flex-col overflow-y-auto overflow-x-hidden"}
+          ${isHorizontal ? "space-x-6" : "space-y-6"}
+          pt-16 px-4 pb-6 flex-grow min-h-0 no-scrollbar
+        `}
+      >
+        {sections.map(({ title, hasNewBadge }) => {
+          const slug = title.toLowerCase();
+          return (
+            <WorldSection
+              key={title}
+              title={title}
+              backgroundImageHorizontal={`/assets/worlds/${slug}-horizontal.jpg`}
+              backgroundImageVertical={`/assets/worlds/${slug}-vertical.jpg`}
+              hasNewBadge={hasNewBadge}
+              onClick={() => handleClick(title)}
+              className={`flex-shrink-0 ${
+                isHorizontal
+                  ? "w-[400px] h-full"
+                  : "w-full h-[250px]"
+              }`}
+            />
+          );
+        })}
       </main>
 
       <FullscreenModal
