@@ -5,7 +5,10 @@ import MoreInfo from "./MoreInfo";
 import Downloads from "./Downloads";
 import Footer from "./Footer";
 import LoadingScreen from "./LoadingScreen";
+import AzukiWorld from "./AzukiWorld";
 import { AuthProvider, useAuth } from "./AuthProvider";
+import type { Page } from "../types/pages";
+import AzukiHeader from "./AzukiHeader";
 
 interface WrapperWithLoadingProps {
   useLoading?: boolean;
@@ -17,6 +20,8 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
   const [canHideLoader, setCanHideLoader] = useState(false);
   const [authFinished, setAuthFinished] = useState(false);
 
+  const [page, setPage] = useState<Page>("home");
+
   useEffect(() => {
     if (!useLoading) {
       setShouldShowLoader(false);
@@ -24,11 +29,8 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
       return;
     }
 
-    // Show loading screen only if loading takes longer than 200ms
     const delayTimer = setTimeout(() => {
       setShouldShowLoader(true);
-
-      // Once shown, ensure it stays visible for at least 800ms
       const minDurationTimer = setTimeout(() => {
         setCanHideLoader(true);
       }, 800);
@@ -47,17 +49,37 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
 
   const showLoader = shouldShowLoader && (!authFinished || !canHideLoader);
 
-  return showLoader ? (
-    <LoadingScreen />
-  ) : (
-    <div className="bg-black min-h-screen text-white overflow-hidden">
-      <Header />
-      <main>
-        <Hero />
-        <MoreInfo />
-        <Downloads />
-      </main>
-      <Footer />
+  if (showLoader) {
+    return <LoadingScreen />;
+  }
+
+  // Single handler for navigation, passed to Header
+  const handleNavigate = (page: Page) => {
+    setPage(page);
+  };
+
+  return (
+    <div
+      className={`bg-black min-h-screen text-white overflow-x-hidden ${
+        page === "azuki" ? "overflow-y-hidden" : "overflow-y-auto"
+      }`}
+    >
+      {page === "azuki" ? (
+        <AzukiHeader onLogoClick={() => setPage("home")} />
+      ) : (
+        <Header onNavigate={handleNavigate} />
+      )}
+
+      {page === "home" && (
+        <main>
+          <Hero />
+          <MoreInfo />
+          <Downloads />
+          <Footer />
+        </main>
+      )}
+
+      {page === "azuki" && <AzukiWorld />}
     </div>
   );
 }

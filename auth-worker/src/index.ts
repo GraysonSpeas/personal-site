@@ -267,7 +267,7 @@ app.post('/auth/request-password-reset', async (c) => {
     .bind(token, expiry, email)
     .run();
 
-  const resetUrl = `${c.env.BASE_URL}/auth/reset-password?token=${token}`;
+ const resetUrl = `${c.env.BASE_URL}/reset-password?token=${token}`;
 
   try {
     await sendEmail(
