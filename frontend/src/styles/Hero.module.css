@@ -55,3 +55,11 @@
 .nav-menu a {
   @apply text-white/90 hover:text-white uppercase font-medium py-2;
 }
+
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}

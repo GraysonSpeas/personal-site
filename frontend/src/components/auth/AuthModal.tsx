@@ -259,25 +259,54 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
       break;
   }
 
-  if (inline) return <div className="w-full max-w-md mx-auto">{formContent}</div>;
-
+if (inline) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div ref={modalRef} className="bg-white rounded-lg max-w-md w-full p-6 relative" role="dialog" aria-modal="true">
-        <button onClick={onClose} className="absolute top-2 right-3 text-gray-500 hover:text-gray-800" aria-label="Close modal">
-          &times;
-        </button>
-        {isLoggedIn ? (
-          <div className="text-lg mb-4">
-            <p>Welcome back, {user?.email}!</p> {/* Use optional chaining */}
-            <button onClick={handleLogout} className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full">
-              Logout
-            </button>
-          </div>
-        ) : (
-          formContent
-        )}
-      </div>
+    <div
+      className="w-full max-w-md mx-auto rounded p-4 shadow"
+      style={{
+         background: 'linear-gradient(to bottom,rgb(233, 243, 255) 0%, white 50%, white 100%)',
+      }}
+    >
+      {formContent}
     </div>
   );
+}
+
+return (
+  <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div
+      ref={modalRef}
+      className="rounded-lg max-w-md w-full p-6 relative border-0"
+      style={{
+        height: 300,
+        background: 'linear-gradient(to bottom, #bfdbfe 0%, #bfdbfe 75%, white 75%, white 100%)',
+        boxShadow: '0 0 15px 6px rgba(59, 130, 246, 0.3)',
+        marginRight: 12,
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"
+        aria-label="Close modal"
+      >
+        &times;
+      </button>
+      {isLoggedIn ? (
+        <div className="text-lg mb-4">
+          <p>Welcome back, {user?.email}!</p>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full"
+          >
+            Logout
+          </button>
+        </div>
+      ) : (
+        formContent
+      )}
+    </div>
+  </div>
+);
 }

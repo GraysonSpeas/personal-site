@@ -3,64 +3,132 @@ import AuthModal from "../auth/AuthModal";
 import { useAuth } from "../auth/AuthProvider";
 import type { Page } from "../../types/pages";
 
+declare global {
+  interface Window {
+    google?: any;
+    googleTranslateElementInit?: () => void;
+  }
+}
+
 type MenuItem = {
   label: string;
-  page?: Page;     // internal SPA page navigation
-  href?: string;   // external link or fallback anchor
+  page?: Page;
+  href?: string;
 };
 
 type HeaderProps = {
   onNavigate?: (page: Page) => void;
 };
 
-const Header = ({ onNavigate }: HeaderProps) => {
+const MENU_ITEMS: MenuItem[] = [
+  { label: "Home", page: "home", href: "/" },
+  { label: "Horizontal Gallery", page: "horizontalgallery" },
+  { label: "Projects", page: "projects" },
+  { label: "Page 1", page: "page1" },
+  { label: "Page 2", page: "page2" },
+  { label: "Page 3", page: "page3" },
+];
+
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "pt", label: "Português" },
+  { code: "ar", label: "العربية" },
+  { code: "hi", label: "हिन्दी" },
+  { code: "ru", label: "Русский" },
+  { code: "zh-CN", label: "简体中文" },
+  { code: "ko", label: "한국어" },
+  { code: "ja", label: "日本語" },
+];
+
+/**
+ * Set a cookie with name, value, days until expiry, path=/, and optional domain.
+ */
+function setCookie(name: string, value: string, days: number, domain?: string) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  const domainPart = domain ? `;domain=${domain}` : "";
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/${domainPart}`;
+}
+
+export default function Header({ onNavigate }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const translateRef = useRef<HTMLDivElement>(null);
 
   const { user, logout, loading } = useAuth();
 
-  const menuItems: MenuItem[] = [
-    { label: "Home", page: "home", href: "/" },
-    { label: "Horizontal Gallery", page: "horizontalgallery" },
-    { label: "Projects", page: "projects" },
-    { label: "Page 1", page: "page1" },
-    { label: "Page 2", page: "page2" },
-    { label: "Page 3", page: "page3" },
-  ];
-
-  // Scroll effect to toggle header background & padding
+  // -- SCROLL SHADOW EFFECT --
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 100);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close auth modal on outside click
+  // -- CLOSE DROPDOWNS WHEN CLICKING OUTSIDE --
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (
-        authModalOpen &&
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const tgt = e.target as Node;
+      if (authModalOpen && containerRef.current && !containerRef.current.contains(tgt)) {
         setAuthModalOpen(false);
+      }
+      if (langOpen && translateRef.current && !translateRef.current.contains(tgt)) {
+        setLangOpen(false);
       }
     };
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [authModalOpen]);
+  }, [authModalOpen, langOpen]);
 
-  // Handle navigation clicks for SPA or external
+  // -- INJECT GOOGLE TRANSLATE WIDGET ONCE --
+  useEffect(() => {
+    if (window.google) return; // already loaded
+
+    window.googleTranslateElementInit = () => {
+      if (!window.google) return;
+      new window.google.translate.TranslateElement(
+        {
+          pageLanguage: "en",
+          includedLanguages: LANGUAGES.map((l) => l.code).join(","),
+          layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+          autoDisplay: false,
+        },
+        "google_translate_element"
+      );
+    };
+
+    const script = document.createElement("script");
+    script.id = "google-translate-script";
+    script.src =
+      "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // -- NAVIGATION HANDLER --
   const handleMenuItemClick = (e: React.MouseEvent, item: MenuItem) => {
     if (item.page) {
       e.preventDefault();
       onNavigate?.(item.page);
-      setMenuOpen(false);
-    } else if (item.href) {
-      setMenuOpen(false);
     }
+    setMenuOpen(false);
+  };
+
+  // -- LANGUAGE SWITCHER: set googtrans cookie and reload --
+  const changeLanguage = (langCode: string) => {
+    // Set "googtrans=/en/{langCode}" for both bare and dot-prefixed domain
+    const value = `/en/${langCode}`;
+    const host = window.location.hostname;
+    setCookie("googtrans", value, 365, host);           // example.com
+    setCookie("googtrans", value, 365, `.${host}`);     // .example.com
+    // now reload preserving path and hash
+    window.location.replace(window.location.pathname + window.location.search + window.location.hash);
   };
 
   return (
@@ -85,45 +153,59 @@ const Header = ({ onNavigate }: HeaderProps) => {
             setMenuOpen(false);
           }}
         >
-          <img
-            src="/assets/logo.png"
-            alt="Site Logo"
-            className="h-10 md:h-12 w-auto max-w-none shrink-0"
-          />
+          <img src="/assets/logo.png" alt="Site Logo" className="h-10 md:h-12 w-auto" />
         </a>
 
-        {/* Desktop Nav */}
+        {/* Desktop nav */}
         <nav className="hidden md:flex gap-8">
-          {menuItems.map((item) => {
-            const href =
-              item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
-            return (
-              <a
-                key={item.label}
-                href={href}
-                className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
-                onClick={(e) => handleMenuItemClick(e, item)}
-              >
-                {item.label}
-              </a>
-            );
-          })}
+          {MENU_ITEMS.map((item) => (
+            <a
+              key={item.label}
+              href={item.href ?? `#${item.page ?? item.label.toLowerCase()}`}
+              className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
+              onClick={(e) => handleMenuItemClick(e, item)}
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
 
-        {/* Right side buttons (no PlayerButton) */}
+        {/* Lang & Account */}
         <div className="hidden md:flex items-center gap-4">
-          <button className="btn btn-outline rounded-full text-sm">
-            English
-          </button>
+          {/* Language Dropdown */}
+          <div className="relative" ref={translateRef}>
+            <button
+              onClick={() => setLangOpen((o) => !o)}
+              className="btn btn-outline rounded-full text-sm"
+            >
+              🌐 Language
+            </button>
+            {langOpen && (
+              <div className="absolute right-0 mt-2 bg-white text-black rounded shadow p-2 z-50">
+                {LANGUAGES.map(({ code, label }) => (
+                  <button
+                    key={code}
+                    onClick={() => changeLanguage(code)}
+                    className="block w-full text-left px-3 py-1 hover:bg-gray-100"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* off-screen mount point for Google */}
+            <div id="google_translate_element" className="absolute left-[-9999px]" />
+          </div>
 
-          {/* Account icon and modal */}
+          {/* Account dropdown */}
           <div className="relative inline-block" ref={containerRef}>
             <button
-              onClick={() => setAuthModalOpen((prev) => !prev)}
+              onClick={() => setAuthModalOpen((o) => !o)}
               className="text-white/90 hover:text-white"
               aria-label="Toggle account modal"
               type="button"
             >
+              {/* user icon */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -139,12 +221,12 @@ const Header = ({ onNavigate }: HeaderProps) => {
                 />
               </svg>
             </button>
-
             {authModalOpen && (
               <div
-                className="absolute top-full right-0 mt-1 z-50 bg-white text-black rounded shadow p-4"
-                style={{ minWidth: "300px" }}
+                className="absolute top-full right-0 mt-1 z-50 text-black rounded border-0 shadow-none bg-transparent p-4"
+                style={{ minWidth: 300, border: 'none', boxShadow: 'none', background: 'transparent' }}
               >
+
                 {loading ? (
                   <p className="text-sm text-center">Loading...</p>
                 ) : user ? (
@@ -169,11 +251,11 @@ const Header = ({ onNavigate }: HeaderProps) => {
           </div>
         </div>
 
-        {/* Mobile Hamburger + Top-Right Menu */}
+        {/* Mobile */}
         <div className="md:hidden relative z-50 flex items-center">
           <button
             className={`hamburger ${menuOpen ? "open" : ""}`}
-            onClick={() => setMenuOpen((prev) => !prev)}
+            onClick={() => setMenuOpen((o) => !o)}
             aria-label="Toggle menu"
             type="button"
           >
@@ -181,27 +263,20 @@ const Header = ({ onNavigate }: HeaderProps) => {
             <span />
             <span />
           </button>
-
           <nav className={`nav-menu ${menuOpen ? "open" : ""}`}>
-            {menuItems.map((item) => {
-              const href =
-                item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
-              return (
-                <a
-                  key={item.label}
-                  href={href}
-                  className="text-white/90 hover:text-white uppercase font-medium py-2"
-                  onClick={(e) => handleMenuItemClick(e, item)}
-                >
-                  {item.label}
-                </a>
-              );
-            })}
+            {MENU_ITEMS.map((item) => (
+              <a
+                key={item.label}
+                href={item.href ?? `#${item.page ?? item.label.toLowerCase()}`}
+                className="text-white/90 hover:text-white uppercase font-medium py-2"
+                onClick={(e) => handleMenuItemClick(e, item)}
+              >
+                {item.label}
+              </a>
+            ))}
           </nav>
         </div>
       </div>
     </header>
   );
-};
-
-export default Header;
+}

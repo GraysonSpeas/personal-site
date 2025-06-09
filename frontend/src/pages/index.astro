@@ -1,6 +1,6 @@
 ---
 import WrapperWithLoading from "../components/heropage/WrapperWithLoading";
-
+import TranslateHide from '../components/translator/TranslateHide.tsx';
 // Toggle animation
 const showLoading = false;
 ---
@@ -14,4 +14,5 @@ const showLoading = false;
   <body>
     <WrapperWithLoading client:load useLoading={showLoading} />
   </body>
+  <TranslateHide client:load />
 </html>
