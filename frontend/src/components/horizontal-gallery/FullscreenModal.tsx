@@ -8,12 +8,11 @@ interface FullscreenModalProps {
 }
 
 const worldDescriptions: Record<string, string> = {
-  Azuki: "Embark on the origin story of the Azuki universe, where legends are born and the garden awaits.",
-  Beanz: "Your gateway to understanding the Beanz ecosystem. Explore how these companions became icons.",
-  Elementals: "Where raw power meets ancient balance. Discover the elemental forces shaping the world.",
-  Garden: "A mythical sanctuary of growth, secrets, and spiritual awakening within the Azuki lore.",
-  Ruins: "Explore lost cities and echoing memories. Every ruin holds a forgotten tale.",
-  Alley: "A shadowy network of urban secrets. Where stories cross paths in hushed whispers.",
+  Panel1: "description for Panel 1",
+  Panel2: "description for Panel 2",
+  Panel3: "description for Panel 3",
+  Panel4: "description for Panel 4",
+  Panel5: "description for Panel 5",
 };
 
 export const FullscreenModal = ({
@@ -115,7 +114,7 @@ export const FullscreenModal = ({
                     onClick={onClose}
                     className="bg-transparent border border-white/30 hover:border-white text-white hover:bg-white/10 px-6 py-3 rounded-full font-medium uppercase tracking-wide transition-all duration-200"
                   >
-                    Back to Worlds
+                    Back to Panels
                   </button>
                 </div>
               </div>

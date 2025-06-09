@@ -20,7 +20,7 @@ export default function HorizontalSections() {
     const slug = title.toLowerCase();
     setModalData({
       title,
-      imageSrc: `/assets/worlds/${slug}-${isVertical ? "vertical" : "horizontal"}.jpg`,
+      imageSrc: `/assets/panels/${slug}-${isVertical ? "vertical" : "horizontal"}.jpg`,
     });
   };
 
@@ -86,14 +86,14 @@ export default function HorizontalSections() {
   }, [isVertical]);
 
   const sections = [
-    { title: "Azuki", hasNewBadge: true },
-    { title: "Beanz" },
-    { title: "Elementals" },
-    { title: "Garden" },
-    { title: "Alley" },
-    { title: "Ruins" },
-    { title: "Skyline" },
-    { title: "Underground" },
+    { title: "Panel1", hasNewBadge: true },
+    { title: "Panel2" },
+    { title: "Panel3" },
+    { title: "Panel4" },
+    { title: "Panel5" },
+    { title: "Panel6" },
+    { title: "Panel7" },
+    { title: "Panel8" },
   ];
 
   return (
@@ -119,8 +119,8 @@ export default function HorizontalSections() {
             <WorldSection
               key={title}
               title={title}
-              backgroundImageHorizontal={`/assets/worlds/${slug}-horizontal.jpg`}
-              backgroundImageVertical={`/assets/worlds/${slug}-vertical.jpg`}
+              backgroundImageHorizontal={`/assets/panels/${slug}-horizontal.jpg`}
+              backgroundImageVertical={`/assets/panels/${slug}-vertical.jpg`}
               hasNewBadge={hasNewBadge}
               onClick={() => handleClick(title)}
               className={`group transition-transform duration-300 ease-out
