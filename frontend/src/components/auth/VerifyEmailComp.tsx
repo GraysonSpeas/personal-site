@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from '../config'; // Ensure this path is correct
+import { API_BASE } from '../../config.tsx'; // adjust path as needed
 
 export default function VerifyEmailComp() {
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');

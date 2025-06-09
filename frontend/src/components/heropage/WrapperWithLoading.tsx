@@ -5,10 +5,11 @@ import MoreInfo from "./MoreInfo";
 import Downloads from "./Downloads";
 import Footer from "./Footer";
 import LoadingScreen from "./LoadingScreen";
-import AzukiWorld from "./AzukiWorld";
-import { AuthProvider, useAuth } from "./AuthProvider";
-import type { Page } from "../types/pages";
-import AzukiHeader from "./AzukiHeader";
+import HorizontalSections from "../horizontal-gallery/HorizontalSections";
+import HorizontalHeader from "../horizontal-gallery/HorizontalHeader";
+import { AuthProvider, useAuth } from "../auth/AuthProvider";
+import PlayerButton from "./PlayerButton"; // <-- import PlayerButton
+import type { Page } from "../../types/pages";
 
 interface WrapperWithLoadingProps {
   useLoading?: boolean;
@@ -19,7 +20,6 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
   const [shouldShowLoader, setShouldShowLoader] = useState(false);
   const [canHideLoader, setCanHideLoader] = useState(false);
   const [authFinished, setAuthFinished] = useState(false);
-
   const [page, setPage] = useState<Page>("home");
 
   useEffect(() => {
@@ -53,23 +53,29 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
     return <LoadingScreen />;
   }
 
-  // Single handler for navigation, passed to Header
   const handleNavigate = (page: Page) => {
     setPage(page);
   };
 
   return (
     <div
-      className={`bg-black min-h-screen text-white overflow-x-hidden ${
-        page === "azuki" ? "overflow-y-hidden" : "overflow-y-auto"
+      className={`bg-black min-h-screen text-white overflow-x-hidden relative ${
+        page === "horizontalgallery" ? "overflow-y-hidden" : "overflow-y-auto"
       }`}
     >
-      {page === "azuki" ? (
-        <AzukiHeader onLogoClick={() => setPage("home")} />
+      {/* Always-mounted audio player, bottom-left */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <PlayerButton />
+      </div>
+
+      {/* Conditional header */}
+      {page === "horizontalgallery" ? (
+        <HorizontalHeader onLogoClick={() => setPage("home")} />
       ) : (
         <Header onNavigate={handleNavigate} />
       )}
 
+      {/* Main body based on page */}
       {page === "home" && (
         <main>
           <Hero />
@@ -79,7 +85,7 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
         </main>
       )}
 
-      {page === "azuki" && <AzukiWorld />}
+      {page === "horizontalgallery" && <HorizontalSections />}
     </div>
   );
 }

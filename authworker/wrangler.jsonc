@@ -1,5 +1,5 @@
 {
-  "name": "auth-worker",
+  "name": "authworker",
   "main": "src/index.ts",
   "compatibility_date": "2024-05-31",
   "compatibility_flags": ["nodejs_compat"],

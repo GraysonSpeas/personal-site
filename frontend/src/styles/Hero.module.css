@@ -1,0 +1,57 @@
+.pageTitle {
+  font-family: 'AmericanCaptain';
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.glow {
+  text-shadow:
+    0 0 5px rgba(59, 166, 255, 0.7),
+    0 0 10px rgba(59, 166, 255, 0.5),
+    0 0 20px rgba(59, 166, 255, 0.3);
+}
+
+/* Hamburger button */
+.hamburger {
+  @apply inline-flex flex-col justify-between w-6 h-5 cursor-pointer z-50;
+}
+.hamburger span {
+  @apply block w-full h-[2px] bg-white rounded transition-transform transition-opacity duration-300 ease-in-out;
+  transform-origin: center;
+}
+.hamburger.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Slide-out menu */
+.nav-menu {
+  @apply hidden flex-col rounded-md shadow-lg p-4 w-48 fixed top-16 right-4 overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out z-40;
+  /* use the same gradient as your header */
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.95),
+    rgba(0,0,0,0.7)
+  );
+  max-height: 0;
+  opacity: 0;
+}
+.nav-menu.open {
+  @apply flex;
+  max-height: 500px; /* enough for all your links */
+  opacity: 1;
+}
+
+/* Links inside */
+.nav-menu a {
+  @apply text-white/90 hover:text-white uppercase font-medium py-2;
+}

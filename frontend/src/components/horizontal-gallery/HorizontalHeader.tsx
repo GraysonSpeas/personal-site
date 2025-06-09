@@ -1,24 +1,24 @@
 import React, { useState } from 'react';
-import '../styles/azuki.css';
+import '../../styles/horizontalgallery.css';
 
 interface HeaderProps {
   onLogoClick?: () => void;
 }
 
-const AzukiHeader = ({ onLogoClick }: HeaderProps) => {
+const HorizontalHeader = ({ onLogoClick }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navigationItems = [
-    { label: 'ABOUT', href: '/about' },
-    { label: 'BEANZ', href: '/beanz' },
-    { label: 'LORE', href: '#' },
-    { label: 'MORE', href: '#' },
-    { label: 'SOCIALS', href: '#' },
-    { label: 'BUY', href: '#' }
+    { label: "Home", page: "home", href: "/" },
+    { label: "Horizontal Gallery", page: "horizontalgallery" },
+    { label: "Projects", page: "projects" },
+    { label: "Page 1", page: "page1" },
+    { label: "Page 2", page: "page2" },
+    { label: "Page 3", page: "page3" },
   ];
 
   return (
-    <div className="azuki-header">
+    <div className="horizontal-header">
       {/* Logo */}
       <button
         className="logo"
@@ -27,8 +27,8 @@ const AzukiHeader = ({ onLogoClick }: HeaderProps) => {
       >
         <img
           src="/assets/logo.png"
-          alt="Azuki Logo"
-          className="h-8 w-auto"
+          alt="Speas Logo"
+          className="h-10 md:h-12 w-auto"
         />
       </button>
 
@@ -63,4 +63,4 @@ const AzukiHeader = ({ onLogoClick }: HeaderProps) => {
   );
 };
 
-export default AzukiHeader;
+export default HorizontalHeader;

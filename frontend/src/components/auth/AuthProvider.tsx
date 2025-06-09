@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { API_BASE } from "../config";
+import { API_BASE } from '../../config.tsx'; // adjust path as needed
 
 type User = {
   email: string;

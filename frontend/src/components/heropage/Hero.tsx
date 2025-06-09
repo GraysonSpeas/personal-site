@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import styles from "./Hero.module.css";
+import styles from "../../styles/Hero.module.css";
 
 const Hero = () => {
   const [offset, setOffset] = useState(0);
@@ -53,8 +53,8 @@ const Hero = () => {
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8"
             style={{ transform: `translateY(${offset * 0.1}px)` }}
           >
-            <button className="btn btn-primary min-w-36">Resume</button>
-            <button className="btn btn-outline min-w-36">More Info</button>
+            <button className="btn btn-primary min-w-36">Button 1</button>
+            <button className="btn btn-outline min-w-36">Button 2</button>
           </div>
         </div>
       </div>

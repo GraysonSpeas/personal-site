@@ -1,5 +1,5 @@
 {
-	"name": "auth-worker",
+	"name": "authworker",
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {

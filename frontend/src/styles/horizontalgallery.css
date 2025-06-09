@@ -9,7 +9,7 @@
 }
 
 /* Header container */
-.azuki-header {
+.horizontal-header {
   @apply fixed top-0 left-0 w-full z-50 flex items-center justify-between px-5 lg:px-6 h-16;
   background-color: transparent;
   /* If you want a solid background, uncomment below */
@@ -25,10 +25,13 @@
 
 .hamburger span {
   @apply block w-full h-[2px] bg-white rounded transition-transform transition-opacity duration-300 ease-in-out;
+  /* Pivot around the center */
+  transform-origin: center center;
 }
 
 .hamburger.open span:nth-child(1) {
-  transform: translateY(8px) rotate(45deg);
+  /* Move down by 7px (half of container minus half of bar) and rotate */
+  transform: translateY(7px) rotate(45deg);
 }
 
 .hamburger.open span:nth-child(2) {
@@ -36,7 +39,8 @@
 }
 
 .hamburger.open span:nth-child(3) {
-  transform: translateY(-8px) rotate(-45deg);
+  /* Move up by 7px and rotate */
+  transform: translateY(-7px) rotate(-45deg);
 }
 
 /* Navigation menu - hidden by default */
@@ -44,7 +48,7 @@
   @apply hidden flex-col rounded-md shadow-lg p-4 w-48;
   @apply fixed top-0 right-0; /* align top-right of screen */
   background-color: #171717;
-  margin-top: 0rem; /* push down from top if needed (~header height) */
+  margin-top: 0; /* push down from top if needed (~header height) */
   max-height: 0;
   opacity: 0;
   overflow: hidden;

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import PlayerButton from "./PlayerButton";
-import AuthModal from "./AuthModal";
-import { useAuth } from "./AuthProvider";
-import type { Page } from "../types/pages";
+import AuthModal from "../auth/AuthModal";
+import { useAuth } from "../auth/AuthProvider";
+import type { Page } from "../../types/pages";
 
 type MenuItem = {
   label: string;
@@ -24,11 +23,11 @@ const Header = ({ onNavigate }: HeaderProps) => {
 
   const menuItems: MenuItem[] = [
     { label: "Home", page: "home", href: "/" },
-    { label: "Resume", page: "resume" },
+    { label: "Horizontal Gallery", page: "horizontalgallery" },
     { label: "Projects", page: "projects" },
-    { label: "For Fun", page: "forfun" },
-    { label: "Azuki", page: "azuki" },
-    { label: "Pictures", page: "pictures" },
+    { label: "Page 1", page: "page1" },
+    { label: "Page 2", page: "page2" },
+    { label: "Page 3", page: "page3" },
   ];
 
   // Scroll effect to toggle header background & padding
@@ -86,13 +85,18 @@ const Header = ({ onNavigate }: HeaderProps) => {
             setMenuOpen(false);
           }}
         >
-          <img src="/assets/logo.png" alt="Site Logo" className="h-10 md:h-12" />
+          <img
+            src="/assets/logo.png"
+            alt="Site Logo"
+            className="h-10 md:h-12 w-auto max-w-none shrink-0"
+          />
         </a>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex gap-8">
           {menuItems.map((item) => {
-            const href = item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
+            const href =
+              item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
             return (
               <a
                 key={item.label}
@@ -106,10 +110,11 @@ const Header = ({ onNavigate }: HeaderProps) => {
           })}
         </nav>
 
-        {/* Right side buttons */}
+        {/* Right side buttons (no PlayerButton) */}
         <div className="hidden md:flex items-center gap-4">
-          <PlayerButton />
-          <button className="btn btn-outline rounded-full text-sm">English</button>
+          <button className="btn btn-outline rounded-full text-sm">
+            English
+          </button>
 
           {/* Account icon and modal */}
           <div className="relative inline-block" ref={containerRef}>
@@ -164,55 +169,36 @@ const Header = ({ onNavigate }: HeaderProps) => {
           </div>
         </div>
 
-        {/* Mobile Hamburger */}
-        <button
-          className="md:hidden text-white"
-          onClick={() => setMenuOpen((prev) => !prev)}
-          aria-label="Toggle menu"
-          type="button"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-6 h-6"
+        {/* Mobile Hamburger + Top-Right Menu */}
+        <div className="md:hidden relative z-50 flex items-center">
+          <button
+            className={`hamburger ${menuOpen ? "open" : ""}`}
+            onClick={() => setMenuOpen((prev) => !prev)}
+            aria-label="Toggle menu"
+            type="button"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d={
-                menuOpen
-                  ? "M6 18L18 6M6 6l12 12"
-                  : "M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"
-              }
-            />
-          </svg>
-        </button>
-      </div>
+            <span />
+            <span />
+            <span />
+          </button>
 
-      {/* Mobile Nav */}
-      <div
-        className={`md:hidden mobile-menu bg-black/95 backdrop-blur-lg py-4 px-4 absolute top-full left-0 w-full ${
-          menuOpen ? "open" : ""
-        }`}
-      >
-        <nav className="flex flex-col gap-4">
-          {menuItems.map((item) => {
-            const href = item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
-            return (
-              <a
-                key={item.label}
-                href={href}
-                className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
-                onClick={(e) => handleMenuItemClick(e, item)}
-              >
-                {item.label}
-              </a>
-            );
-          })}
-        </nav>
+          <nav className={`nav-menu ${menuOpen ? "open" : ""}`}>
+            {menuItems.map((item) => {
+              const href =
+                item.href ?? `#${item.page ?? item.label.toLowerCase()}`;
+              return (
+                <a
+                  key={item.label}
+                  href={href}
+                  className="text-white/90 hover:text-white uppercase font-medium py-2"
+                  onClick={(e) => handleMenuItemClick(e, item)}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </header>
   );

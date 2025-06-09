@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from '../config';
+import { API_BASE } from '../../config.tsx'; // adjust path as needed
 
 export default function ResetPasswordComp() {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');

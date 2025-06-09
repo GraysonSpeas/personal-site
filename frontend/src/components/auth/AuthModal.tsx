@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useAuth } from "./AuthProvider";
-import { API_BASE } from "../config";
+import { useAuth } from "../auth/AuthProvider";
+import { API_BASE } from '../../config.tsx'; // adjust path as needed
 
 type AuthModalProps = {
   onClose: () => void;

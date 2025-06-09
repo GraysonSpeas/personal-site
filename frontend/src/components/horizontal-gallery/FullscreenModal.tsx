@@ -8,12 +8,12 @@ interface FullscreenModalProps {
 }
 
 const worldDescriptions: Record<string, string> = {
-  "Azuki": "Embark on the origin story of the Azuki universe, where legends are born and the garden awaits.",
-  "Beanz": "Your gateway to understanding the Beanz ecosystem. Explore how these companions became icons.",
-  "Elementals": "Where raw power meets ancient balance. Discover the elemental forces shaping the world.",
-  "Garden": "A mythical sanctuary of growth, secrets, and spiritual awakening within the Azuki lore.",
-  "Ruins": "Explore lost cities and echoing memories. Every ruin holds a forgotten tale.",
-  "Alley": "A shadowy network of urban secrets. Where stories cross paths in hushed whispers."
+  Azuki: "Embark on the origin story of the Azuki universe, where legends are born and the garden awaits.",
+  Beanz: "Your gateway to understanding the Beanz ecosystem. Explore how these companions became icons.",
+  Elementals: "Where raw power meets ancient balance. Discover the elemental forces shaping the world.",
+  Garden: "A mythical sanctuary of growth, secrets, and spiritual awakening within the Azuki lore.",
+  Ruins: "Explore lost cities and echoing memories. Every ruin holds a forgotten tale.",
+  Alley: "A shadowy network of urban secrets. Where stories cross paths in hushed whispers.",
 };
 
 export const FullscreenModal = ({
@@ -64,7 +64,7 @@ export const FullscreenModal = ({
         className="absolute top-[64px] left-0 right-0 bottom-0 p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative w-full h-full bg-azukigray-900 border-4 border-white rounded-lg overflow-hidden animate-modal-in">
+        <div className="relative w-full h-full bg-[#121214] border-4 border-white rounded-lg overflow-hidden animate-modal-in">
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -93,7 +93,7 @@ export const FullscreenModal = ({
           />
 
           {/* Content Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-azukigray-900/90 via-transparent to-azukigray-900/50">
+          <div className="absolute inset-0 bg-gradient-to-t from-[#121214]/90 via-transparent to-[#121214]/50">
             <div className="flex flex-col justify-end h-full p-8 md:p-12">
               <h1 className="font-msbee font-black uppercase text-6xl md:text-8xl text-white mb-4">
                 {title.toLowerCase()}

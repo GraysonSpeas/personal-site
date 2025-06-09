@@ -1,6 +1,6 @@
 // Export all components for easy integration with Astro
 //export { Header } from './Header'
-export { WorldSection } from './WorldSection'
+export { WorldSection } from './Panels'
 export { FullscreenModal } from './FullscreenModal'
 export { ScrollToExplore } from './ScrollToExplore'
 

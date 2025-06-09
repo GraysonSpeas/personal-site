@@ -3,10 +3,10 @@ import {
   WorldSection,
   FullscreenModal,
   ScrollToExplore,
-} from "../components/AzukiComponents";
-import { useWindowWidth } from "../hooks/useWindowWidth";
+} from "./HorizontalComponents";
+import { useWindowWidth } from "../../hooks/useWindowWidth";
 
-export default function AzukiWorld() {
+export default function HorizontalSections() {
   const windowWidth = useWindowWidth();
   const isVertical = windowWidth < 764;
   const containerRef = useRef<HTMLDivElement>(null);

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { API_BASE } from '../config'; // adjust path as needed
+import { API_BASE } from '../../config.tsx'; // adjust path as needed
 
 type User = { email: string } | null;
 
