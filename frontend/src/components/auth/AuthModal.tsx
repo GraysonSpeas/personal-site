@@ -294,18 +294,18 @@ return (
         &times;
       </button>
       {isLoggedIn ? (
-        <div className="text-lg mb-4">
-          <p>Welcome back, {user?.email}!</p>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full"
-          >
-            Logout
-          </button>
-        </div>
-      ) : (
-        formContent
-      )}
+  <div className="bg-white rounded p-4 shadow-md text-lg mb-4">
+    <p>Welcome back, {user?.email}!</p>
+    <button
+      onClick={handleLogout}
+      className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full mt-4"
+    >
+      Logout
+    </button>
+  </div>
+) : (
+  formContent
+)}
     </div>
   </div>
 );
