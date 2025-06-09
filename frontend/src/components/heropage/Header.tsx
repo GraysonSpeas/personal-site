@@ -24,7 +24,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: "Home", page: "home", href: "/" },
   { label: "Horizontal Gallery", page: "horizontalgallery" },
   { label: "Projects", page: "projects" },
-  { label: "Page 1", page: "page1" },
+  { label: "Fishing", page: "fishing" },
   { label: "Page 2", page: "page2" },
   { label: "Page 3", page: "page3" },
 ];
@@ -200,6 +200,7 @@ export default function Header({ onNavigate }: HeaderProps) {
           {/* Account dropdown */}
           <div className="relative inline-block" ref={containerRef}>
             <button
+              id="auth-toggle-button"
               onClick={() => setAuthModalOpen((o) => !o)}
               className="text-white/90 hover:text-white"
               aria-label="Toggle account modal"

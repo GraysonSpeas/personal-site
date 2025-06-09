@@ -10,6 +10,7 @@ import HorizontalHeader from "../horizontal-gallery/HorizontalHeader";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import PlayerButton from "./PlayerButton"; // <-- import PlayerButton
 import type { Page } from "../../types/pages";
+import FishingPage from "../fishing/FishingPage"; // <-- import FishingPage
 
 interface WrapperWithLoadingProps {
   useLoading?: boolean;
@@ -75,6 +76,8 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
       <Header onNavigate={handleNavigate} />
     )}
 
+    {page === "fishing" && <FishingPage />}
+
     {/* Main body based on page */}
     {page === "home" && (
       <main>
@@ -88,7 +91,7 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
     {page === "horizontalgallery" && <HorizontalSections />}
 
     {/* Catch-all for other pages */}
-    {page !== "home" && page !== "horizontalgallery" && (
+    {page !== "home" && page !== "horizontalgallery" && page !== "fishing" && (
       <div className="flex flex-col items-center justify-center h-screen text-center px-4">
         <h1 className="text-3xl md:text-4xl font-bold mb-6">🚧 This Page Is Under Construction 🚧</h1>
         <button

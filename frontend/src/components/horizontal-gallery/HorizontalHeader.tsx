@@ -12,7 +12,7 @@ const HorizontalHeader = ({ onLogoClick }: HeaderProps) => {
     { label: "Home", page: "home", href: "/" },
     { label: "Horizontal Gallery", page: "horizontalgallery" },
     { label: "Projects", page: "projects" },
-    { label: "Page 1", page: "page1" },
+    { label: "Fishing", page: "fishing" },
     { label: "Page 2", page: "page2" },
     { label: "Page 3", page: "page3" },
   ];
