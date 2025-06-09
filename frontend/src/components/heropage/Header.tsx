@@ -222,32 +222,37 @@ export default function Header({ onNavigate }: HeaderProps) {
               </svg>
             </button>
             {authModalOpen && (
-              <div
-                className="absolute top-full right-0 mt-1 z-50 text-black rounded border-0 shadow-none bg-transparent p-4"
-                style={{ minWidth: 300, border: 'none', boxShadow: 'none', background: 'transparent' }}
-              >
+  user ? (
+    // ——— Only when user is signed in ———
+    <div
+      className="absolute top-full right-0 mt-1 z-50 text-black rounded border-0 shadow-none bg-white p-4"
+      style={{ minWidth: 300 }}
+    >
+      <div className="flex flex-col gap-2">
+        <p className="text-sm">Signed in as</p>
+        <p className="font-medium">{user.email}</p>
+        <button
+          onClick={() => {
+            logout();
+            setAuthModalOpen(false);
+          }}
+          className="mt-3 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  ) : (
+    // ——— Only when showing Login/Signup ———
+    <div
+      className="absolute top-full right-0 mt-1 z-50"
+      style={{ minWidth: 300 }}
+    >
+      <AuthModal onClose={() => setAuthModalOpen(false)} inline />
+    </div>
+  )
+)}
 
-                {loading ? (
-                  <p className="text-sm text-center">Loading...</p>
-                ) : user ? (
-                  <div className="flex flex-col gap-2">
-                    <p className="text-sm">Signed in as</p>
-                    <p className="font-medium">{user.email}</p>
-                    <button
-                      onClick={() => {
-                        logout();
-                        setAuthModalOpen(false);
-                      }}
-                      className="mt-3 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                ) : (
-                  <AuthModal onClose={() => setAuthModalOpen(false)} inline />
-                )}
-              </div>
-            )}
           </div>
         </div>
 

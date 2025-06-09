@@ -273,7 +273,7 @@ if (inline) {
 }
 
 return (
-  <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div
       ref={modalRef}
       className="rounded-lg max-w-md w-full p-6 relative border-0"
@@ -293,19 +293,22 @@ return (
       >
         &times;
       </button>
+
       {isLoggedIn ? (
-  <div className="bg-white rounded p-4 shadow-md text-lg mb-4">
-    <p>Welcome back, {user?.email}!</p>
-    <button
-      onClick={handleLogout}
-      className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full mt-4"
-    >
-      Logout
-    </button>
-  </div>
-) : (
-  formContent
-)}
+        <div className= "rounded p-4 shadow-md text-lg mb-4"
+        style={{ backgroundColor: "#ffffff" }}>
+          <p className="mb-2">Welcome back, {user?.email}!</p>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full"
+          >
+            Logout
+          </button>
+        </div>
+      ) : (
+        formContent
+      )}
+
     </div>
   </div>
 );
