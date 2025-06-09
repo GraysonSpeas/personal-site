@@ -58,36 +58,50 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
   };
 
   return (
-    <div
-      className={`bg-black min-h-screen text-white overflow-x-hidden relative ${
-        page === "horizontalgallery" ? "overflow-y-hidden" : "overflow-y-auto"
-      }`}
-    >
-      {/* Always-mounted audio player, bottom-left */}
-      <div className="fixed bottom-4 left-4 z-50">
-        <PlayerButton />
-      </div>
-
-      {/* Conditional header */}
-      {page === "horizontalgallery" ? (
-        <HorizontalHeader onLogoClick={() => setPage("home")} />
-      ) : (
-        <Header onNavigate={handleNavigate} />
-      )}
-
-      {/* Main body based on page */}
-      {page === "home" && (
-        <main>
-          <Hero />
-          <MoreInfo />
-          <Downloads />
-          <Footer />
-        </main>
-      )}
-
-      {page === "horizontalgallery" && <HorizontalSections />}
+  <div
+    className={`bg-black min-h-screen text-white overflow-x-hidden relative ${
+      page === "horizontalgallery" ? "overflow-y-hidden" : "overflow-y-auto"
+    }`}
+  >
+    {/* Always-mounted audio player, bottom-left */}
+    <div className="fixed bottom-4 left-4 z-50">
+      <PlayerButton />
     </div>
-  );
+
+    {/* Conditional header */}
+    {page === "horizontalgallery" ? (
+      <HorizontalHeader onLogoClick={() => setPage("home")} />
+    ) : (
+      <Header onNavigate={handleNavigate} />
+    )}
+
+    {/* Main body based on page */}
+    {page === "home" && (
+      <main>
+        <Hero />
+        <MoreInfo />
+        <Downloads />
+        <Footer />
+      </main>
+    )}
+
+    {page === "horizontalgallery" && <HorizontalSections />}
+
+    {/* Catch-all for other pages */}
+    {page !== "home" && page !== "horizontalgallery" && (
+      <div className="flex flex-col items-center justify-center h-screen text-center px-4">
+        <h1 className="text-3xl md:text-4xl font-bold mb-6">🚧 This Page Is Under Construction 🚧</h1>
+        <button
+          onClick={() => setPage("home")}
+          className="bg-white text-black font-semibold px-6 py-3 rounded hover:bg-gray-200 transition"
+        >
+          Return Home
+        </button>
+      </div>
+    )}
+  </div>
+);
+
 }
 
 export default function WrapperWithLoading({ useLoading = true }: WrapperWithLoadingProps) {
