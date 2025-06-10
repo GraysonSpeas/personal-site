@@ -22,11 +22,11 @@ type HeaderProps = {
 
 const MENU_ITEMS: MenuItem[] = [
   { label: "Home", page: "home", href: "/" },
-  { label: "Horizontal Gallery", page: "horizontalgallery" },
-  { label: "Projects", page: "projects" },
-  { label: "Fishing", page: "fishing" },
-  { label: "Page 2", page: "page2" },
-  { label: "Page 3", page: "page3" },
+  { label: "Horizontal Gallery", page: "horizontalgallery"},
+  { label: "Projects", page: "projects"},
+  { label: "Fishing", page: "fishing", href: "/fishing" },
+  { label: "Page 2", page: "page2"},
+  { label: "Page 3", page: "page3"}
 ];
 
 const LANGUAGES = [
@@ -113,7 +113,7 @@ export default function Header({ onNavigate }: HeaderProps) {
 
   // -- NAVIGATION HANDLER --
   const handleMenuItemClick = (e: React.MouseEvent, item: MenuItem) => {
-    if (item.page) {
+    if (!item.href && item.page) {
       e.preventDefault();
       onNavigate?.(item.page);
     }

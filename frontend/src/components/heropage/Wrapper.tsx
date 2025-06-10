@@ -1,4 +1,3 @@
-// src/components/Wrapper.tsx
 import React, { useState, useEffect, type ReactNode } from "react";
 import Header from "./Header";
 import Hero from "./Hero";
@@ -18,13 +17,36 @@ interface WrapperProps {
   children?: ReactNode;
 }
 
+interface HeaderProps {
+  onLogoClick?: () => void;
+  onNavigate?: (page: Page) => void;
+}
+
 function MainContent({ useLoading }: { useLoading: boolean }) {
   const { loading: authLoading } = useAuth();
-  const [shouldShowLoader, setShouldShowLoader] = useState(false);
-  const [canHideLoader, setCanHideLoader] = useState(false);
-  const [page, setPage] = useState<Page>("home");
+
+  // Initialize page state based on current URL pathname
+  const [page, setPage] = useState<Page>(() => {
+    if (typeof window === "undefined") return "home"; // SSR safe fallback
+    const path = window.location.pathname.toLowerCase();
+    if (path === "/fishing") return "fishing";
+    if (path === "/horizontalgallery") return "horizontalgallery";
+    return "home";
+  });
+
+  // Optional: sync page state changes to URL (for SPA navigation)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const desiredPath = page === "home" ? "/" : `/${page}`;
+    if (window.location.pathname !== desiredPath) {
+      window.history.pushState(null, "", desiredPath);
+    }
+  }, [page]);
 
   // Full-screen loader timing logic
+  const [shouldShowLoader, setShouldShowLoader] = useState(false);
+  const [canHideLoader, setCanHideLoader] = useState(false);
+
   useEffect(() => {
     if (!useLoading) {
       setShouldShowLoader(false);
@@ -54,8 +76,7 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
     return <LoadingScreen />;
   }
 
-  // Normal page rendering
-  const handleNavigate = (page: Page) => setPage(page);
+  const handleNavigate = (newPage: Page) => setPage(newPage);
 
   return (
     <div
@@ -72,7 +93,10 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
 
       {/* Conditional header */}
       {page === "horizontalgallery" ? (
-        <HorizontalHeader onLogoClick={() => setPage("home")} />
+        <HorizontalHeader
+          onLogoClick={() => setPage("home")}
+          onNavigate={handleNavigate}
+        />
       ) : (
         <Header onNavigate={handleNavigate} />
       )}

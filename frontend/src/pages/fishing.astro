@@ -1,0 +1,13 @@
+---
+import Wrapper from "../components/heropage/Wrapper.tsx";
+const showLoading = false; // Set to true if you want to show the loading spinner
+---
+
+<html lang="en">
+  <head>
+    <title>Fishing Game</title>
+  </head>
+  <body class="bg-black text-white min-h-screen">
+    <Wrapper client:load useLoading={showLoading}>
+  </body>
+</html>

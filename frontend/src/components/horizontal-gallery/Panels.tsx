@@ -87,8 +87,8 @@ export const WorldSection = ({
     position: absolute;
     top: 50%;
     left: -50%;
-    width: 300%;
-    height: 150%;
+    width: 800%;
+    height: 125%;
     pointer-events: none;
 
     background: linear-gradient(
