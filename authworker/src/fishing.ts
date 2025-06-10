@@ -1,13 +1,9 @@
-// src/fishing.ts
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import type { Context } from 'hono';
 
 type Bindings = {
   DB: D1Database;
-  SENDGRID_API_KEY: string;
-  SENDER_EMAIL: string;
-  BASE_URL: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -15,105 +11,176 @@ const app = new Hono<{ Bindings: Bindings }>();
 type Fish = {
   id: number;
   name: string;
-  rarity: string;
-  length: number;
-  weight: number;
 };
 
-type GameState = {
-  caughtFish: Fish[];
-  attempts: number;
-  lastCatch?: Fish;
+type Player = {
+  xp: number;
+  level: number;
+  gold: number;
 };
 
-function generateRandomFish(): Fish {
-  const fishTypes = [
-    { name: 'Salmon', rarity: 'Common' },
-    { name: 'Tuna', rarity: 'Uncommon' },
-    { name: 'Marlin', rarity: 'Rare' },
-    { name: 'Golden Carp', rarity: 'Legendary' },
-  ];
-  const choice = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+type CountResult = {
+  count: number;
+};
+
+function generateFish(): Fish {
   return {
     id: Date.now(),
-    name: choice.name,
-    rarity: choice.rarity,
-    length: Math.round(Math.random() * 100),
-    weight: Math.round(Math.random() * 50),
+    name: 'Fish',
   };
 }
 
-// Shared: auth + DB lookup
-async function getFishState(c: Context<{ Bindings: Bindings }>): Promise<
-  | { status: 'ok'; email: string; caughtFish: Fish[] }
-  | { status: 'unauthorized'; response: Response }
-> {
+// Helper: Get user email from session cookie
+async function getUserEmail(c: Context<{ Bindings: Bindings }>): Promise<string | null> {
   const session = getCookie(c, 'session');
-  if (!session) return { status: 'unauthorized', response: c.json({ message: 'Not logged in' }, 401) };
-
-  let email: string;
+  if (!session) return null;
   try {
-    email = atob(session);
+    return atob(session);
   } catch {
-    return { status: 'unauthorized', response: c.json({ message: 'Invalid session' }, 401) };
+    return null;
+  }
+}
+
+// Helper: Ensure a row exists for the player
+async function ensurePlayerRow(c: Context, email: string) {
+  const exists = (await c.env.DB
+    .prepare('SELECT 1 FROM players WHERE user_email = ? LIMIT 1')
+    .bind(email)
+    .first()) as { '1': number } | null;
+
+  if (!exists) {
+    await c.env.DB
+      .prepare('INSERT INTO players (user_email, xp, level, gold) VALUES (?, 0, 1, 0)')
+      .bind(email)
+      .run();
+  }
+}
+
+// 🎣 POST /fishing/fish
+app.post('/fish', async (c) => {
+  const email = await getUserEmail(c);
+  if (!email) return c.json({ message: 'Unauthorized' }, 401);
+
+  await ensurePlayerRow(c, email);
+
+  const caught = Math.random() < 0.8;
+  let fish: Fish | null = null;
+
+  // Always fetch player data
+  const player = (await c.env.DB
+    .prepare('SELECT xp, level, gold FROM players WHERE user_email = ?')
+    .bind(email)
+    .first()) as Player | null;
+
+  let xp = player?.xp ?? 0;
+  let level = player?.level ?? 1;
+  let gold = player?.gold ?? 0;
+
+  if (caught) {
+    fish = generateFish();
+
+    await c.env.DB
+      .prepare('INSERT INTO fish (id, user_email, name) VALUES (?, ?, ?)')
+      .bind(fish.id, email, fish.name)
+      .run();
+
+    xp += 1;
+
+    const xpNeeded = level * 10;
+    if (xp >= xpNeeded) {
+      xp -= xpNeeded;
+      level += 1;
+    }
+
+    await c.env.DB
+      .prepare('UPDATE players SET xp = ?, level = ? WHERE user_email = ?')
+      .bind(xp, level, email)
+      .run();
   }
 
-  const { results } = await c.env.DB
-    .prepare('SELECT * FROM fish WHERE user_email = ?')
+  const countRes = (await c.env.DB
+    .prepare('SELECT COUNT(*) as count FROM fish WHERE user_email = ?')
     .bind(email)
-    .all();
+    .first()) as CountResult | null;
 
-  return { status: 'ok', email, caughtFish: results as Fish[] };
-}
-
-// ✅ POST /fishing/fish — create a new catch
-app.post('/fish', async (c) => {
-  const auth = await getFishState(c);
-  if (auth.status !== 'ok') return auth.response;
-
-  const { email, caughtFish } = auth;
-  const newFish = generateRandomFish();
-  caughtFish.push(newFish);
-
-  await c.env.DB
-    .prepare(
-      'INSERT INTO fish (id, user_email, name, rarity, length, weight) VALUES (?, ?, ?, ?, ?, ?)'
-    )
-    .bind(
-      newFish.id,
-      email,
-      newFish.name,
-      newFish.rarity,
-      newFish.length,
-      newFish.weight
-    )
-    .run();
-
-  const gameState: GameState = {
-    caughtFish,
-    attempts: caughtFish.length,
-    lastCatch: newFish,
-  };
+  const fishCount = countRes ? countRes.count : 0;
 
   return c.json({
-    message: `You caught a ${newFish.rarity} ${newFish.name}!`,
-    gameState,
+    caught,
+    fish,
+    xp,
+    level,
+    fishCount,
+    gold,
   });
 });
 
-// ✅ GET /fishing/fish — fetch current state
-app.get('/fish', async (c) => {
-  const auth = await getFishState(c);
-  if (auth.status !== 'ok') return auth.response;
+// 💰 POST /fishing/sell
+app.post('/sell', async (c) => {
+  const email = await getUserEmail(c);
+  if (!email) return c.json({ message: 'Unauthorized' }, 401);
 
-  const { caughtFish } = auth;
-  const gameState: GameState = {
-    caughtFish,
-    attempts: caughtFish.length,
-    lastCatch: caughtFish.at(-1) ?? undefined,
-  };
+  const countRes = (await c.env.DB
+    .prepare('SELECT COUNT(*) as count FROM fish WHERE user_email = ?')
+    .bind(email)
+    .first()) as CountResult | null;
 
-  return c.json({ gameState });
+  const count = countRes ? countRes.count : 0;
+
+  if (count === 0) {
+    return c.json({ sold: 0, gold: 0, message: 'No fish to sell.' });
+  }
+
+  const sellValue = count * 10;
+
+  await ensurePlayerRow(c, email);
+  await c.env.DB
+    .prepare('UPDATE players SET gold = gold + ? WHERE user_email = ?')
+    .bind(sellValue, email)
+    .run();
+
+  await c.env.DB
+    .prepare('DELETE FROM fish WHERE user_email = ?')
+    .bind(email)
+    .run();
+
+  const player = (await c.env.DB
+    .prepare('SELECT gold FROM players WHERE user_email = ?')
+    .bind(email)
+    .first()) as { gold: number } | null;
+
+  return c.json({
+    sold: count,
+    gold: player ? player.gold : 0,
+    remainingFish: 0,
+  });
+});
+
+// 📊 GET /fishing/state
+app.get('/state', async (c) => {
+  const email = await getUserEmail(c);
+  if (!email) return c.json({ message: 'Unauthorized' }, 401);
+
+  await ensurePlayerRow(c, email);
+
+  const countRes = (await c.env.DB
+    .prepare('SELECT COUNT(*) as count FROM fish WHERE user_email = ?')
+    .bind(email)
+    .first()) as CountResult | null;
+
+  const fishCount = countRes ? countRes.count : 0;
+
+  const player = (await c.env.DB
+    .prepare('SELECT xp, level, gold FROM players WHERE user_email = ?')
+    .bind(email)
+    .first()) as Player | null;
+
+  return c.json({
+    xp: player?.xp ?? 0,
+    level: player?.level ?? 1,
+    gold: player?.gold ?? 0,
+    fishCount,
+  });
 });
 
 export default app;

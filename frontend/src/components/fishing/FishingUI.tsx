@@ -1,4 +1,3 @@
-// src/fishing/FishingUI.tsx
 import React from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useFishingLogic } from './FishingLogic';
@@ -31,27 +30,69 @@ export function FishingUI() {
     );
   }
 
-  const { fishCount, lastCatch, fish, loading: fishLoading, error } = useFishingLogic();
+  const {
+    fishCount,
+    lastCatch,
+    fish,
+    sellFish, // ✅ new
+    loading: fishLoading,
+    error,
+    xp,
+    level,
+    gold,
+    cooldown,
+  } = useFishingLogic();
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px' }}>
       <p>Welcome, {user.email || 'Fisher'}! Let’s fish!</p>
-      <p>Fish caught: <strong>{fishCount}</strong></p>
+      <p>
+        Fish caught: <strong>{fishCount}</strong>
+      </p>
+      <p>
+        XP: <strong>{xp}</strong> — Level: <strong>{level}</strong> — Gold:{' '}
+        <strong>{gold}</strong>
+      </p>
 
-      {lastCatch && (
+      {lastCatch !== null && (
         <div className="mt-4 text-sm text-gray-600">
-          <p>🎣 Last catch: <strong>{lastCatch.rarity}</strong> {lastCatch.name}</p>
-          <p>📏 Length: {lastCatch.length} cm — ⚖️ Weight: {lastCatch.weight} kg</p>
+          {lastCatch ? (
+            <p>🎣 You caught a fish!</p>
+          ) : (
+            <p>🐟 No fish this time. Try again!</p>
+          )}
         </div>
       )}
 
-      <button
-        onClick={fish}
-        disabled={fishLoading}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-      >
-        {fishLoading ? 'Fishing...' : 'Catch a fish!'}
-      </button>
+      <div className="mt-4 flex justify-center gap-4">
+        <button
+          onClick={fish}
+          disabled={fishLoading || cooldown > 0}
+          className={`px-4 py-2 rounded text-white ${
+            fishLoading || cooldown > 0
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {fishLoading
+            ? 'Fishing...'
+            : cooldown > 0
+            ? `Wait ${cooldown}s`
+            : 'Catch a fish!'}
+        </button>
+
+        <button
+          onClick={sellFish}
+          disabled={fishCount === 0 || fishLoading}
+          className={`px-4 py-2 rounded text-white ${
+            fishCount === 0 || fishLoading
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700'
+          }`}
+        >
+          Sell Fish
+        </button>
+      </div>
 
       {error && (
         <p style={{ color: 'red', marginTop: '20px' }}>

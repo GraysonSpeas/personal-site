@@ -17,11 +17,6 @@ interface WrapperProps {
   children?: ReactNode;
 }
 
-interface HeaderProps {
-  onLogoClick?: () => void;
-  onNavigate?: (page: Page) => void;
-}
-
 function MainContent({ useLoading }: { useLoading: boolean }) {
   const { loading: authLoading } = useAuth();
 
