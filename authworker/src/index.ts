@@ -31,8 +31,8 @@ app.use(
 app.options('*', (c: Context) => c.text('ok'))
 
 // Mount routes
-app.route('/', auth)
-app.route('/', fishing)
+app.route('/auth', auth)
+app.route('/fishing', fishing)
 
 // Fallback
 app.notFound((c) => c.json({ message: 'Not found' }, 404))

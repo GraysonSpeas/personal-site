@@ -82,7 +82,7 @@ async function sendEmail(
 }
 
 // --- SIGNUP ---
-auth.post('/auth/signup', async (c) => {
+auth.post('/signup', async (c) => {
   const { email, password, name } = await c.req.json();
 
   if (!email || !password) {
@@ -148,7 +148,7 @@ auth.post('/auth/signup', async (c) => {
 });
 
 // --- VERIFY EMAIL ---
-auth.get('/auth/verify', async (c) => {
+auth.get('/verify', async (c) => {
   const token = c.req.query('token') as string | undefined;
   if (!token) return c.json({ message: 'Missing token' }, 400);
 
@@ -180,7 +180,7 @@ auth.get('/auth/verify', async (c) => {
 });
 
 // --- LOGIN ---
-auth.post('/auth/login', async (c) => {
+auth.post('/login', async (c) => {
   const { email, password } = await c.req.json();
 
   if (!email || !password) return c.json({ message: 'Missing credentials' }, 400);
@@ -204,7 +204,7 @@ auth.post('/auth/login', async (c) => {
 });
 
 // --- ACCOUNT INFO ---
-auth.get('/auth/account', async (c) => {
+auth.get('/account', async (c) => {
   const session = getCookie(c, 'session');
   if (!session) return c.json({ message: 'Not logged in' }, 401);
 
@@ -226,7 +226,7 @@ auth.get('/auth/account', async (c) => {
 });
 
 // --- SESSION CHECK ---
-auth.get('/auth/me', (c) => {
+auth.get('/me', (c) => {
   const session = getCookie(c, 'session');
   if (!session) return c.json({ user: null });
 
@@ -241,7 +241,7 @@ auth.get('/auth/me', (c) => {
 });
 
 // --- LOGOUT ---
-auth.post('/auth/logout', (c) => {
+auth.post('/logout', (c) => {
   deleteCookie(c, 'session', {
     path: '/',
     secure: true,
@@ -251,7 +251,7 @@ auth.post('/auth/logout', (c) => {
 });
 
 // --- REQUEST PASSWORD RESET ---
-auth.post('/auth/request-password-reset', async (c) => {
+auth.post('/request-password-reset', async (c) => {
   const { email } = await c.req.json();
   if (!email) return c.json({ message: 'Email required' }, 400);
 
@@ -298,7 +298,7 @@ auth.post('/auth/request-password-reset', async (c) => {
 });
 
 // --- RESET PASSWORD ---
-auth.post('/auth/reset-password', async (c) => {
+auth.post('/reset-password', async (c) => {
   const { token, newPassword } = await c.req.json();
   if (!token || !newPassword) return c.json({ message: 'Missing fields' }, 400);
 
@@ -350,7 +350,7 @@ auth.post('/auth/reset-password', async (c) => {
 
 
 // --- RESEND VERIFICATION EMAIL ---
-auth.post('/auth/resend-verification', async (c) => {
+auth.post('/resend-verification', async (c) => {
   const { email } = await c.req.json();
   if (!email) return c.json({ message: 'Email required' }, 400);
 

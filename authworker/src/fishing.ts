@@ -1,3 +1,4 @@
+// src/fishing.ts
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import type { Context } from 'hono';
@@ -42,33 +43,38 @@ function generateRandomFish(): Fish {
   };
 }
 
-// POST /fishing/fish — create a new catch and return updated state
-app.post('/fishing/fish', async (c: Context<{ Bindings: Bindings }>) => {
-  // 1) Authenticate
+// Shared: auth + DB lookup
+async function getFishState(c: Context<{ Bindings: Bindings }>): Promise<
+  | { status: 'ok'; email: string; caughtFish: Fish[] }
+  | { status: 'unauthorized'; response: Response }
+> {
   const session = getCookie(c, 'session');
-  if (!session) return c.json({ message: 'Not logged in' }, 401);
+  if (!session) return { status: 'unauthorized', response: c.json({ message: 'Not logged in' }, 401) };
 
   let email: string;
   try {
     email = atob(session);
   } catch {
-    return c.json({ message: 'Invalid session' }, 401);
+    return { status: 'unauthorized', response: c.json({ message: 'Invalid session' }, 401) };
   }
 
-  // 2) Load previous catches
   const { results } = await c.env.DB
     .prepare('SELECT * FROM fish WHERE user_email = ?')
     .bind(email)
     .all();
 
-  const caughtFish = results as Fish[];
-  const attempts = caughtFish.length + 1;
+  return { status: 'ok', email, caughtFish: results as Fish[] };
+}
 
-  // 3) Generate new fish
+// ✅ POST /fishing/fish — create a new catch
+app.post('/fish', async (c) => {
+  const auth = await getFishState(c);
+  if (auth.status !== 'ok') return auth.response;
+
+  const { email, caughtFish } = auth;
   const newFish = generateRandomFish();
   caughtFish.push(newFish);
 
-  // 4) Persist new catch
   await c.env.DB
     .prepare(
       'INSERT INTO fish (id, user_email, name, rarity, length, weight) VALUES (?, ?, ?, ?, ?, ?)'
@@ -83,10 +89,9 @@ app.post('/fishing/fish', async (c: Context<{ Bindings: Bindings }>) => {
     )
     .run();
 
-  // 5) Return updated state
   const gameState: GameState = {
     caughtFish,
-    attempts,
+    attempts: caughtFish.length,
     lastCatch: newFish,
   };
 
@@ -94,6 +99,21 @@ app.post('/fishing/fish', async (c: Context<{ Bindings: Bindings }>) => {
     message: `You caught a ${newFish.rarity} ${newFish.name}!`,
     gameState,
   });
+});
+
+// ✅ GET /fishing/fish — fetch current state
+app.get('/fish', async (c) => {
+  const auth = await getFishState(c);
+  if (auth.status !== 'ok') return auth.response;
+
+  const { caughtFish } = auth;
+  const gameState: GameState = {
+    caughtFish,
+    attempts: caughtFish.length,
+    lastCatch: caughtFish.at(-1) ?? undefined,
+  };
+
+  return c.json({ gameState });
 });
 
 export default app;

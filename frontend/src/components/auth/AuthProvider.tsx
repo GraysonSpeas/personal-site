@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import type { ReactNode } from "react";
-import { API_BASE } from '../../config.tsx'; // adjust path as needed
+// src/auth/AuthProvider.tsx
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { API_BASE } from "../../config";
 
 type User = {
   email: string;
@@ -28,46 +34,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch current user from the API
   const fetchUser = async () => {
+    console.log("📡 [Auth] fetchUser start; API_BASE =", API_BASE);
     setLoading(true);
+
     try {
       const res = await fetch(`${API_BASE}/auth/account`, {
         credentials: "include",
       });
+      console.log("↩️ [Auth] /auth/account status:", res.status);
 
       if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
+        const { user: fetchedUser } = await res.json();
+        console.log("✅ [Auth] User fetched:", fetchedUser);
+        setUser(fetchedUser);
       } else {
+        console.warn("⚠️ [Auth] Not authenticated (status:", res.status, ")");
         setUser(null);
       }
     } catch (err) {
-      console.error("Error fetching user:", err);
+      console.error("💥 [Auth] Error fetching user:", err);
       setUser(null);
     } finally {
+      console.log("⏹️ [Auth] fetchUser complete; setting loading=false");
       setLoading(false);
     }
   };
 
+  // Log out the current user
   const logout = async () => {
+    console.log("🔒 [Auth] Logging out");
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
+      const res = await fetch(`${API_BASE}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
+      console.log("↩️ [Auth] /auth/logout status:", res.status);
     } catch (err) {
-      console.error("Logout failed:", err);
+      console.error("💥 [Auth] Logout failed:", err);
     } finally {
       setUser(null);
+      // Note: we leave `loading` untouched here, since we’re already authenticated flow
     }
   };
 
+  // On mount, check session
   useEffect(() => {
-    fetchUser();
+    console.log("🔌 [Auth] AuthProvider mounted; calling fetchUser()");
+    void fetchUser();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, refetch: fetchUser, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, refetch: fetchUser, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

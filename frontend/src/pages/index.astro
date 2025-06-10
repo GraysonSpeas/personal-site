@@ -1,7 +1,7 @@
 ---
-import WrapperWithLoading from "../components/heropage/WrapperWithLoading";
-import TranslateHide from '../components/translator/TranslateHide.tsx';
-// Toggle animation
+import Wrapper from "../components/heropage/Wrapper.tsx";
+import TranslateHide from "../components/translator/TranslateHide.tsx";
+
 const showLoading = false;
 ---
 
@@ -11,8 +11,16 @@ const showLoading = false;
     <title>Grayson Speas</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
   </head>
+
   <body>
-    <WrapperWithLoading client:load useLoading={showLoading} />
-    <TranslateHide client:load />
+    <!-- 
+      Hydrate your one-and-only wrapper once.
+      This mounts AuthProvider, kicks off fetchUser() on load, 
+      and then renders MainContent (Header / Hero / FishingPage / etc.)
+    -->
+    <Wrapper client:load useLoading={showLoading}>
+  <TranslateHide client:load />
+    </Wrapper>
+
   </body>
 </html>
