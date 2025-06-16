@@ -109,6 +109,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         setInfoMessage(`Signup successful! Please verify your email: ${email}`);
         setPassword("");
         setConfirmPassword("");
+        setCooldown(30);
       } else if (mode === "forgotPassword") {
         setInfoMessage(data.message || "Password reset email sent.");
         setCooldown(30);
