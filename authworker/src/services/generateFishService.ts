@@ -68,7 +68,7 @@ function pickRarity(weatherId: number) {
 }
 
 function pickModifier(): string | null {
-  if (Math.random() > 0.02) return null; 
+  if (Math.random() > 0.01) return null; 
 
   const roll = Math.random() * 100;
   let acc = 0;

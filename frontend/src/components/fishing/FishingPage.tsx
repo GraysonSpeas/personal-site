@@ -1,15 +1,12 @@
 // src/components/fishing/FishingPage.tsx
 import React from 'react';
-import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
-import { FishingInventoryUI } from './fishingui/FishingInventoryUI';
 import { useAuth } from '../auth/AuthProvider';
-import { BasicFishingUI } from './fishingui/BasicFishingUI';
-import { ZoneSelector } from './fishinglogic/ZoneSelector'; // Adjust path as needed
+import { FishingUI } from './FishingUI';
 
 function InnerFishingPage() {
-  const { user, loading: authLoading, logout } = useAuth();
-const { data, loading: inventoryLoading, error, refetch } = useFishingInventory();
-  if (authLoading) {
+  const { user, loading, logout } = useAuth();
+
+  if (loading) {
     return (
       <p className="text-center mt-24 text-lg text-gray-400">
         Checking your session…
@@ -36,13 +33,7 @@ const { data, loading: inventoryLoading, error, refetch } = useFishingInventory(
 
   return (
     <div className="text-center mt-12">
-      <FishingInventoryUI data={data} loading={inventoryLoading} error={error} />
-      <div className="mt-8">
-        <BasicFishingUI refetch={refetch} />
-      </div>
-      <div className="mt-8">
-        <ZoneSelector refetch={refetch} />
-      </div>
+      <FishingUI />
       <button
         onClick={logout}
         className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"

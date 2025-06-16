@@ -9,11 +9,18 @@ export function FishingButton({ refetch }: { refetch: () => void }) {
     stamina?: number
     tug_strength?: number
   } | null>(null)
+  const [caughtFish, setCaughtFish] = useState<{
+    species: string
+    rarity: string
+    stamina?: number
+    tug_strength?: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function startFishing() {
     setStatus('waiting')
     setError(null)
+    setCaughtFish(null)
 
     try {
       const res = await fetch(`${API_BASE}/minigame/start`, {
@@ -34,40 +41,30 @@ export function FishingButton({ refetch }: { refetch: () => void }) {
   }
 
   async function catchFish() {
-  console.log('catchFish started')
-  setStatus('idle')
-  setError(null)
+    setStatus('idle')
+    setError(null)
 
-  try {
-    const res = await fetch(`${API_BASE}/minigame/catch`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-    console.log('Catch response status:', res.status)
+    try {
+      const res = await fetch(`${API_BASE}/minigame/catch`, {
+        method: 'POST',
+        credentials: 'include',
+      })
 
-    const json = await res.json()
-    console.log('Catch response json:', json)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to catch fish')
 
-    if (!res.ok) throw new Error(json.error || 'Failed to catch fish')
+      setCaughtFish(json.fish || null)
 
-    if (refetch && typeof refetch === 'function') {
-      console.log('Calling refetch after catch')
-      await refetch()
-      console.log('Refetch finished')
-    } else {
-      console.log('Refetch not called: refetch is missing or not a function')
+      if (refetch && typeof refetch === 'function') {
+        await refetch()
+      }
+    } catch (e: any) {
+      setStatus('error')
+      setError(e.message || 'Unknown error')
+    } finally {
+      setFishPreview(null)
     }
-  } catch (e: any) {
-    setStatus('error')
-    setError(e.message || 'Unknown error')
-    console.error('Catch error:', e)
-  } finally {
-    setFishPreview(null)
-    console.log('catchFish finished')
   }
-}
-
-
 
   useEffect(() => {
     if (status === 'ready') {
@@ -90,6 +87,13 @@ export function FishingButton({ refetch }: { refetch: () => void }) {
         <p>
           Fish preview: {fishPreview.species} ({fishPreview.rarity})<br />
           Stamina: {fishPreview.stamina} | Tug Strength: {fishPreview.tug_strength}
+        </p>
+      )}
+
+      {caughtFish && (
+        <p>
+          Caught fish: {caughtFish.species} ({caughtFish.rarity})<br />
+          Stamina: {caughtFish.stamina} | Tug Strength: {caughtFish.tug_strength}
         </p>
       )}
     </div>

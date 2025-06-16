@@ -1,3 +1,4 @@
+// src/components/fishing/FishingUI.tsx
 import React from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
@@ -12,14 +13,17 @@ export function FishingUI() {
   if (authLoading) return <p>Loading user...</p>;
   if (!user) return <p>Please log in.</p>;
 
-  // Merge user email into data for UI
   const combinedData = data ? { ...data, email: user.email } : null;
 
   return (
-  <div className="space-y-4">
-    <BasicFishingUI refetch={refetch} />
-    <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
-    <ZoneSelector refetch={refetch} />
-  </div>
-);
+    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+      <div style={{ flex: 1, minWidth: 250 }}>
+        <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <BasicFishingUI refetch={refetch} />
+        <ZoneSelector refetch={refetch} />
+      </div>
+    </div>
+  );
 }
