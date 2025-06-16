@@ -80,7 +80,9 @@ const fetchInventory = async () => {
   setLoading(true);
   try {
     console.log('Fetching inventory...');
-    const res = await fetch(`${API_BASE}/inventory`);
+    const res = await fetch(`${API_BASE}/inventory`, {
+    credentials: 'include',
+    });
     if (!res.ok) throw new Error('Failed to fetch inventory');
     const json = await res.json();
     console.log('Inventory fetched:', json);
