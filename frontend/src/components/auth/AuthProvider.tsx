@@ -34,36 +34,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch current user from the API
-  const fetchUser = async () => {
-    console.log("📡 [Auth] fetchUser start; API_BASE =", API_BASE);
-    setLoading(true);
+// Fetch current user from the API
+const fetchUser = async () => {
+  console.log("📡 [Auth] fetchUser start; API_BASE =", API_BASE);
+  setLoading(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/auth/me`, {
-        credentials: "include",
-      });
-      console.log("↩️ [Auth] /auth/me status:", res.status);
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      credentials: "include",
+    });
+    console.log("↩️ [Auth] /auth/me status:", res.status);
 
-      if (res.ok) {
-        const { user: fetchedUserRaw } = await res.json();
-        const { email } = fetchedUserRaw || {};
+    if (res.ok) {
+      const { user: fetchedUserRaw } = await res.json();
+      const { email } = fetchedUserRaw || {};
+
+      if (email) {
         const sanitizedUser: User = { email };
         setUser(sanitizedUser);
         console.log("✅ [Auth] User fetched:", sanitizedUser);
-        setUser(sanitizedUser);
       } else {
-        console.warn("⚠️ [Auth] Not authenticated (status:", res.status, ")");
+        console.warn("⚠️ [Auth] Invalid user object:", fetchedUserRaw);
         setUser(null);
       }
-    } catch (err) {
-      console.error("💥 [Auth] Error fetching user:", err);
+    } else {
+      console.warn("⚠️ [Auth] Not authenticated (status:", res.status, ")");
       setUser(null);
-    } finally {
-      console.log("⏹️ [Auth] fetchUser complete; setting loading=false");
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error("💥 [Auth] Error fetching user:", err);
+    setUser(null);
+  } finally {
+    console.log("⏹️ [Auth] fetchUser complete; setting loading=false");
+    setLoading(false);
+  }
+};
+
 
   // Log out the current user
   const logout = async () => {

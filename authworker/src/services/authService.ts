@@ -179,20 +179,22 @@ export async function login(c: Context<{ Bindings: Bindings }>) {
       }
     | undefined
 
-  if (!user || !user.email_verified)
+  if (!user)
+    return c.json({ message: 'User not found' }, 401)
+
+  if (!user.email_verified)
     return c.json({ message: 'Please verify your email before logging in' }, 401)
 
   const hash = await hashPassword(password)
   if (user.password_hash !== hash)
     return c.json({ message: 'Invalid credentials' }, 401)
 
-  // Set session cookie with base64 encoded email
   setCookie(c, 'session', btoa(email), {
     httpOnly: true,
     secure: true,
     sameSite: 'Lax',
     path: '/',
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: 60 * 60 * 24,
   })
   return c.json({ message: 'Logged in' })
 }
