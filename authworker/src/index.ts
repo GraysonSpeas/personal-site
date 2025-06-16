@@ -21,24 +21,26 @@ interface Bindings {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// Mount nested routers
-app.route('/auth', authRouter)
-app.route('/inventory', inventoryRouter)
-app.route('/minigame', minigameRouter)
-app.route('/zone', zoneSelectionRouter)
 
 // Global CORS middleware & preflight handling
 app.use(
   '*',
   cors({
     origin: (origin) => {
+      console.log('Origin:', origin);
       const allowed = ['http://localhost:4321', 'https://speas.org']
-      return allowed.includes(origin ?? '') ? origin : ''
+      return allowed.includes(origin ?? '') ? origin : undefined;
     },
     credentials: true,
   })
 )
+
 app.options('*', (c: Context) => c.text('ok'))
+// Mount nested routers
+app.route('/auth', authRouter)
+app.route('/inventory', inventoryRouter)
+app.route('/minigame', minigameRouter)
+app.route('/zone', zoneSelectionRouter)
 
 // Global error handler
 app.onError((err, c) => {
