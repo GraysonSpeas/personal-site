@@ -1,14 +1,22 @@
-export const ScrollToExplore = () => {
+import React, { type RefObject } from "react";
+
+interface ScrollToExploreProps {
+  containerRef: RefObject<HTMLDivElement | null>; // Allow null
+}
+
+export const ScrollToExplore: React.FC<ScrollToExploreProps> = ({ containerRef }) => {
   const handleScroll = () => {
-    window.scrollTo({
-      left: window.innerWidth,
-      behavior: 'smooth',
-    });
+    if (containerRef?.current) {
+      containerRef.current.scrollBy({
+        left: window.innerWidth / 5, // Adjust scroll distance as needed
+        behavior: "smooth",
+      });
+    }
   };
 
   return (
     <>
-      <div className="hidden md:flex fixed items-center justify-center gap-3 bg-black hover:border-white text-white duration-300 transition-all overflow-hidden add-pbt-hover cursor-pointer z-[100] bottom-4 right-4 px-4 py-2 rounded-full border border-solid border-primary-white/20 shadow-xl hover:shadow-2xl">
+      <div className="hidden md:flex fixed items-center justify-center gap-3 bg-black hover:border-white text-white duration-300 transition-all overflow-hidden cursor-pointer z-[100] bottom-4 right-4 px-4 py-2 rounded-full border border-solid border-primary-white/20 shadow-xl hover:shadow-2xl">
         <button
           onClick={handleScroll}
           className="font-sans font-medium text-sm uppercase flex items-center gap-2"
@@ -27,7 +35,6 @@ export const ScrollToExplore = () => {
             className="animate-bounce-x"
           >
             <path d="M11 7l5 5-5 5" /> {/* Right-pointing chevron */}
-            <path d="M4 7l5 5-5 5" />   {/* Optional: second chevron */}
           </svg>
         </button>
       </div>

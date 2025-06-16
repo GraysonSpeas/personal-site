@@ -1,12 +1,18 @@
+// src/index.ts
+// Overview: main entry point for the auth worker api routing
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { cors } from 'hono/cors'
 
-// Import route handlers
-import auth from './auth'
-import fishing from './fishing'
+import { seedDatabase } from './seeding/seedService';
+// Import routers and mount routers
+import authRouter from './routes/authRouter'
+import inventoryRouter from './routes/inventoryRouter'
+import minigameRouter from './routes/minigameRouter'
+import zoneSelectionRouter from './routes/zoneSelectionRouter'
 
-type Bindings = {
+// Bindings interface for environment variables and DB
+interface Bindings {
   DB: D1Database
   SENDGRID_API_KEY: string
   SENDER_EMAIL: string
@@ -15,7 +21,13 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// Global CORS middleware
+// Mount nested routers
+app.route('/auth', authRouter)
+app.route('/inventory', inventoryRouter)
+app.route('/minigame', minigameRouter)
+app.route('/zone', zoneSelectionRouter)
+
+// Global CORS middleware & preflight handling
 app.use(
   '*',
   cors({
@@ -26,15 +38,36 @@ app.use(
     credentials: true,
   })
 )
-
-// Handle preflight requests globally
 app.options('*', (c: Context) => c.text('ok'))
 
-// Mount routes
-app.route('/auth', auth)
-app.route('/fishing', fishing)
+// Global error handler
+app.onError((err, c) => {
+  console.error(err)
+  return c.json({ message: 'Internal Server Error' }, 500)
+})
 
-// Fallback
+// 404 fallback handler
 app.notFound((c) => c.json({ message: 'Not found' }, 404))
 
-export default app
+// Seeding flag
+let isSeeded = false;
+
+// Fetch handler with seeding logic
+export default {
+  async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
+    // Check if the seeding has already run
+    if (!isSeeded) {
+      try {
+        console.log('Seeding database...');
+        await seedDatabase(env.DB);
+        console.log('Database seeded successfully.');
+        isSeeded = true; // Set the flag to prevent re-seeding
+      } catch (error) {
+        console.error('Error during database seeding:', error);
+      }
+    }
+
+    // Delegate all other requests to Hono app
+    return app.fetch(request, env, ctx);
+  },
+};

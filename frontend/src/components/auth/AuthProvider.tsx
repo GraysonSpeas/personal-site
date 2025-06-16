@@ -40,15 +40,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/auth/account`, {
+      const res = await fetch(`${API_BASE}/auth/me`, {
         credentials: "include",
       });
-      console.log("↩️ [Auth] /auth/account status:", res.status);
+      console.log("↩️ [Auth] /auth/me status:", res.status);
 
       if (res.ok) {
-        const { user: fetchedUser } = await res.json();
-        console.log("✅ [Auth] User fetched:", fetchedUser);
-        setUser(fetchedUser);
+        const { user: fetchedUserRaw } = await res.json();
+        const { email } = fetchedUserRaw || {};
+        const sanitizedUser: User = { email };
+        setUser(sanitizedUser);
+        console.log("✅ [Auth] User fetched:", sanitizedUser);
+        setUser(sanitizedUser);
       } else {
         console.warn("⚠️ [Auth] Not authenticated (status:", res.status, ")");
         setUser(null);

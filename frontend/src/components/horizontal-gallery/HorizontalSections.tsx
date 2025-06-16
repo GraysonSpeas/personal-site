@@ -4,7 +4,7 @@ import {
   FullscreenModal,
   ScrollToExplore,
 } from "./HorizontalComponents";
-import { useWindowWidth } from "../../hooks/useWindowWidth";
+import { useWindowWidth } from "./useWindowWidth";
 
 export default function HorizontalSections() {
   const windowWidth = useWindowWidth();
@@ -98,7 +98,7 @@ export default function HorizontalSections() {
 
   return (
     <div className="bg-[#1a1a1a] text-white relative w-screen h-screen flex flex-col">
-      <ScrollToExplore />
+      <ScrollToExplore containerRef={containerRef} />
 
       <main
         ref={containerRef}

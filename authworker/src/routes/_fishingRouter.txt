@@ -1,0 +1,12 @@
+// src/routes/fishingRouter.ts
+import { Hono } from 'hono';
+import fishingActiveRouter from './minigameRouter';
+import fishingPassiveRouter from './fishing-passive';
+
+const app = new Hono<{ Bindings: { DB: D1Database } }>();
+
+// Mount nested routers
+app.route('/active', fishingActiveRouter);
+app.route('/passive', fishingPassiveRouter);
+
+export default app;

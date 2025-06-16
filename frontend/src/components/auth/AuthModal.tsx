@@ -51,68 +51,75 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
     }
   }, [inline, onClose]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setInfoMessage(null);
-    setShowResendVerification(false);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError(null);
+  setInfoMessage(null);
+  setShowResendVerification(false);
 
-    // If we're in "signup" mode, ensure password and confirmPassword match
-    if (mode === "signup" && password !== confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
+  if (mode === "signup" && password !== confirmPassword) {
+    setError("Passwords do not match");
+    setLoading(false);
+    return;
+  }
+
+  try {
+    let endpoint = "";
+    const body: any = { email, password };
+
+    if (mode === "login" || mode === "signup") {
+      endpoint = mode;
+    } else if (mode === "forgotPassword") {
+      if (cooldown > 0) {
+        setError(`Please wait ${cooldown}s before trying again.`);
+        setLoading(false);
+        return;
+      }
+      endpoint = "request-password-reset";
     }
 
-    try {
-      let endpoint = "";
-      const body: any = { email, password };
+    const res = await fetch(`${API_BASE}/auth/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
 
-      if (mode === "login" || mode === "signup") {
-        endpoint = mode;
-      } else if (mode === "forgotPassword") {
-        if (cooldown > 0) {
-          setError(`Please wait ${cooldown}s before trying again.`);
-          return;
-        }
-        endpoint = "request-password-reset";
-      }
+    const data = (await res.json()) as AuthResponse;
 
-      const res = await fetch(`${API_BASE}/auth/${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      const data = (await res.json()) as AuthResponse;
-
-      if (!res.ok || data.success === false) {
-        setError(data.message || "Something went wrong");
-        if (mode === "login" && data.message === "Please verify your email before logging in") {
+    if (!res.ok || data.success === false) {
+      if (mode === "login") {
+        if (data.message === "Please verify your email before logging in") {
+          setError("Verify email to login");
           setShowResendVerification(true);
+        } else {
+          setError("Wrong credentials");
+          setShowResendVerification(false);
         }
       } else {
-        if (mode === "login") {
-          setIsLoggedIn(true); // Set login state to true
-          await refetch();
-        } else if (mode === "signup") {
-          setMode("verifyEmail");
-          setInfoMessage(`Signup successful! Please verify your email: ${email}`);
-          setPassword("");
-          setConfirmPassword(""); // Clear confirmPassword field after successful signup
-        } else if (mode === "forgotPassword") {
-          setInfoMessage(data.message || "Password reset email sent.");
-          setCooldown(30);
-        }
+        setError(data.message || "Something went wrong");
       }
-    } catch {
-      setError("Network error");
-    } finally {
-      setLoading(false);
+    } else {
+      if (mode === "login") {
+        setIsLoggedIn(true);
+        await refetch();
+      } else if (mode === "signup") {
+        setMode("verifyEmail");
+        setInfoMessage(`Signup successful! Please verify your email: ${email}`);
+        setPassword("");
+        setConfirmPassword("");
+      } else if (mode === "forgotPassword") {
+        setInfoMessage(data.message || "Password reset email sent.");
+        setCooldown(30);
+      }
     }
-  };
+  } catch {
+    setError("Network error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResendVerification = async () => {
     if (!email) {

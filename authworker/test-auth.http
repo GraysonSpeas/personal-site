@@ -1,46 +1,8 @@
-### Signup new user
-POST http://localhost:8787/auth/signup
+### Update User Zone
+POST http://localhost:4321/zone/select
 Content-Type: application/json
 
 {
-  "email": "11@speas.org",
-  "password": "Password!1",
-  "name": "Test User"
+  "userId": "1",
+  "zoneId": 3
 }
-
-### Login user
-POST http://localhost:8787/auth/login
-Content-Type: application/json
-
-{
-  "email": "testuser@example.com",
-  "password": "Password!1"
-}
-
-### Request password reset
-POST http://localhost:8787/auth/request-password-reset
-Content-Type: application/json
-
-{
-  "email": "testuser@example.com"
-}
-
-### Reset password (replace token with actual token from email)
-POST http://localhost:8787/auth/reset-password
-Content-Type: application/json
-
-{
-  "token": "REPLACE_WITH_RESET_TOKEN",
-  "newPassword": "NewPass!2"
-}
-
-### Resend verification email
-POST http://localhost:8787/auth/resend-verification
-Content-Type: application/json
-
-{
-  "email": "testuser@example.com"
-}
-
-### Verify email (replace token with actual token from email)
-GET http://localhost:8787/auth/verify?token=4EzI3apRC1sezCOm6XeKbkeHi6nPuQ3FE52kDIynOd7xLzsw

@@ -1,12 +1,15 @@
 // src/components/fishing/FishingPage.tsx
 import React from 'react';
-import { FishingUI } from './FishingUI';
+import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
+import { FishingInventoryUI } from './fishingui/FishingInventoryUI';
 import { useAuth } from '../auth/AuthProvider';
+import { BasicFishingUI } from './fishingui/BasicFishingUI';
+import { ZoneSelector } from './fishinglogic/ZoneSelector'; // Adjust path as needed
 
 function InnerFishingPage() {
-  const { user, loading, logout } = useAuth();
-
-  if (loading) {
+  const { user, loading: authLoading, logout } = useAuth();
+const { data, loading: inventoryLoading, error, refetch } = useFishingInventory();
+  if (authLoading) {
     return (
       <p className="text-center mt-24 text-lg text-gray-400">
         Checking your session…
@@ -21,7 +24,7 @@ function InnerFishingPage() {
         <button
           onClick={() => {
             const btn = document.getElementById('auth-toggle-button');
-            if (btn) btn.click(); // Trigger the login modal
+            if (btn) btn.click();
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
         >
@@ -32,8 +35,14 @@ function InnerFishingPage() {
   }
 
   return (
-    <div className="text-center mt-24">
-      <FishingUI />
+    <div className="text-center mt-12">
+      <FishingInventoryUI data={data} loading={inventoryLoading} error={error} />
+      <div className="mt-8">
+        <BasicFishingUI />
+      </div>
+      <div className="mt-8">
+        <ZoneSelector refetch={refetch} />
+      </div>
       <button
         onClick={logout}
         className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
@@ -46,7 +55,7 @@ function InnerFishingPage() {
 
 export default function FishingPage() {
   return (
-    <div className="flex justify-center items-center min-h-screen">
+    <div className="flex justify-center items-center min-h-screen bg-blue-900">
       <InnerFishingPage />
     </div>
   );

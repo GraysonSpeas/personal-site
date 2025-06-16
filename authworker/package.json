@@ -7,10 +7,12 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"test": "vitest",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"seed": "ts-node src/seeding/seed.ts"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"@cloudflare/workers-types": "^4.20250614.0",
 		"@types/bcryptjs": "^2.4.6",
 		"typescript": "^5.5.2",
 		"vitest": "~3.0.7",

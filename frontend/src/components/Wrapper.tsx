@@ -1,16 +1,16 @@
 import React, { useState, useEffect, type ReactNode } from "react";
-import Header from "./Header";
-import Hero from "./Hero";
-import MoreInfo from "./MoreInfo";
-import Downloads from "./Downloads";
-import Footer from "./Footer";
-import LoadingScreen from "./LoadingScreen";
-import HorizontalSections from "../horizontal-gallery/HorizontalSections";
-import HorizontalHeader from "../horizontal-gallery/HorizontalHeader";
-import { AuthProvider, useAuth } from "../auth/AuthProvider";
-import PlayerButton from "./PlayerButton";
-import type { Page } from "../../types/pages";
-import FishingPage from "../fishing/FishingPage";
+import Header from "./heropage/Header";
+import Hero from "./heropage/Hero";
+import MoreInfo from "./heropage/MoreInfo";
+import Downloads from "./heropage/Downloads";
+import Footer from "./heropage/Footer";
+import LoadingScreen from "./heropage/LoadingScreen";
+import HorizontalSections from "./horizontal-gallery/HorizontalSections";
+import HorizontalHeader from "./horizontal-gallery/HorizontalHeader";
+import { AuthProvider, useAuth } from "./auth/AuthProvider";
+import PlayerButton from "./heropage/PlayerButton";
+import type { Page } from "../types/pages";
+import FishingPage from "./fishing/FishingPage";
 
 interface WrapperProps {
   useLoading?: boolean;
