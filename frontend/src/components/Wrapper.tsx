@@ -43,21 +43,21 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
   const [shouldShowLoader, setShouldShowLoader] = useState(false);
   const [canHideLoader, setCanHideLoader] = useState(false);
 
-  useEffect(() => {
-    if (!useLoading) {
-      setShouldShowLoader(false);
-      setCanHideLoader(true);
-      return;
-    }
-    const delayTimer = setTimeout(() => {
-      setShouldShowLoader(true);
-      const minDurationTimer = setTimeout(() => {
-        setCanHideLoader(true);
-      }, 800);
-      return () => clearTimeout(minDurationTimer);
-    }, 200);
-    return () => clearTimeout(delayTimer);
-  }, [useLoading]);
+ useEffect(() => {
+  if (!useLoading) {
+    setShouldShowLoader(false);
+    setCanHideLoader(true);
+    return;
+  }
+
+  setShouldShowLoader(true);
+  const minDurationTimer = setTimeout(() => {
+    setCanHideLoader(true);
+  }, 1000);
+
+  return () => clearTimeout(minDurationTimer);
+}, [useLoading]);
+
 
   // Determine when to show the full-screen loader
   const showFullScreenLoader = useLoading && shouldShowLoader && (authLoading || !canHideLoader);
