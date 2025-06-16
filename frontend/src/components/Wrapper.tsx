@@ -23,6 +23,7 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
   // Initialize page state based on current URL pathname
   const [page, setPage] = useState<Page>(() => {
     if (typeof window === "undefined") return "home"; // SSR safe fallback
+    console.log("Initial path:", window.location.pathname);
     const path = window.location.pathname.toLowerCase();
     if (path === "/fishing") return "fishing";
     if (path === "/horizontalgallery") return "horizontalgallery";
