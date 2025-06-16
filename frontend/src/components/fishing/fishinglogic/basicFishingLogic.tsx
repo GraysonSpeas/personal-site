@@ -34,29 +34,40 @@ export function FishingButton({ refetch }: { refetch: () => void }) {
   }
 
   async function catchFish() {
-    setStatus('idle')
-    setError(null)
+  console.log('catchFish started')
+  setStatus('idle')
+  setError(null)
 
-    try {
-      const res = await fetch(`${API_BASE}/minigame/catch`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      const json = await res.json()
+  try {
+    const res = await fetch(`${API_BASE}/minigame/catch`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    console.log('Catch response status:', res.status)
 
-      if (!res.ok) throw new Error(json.error || 'Failed to catch fish')
+    const json = await res.json()
+    console.log('Catch response json:', json)
 
-      alert(`Caught a ${json.fish.species}!`)
-      if (refetch && typeof refetch === 'function') {
-        refetch()
-      }
-    } catch (e: any) {
-      setStatus('error')
-      setError(e.message || 'Unknown error')
-    } finally {
-      setFishPreview(null)
+    if (!res.ok) throw new Error(json.error || 'Failed to catch fish')
+
+    if (refetch && typeof refetch === 'function') {
+      console.log('Calling refetch after catch')
+      await refetch()
+      console.log('Refetch finished')
+    } else {
+      console.log('Refetch not called: refetch is missing or not a function')
     }
+  } catch (e: any) {
+    setStatus('error')
+    setError(e.message || 'Unknown error')
+    console.error('Catch error:', e)
+  } finally {
+    setFishPreview(null)
+    console.log('catchFish finished')
   }
+}
+
+
 
   useEffect(() => {
     if (status === 'ready') {

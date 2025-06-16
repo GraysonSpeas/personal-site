@@ -75,25 +75,28 @@ export function useFishingInventory() {
     };
   }
 
-  const fetchInventory = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/inventory');
-      if (!res.ok) throw new Error('Failed to fetch inventory');
-      const json: FishingInventoryRaw = await res.json();
+const fetchInventory = async () => {
+  setLoading(true);
+  try {
+    console.log('Fetching inventory...');
+    const res = await fetch('/api/inventory');
+    if (!res.ok) throw new Error('Failed to fetch inventory');
+    const json = await res.json();
+    console.log('Inventory fetched:', json);
 
-      const processed = processFishInventory(json.fish || [], json.biggestFish || []);
+    const processed = processFishInventory(json.fish || [], json.biggestFish || []);
 
-      setData({
-        ...processed,
-        current_zone_id: json.currentZoneId ?? null,
-      });
-    } catch (e: any) {
-      setError(e.message || 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setData({
+      ...processed,
+      current_zone_id: json.currentZoneId ?? null,
+    });
+  } catch (e: any) {
+    setError(e.message || 'Unknown error');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchInventory();

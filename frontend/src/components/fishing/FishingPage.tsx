@@ -38,7 +38,7 @@ const { data, loading: inventoryLoading, error, refetch } = useFishingInventory(
     <div className="text-center mt-12">
       <FishingInventoryUI data={data} loading={inventoryLoading} error={error} />
       <div className="mt-8">
-        <BasicFishingUI />
+        <BasicFishingUI refetch={refetch} />
       </div>
       <div className="mt-8">
         <ZoneSelector refetch={refetch} />
