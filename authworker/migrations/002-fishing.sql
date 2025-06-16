@@ -1,3 +1,4 @@
+-- DROP in order respecting foreign keys
 DROP TABLE IF EXISTS equipped;
 DROP TABLE IF EXISTS achievements;
 DROP TABLE IF EXISTS biggest_fish;
@@ -8,14 +9,14 @@ DROP TABLE IF EXISTS resources;
 DROP TABLE IF EXISTS permits;
 DROP TABLE IF EXISTS currencies;
 DROP TABLE IF EXISTS fishTypeZones;
-DROP TABLE IF EXISTS fishTypes;
 DROP TABLE IF EXISTS resourceTypeZones;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS fishTypes;
 DROP TABLE IF EXISTS resourceTypes;
 DROP TABLE IF EXISTS zoneTypes;
 DROP TABLE IF EXISTS weatherTypes;
---DROP TABLE IF EXISTS users;
 
--- Create base reference tables first:
+-- CREATE base reference tables first
 CREATE TABLE IF NOT EXISTS weatherTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   description TEXT UNIQUE NOT NULL
@@ -32,15 +33,6 @@ CREATE TABLE IF NOT EXISTS resourceTypes (
   rarity TEXT NOT NULL DEFAULT 'common'
 );
 
--- Linking table for resourceTypes and zoneTypes
-CREATE TABLE IF NOT EXISTS resourceTypeZones (
-  resource_type_id INTEGER NOT NULL,
-  zone_id INTEGER NOT NULL,
-  FOREIGN KEY (resource_type_id) REFERENCES resourceTypes(id) ON DELETE CASCADE,
-  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
-  PRIMARY KEY (resource_type_id, zone_id)
-);
-
 CREATE TABLE IF NOT EXISTS fishTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   species TEXT UNIQUE NOT NULL,
@@ -53,7 +45,16 @@ CREATE TABLE IF NOT EXISTS fishTypes (
   rarity TEXT NOT NULL DEFAULT 'common'
 );
 
--- Then users, which references zoneTypes
+-- Linking table for resourceTypes and zoneTypes
+CREATE TABLE IF NOT EXISTS resourceTypeZones (
+  resource_type_id INTEGER NOT NULL,
+  zone_id INTEGER NOT NULL,
+  FOREIGN KEY (resource_type_id) REFERENCES resourceTypes(id) ON DELETE CASCADE,
+  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
+  PRIMARY KEY (resource_type_id, zone_id)
+);
+
+-- Users table, referencing zoneTypes
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
@@ -74,7 +75,7 @@ CREATE TABLE IF NOT EXISTS users (
   FOREIGN KEY (current_zone_id) REFERENCES zoneTypes(id)
 );
 
--- Then dependent tables with foreign keys to users
+-- Dependent tables referencing users
 CREATE TABLE IF NOT EXISTS currencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
