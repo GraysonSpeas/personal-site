@@ -25,7 +25,7 @@ function MainContent({ useLoading }: { useLoading: boolean }) {
     if (typeof window === "undefined") return "home"; // SSR safe fallback
     console.log("Initial path:", window.location.pathname);
     const path = window.location.pathname.toLowerCase();
-    if (path === "/fishing") return "fishing";
+    if (path === "/fishing/" || path === "/fishing") return "fishing";
     if (path === "/horizontalgallery") return "horizontalgallery";
     return "home";
   });
