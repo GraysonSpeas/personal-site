@@ -11,13 +11,21 @@ export default function TranslateWidget() {
   useEffect(() => {
     const setCookie = (value: string) => {
       const domain = window.location.hostname;
-      const cookie = `googtrans=${value};path=/`;
+      const deleteCookie = (domainValue: string) => {
+        document.cookie = `googtrans=;path=/;domain=${domainValue};expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      };
 
-      document.cookie = `googtrans=;path=/;domain=${domain};expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-      document.cookie = `googtrans=;path=/;domain=.${domain};expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      // Delete old cookies with and without leading dot domain
+      deleteCookie(domain);
+      deleteCookie(`.${domain}`);
 
-      document.cookie = `${cookie};domain=${domain}`;
-      document.cookie = `${cookie};domain=.${domain}`;
+      // Delay to ensure deletion processed before setting new cookie
+      setTimeout(() => {
+        const cookieValue = `googtrans=${value};path=/;domain=${domain}`;
+        const cookieValueDot = `googtrans=${value};path=/;domain=.${domain}`;
+        document.cookie = cookieValue;
+        document.cookie = cookieValueDot;
+      }, 50);
     };
 
     if (!document.getElementById("google-translate-script")) {
