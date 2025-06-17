@@ -11,21 +11,21 @@ export default function TranslateWidget() {
   useEffect(() => {
     const setCookie = (value: string) => {
       const domain = window.location.hostname;
-      const deleteCookie = (domainValue: string) => {
-        document.cookie = `googtrans=;path=/;domain=${domainValue};expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      const deleteCookie = (d: string) => {
+        document.cookie = `googtrans=; path=/; domain=${d}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
       };
 
-      // Delete old cookies with and without leading dot domain
+      // Delete old cookies
       deleteCookie(domain);
       deleteCookie(`.${domain}`);
 
-      // Delay to ensure deletion processed before setting new cookie
+      // Delay before setting new cookie
       setTimeout(() => {
-        const cookieValue = `googtrans=${value};path=/;domain=${domain}`;
-        const cookieValueDot = `googtrans=${value};path=/;domain=.${domain}`;
+        const cookieValue = `googtrans=${value}; path=/; domain=${domain}; max-age=31536000`;
+        const cookieValueDot = `googtrans=${value}; path=/; domain=.${domain}; max-age=31536000`;
         document.cookie = cookieValue;
         document.cookie = cookieValueDot;
-      }, 50);
+      }, 100);
     };
 
     if (!document.getElementById("google-translate-script")) {
@@ -56,20 +56,24 @@ export default function TranslateWidget() {
       const value = `/en/${langCode}`;
       setCookie(value);
 
-      const trySetLanguage = () => {
-        const select = document.querySelector(
-          "#google_translate_element select"
-        ) as HTMLSelectElement | null;
+      // Remove and re-initialize widget
+      const el = document.getElementById("google_translate_element");
+      if (el) el.innerHTML = "";
 
-        if (select) {
-          select.value = langCode;
-          select.dispatchEvent(new Event("change"));
-        } else {
-          setTimeout(trySetLanguage, 100);
+      setTimeout(() => {
+        if (window.google?.translate?.TranslateElement) {
+          new window.google.translate.TranslateElement(
+            {
+              pageLanguage: "en",
+              includedLanguages:
+                "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
+              layout: window.google.translate.InlineLayout.SIMPLE,
+              autoDisplay: false,
+            },
+            "google_translate_element"
+          );
         }
-      };
-
-      trySetLanguage();
+      }, 150);
     };
 
     return () => {
