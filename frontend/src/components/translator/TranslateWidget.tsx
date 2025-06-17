@@ -2,23 +2,13 @@ import React, { useEffect } from "react";
 
 export default function TranslateWidget() {
   useEffect(() => {
-    const domain = ".speas.org";
-
-    const deleteCookie = (d?: string) => {
-      const base = `googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None`;
-      document.cookie = d ? `${base}; domain=${d}` : base;
+    const deleteCookie = () => {
+      document.cookie = `googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None`;
     };
 
     const setCookie = (value: string) => {
-      // Delete all variants
       deleteCookie();
-      deleteCookie("speas.org");
-      deleteCookie(domain);
-
-      // Set both variants
-      const base = `googtrans=${value}; path=/; max-age=31536000; Secure; SameSite=None`;
-      document.cookie = base;
-      document.cookie = `${base}; domain=${domain}`;
+      document.cookie = `googtrans=${value}; path=/; max-age=31536000; Secure; SameSite=None`;
     };
 
     if (!document.getElementById("google-translate-script")) {
