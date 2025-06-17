@@ -1,60 +1,24 @@
 import React, { useEffect } from "react";
 
-interface TranslateElementConstructor {
-  new (
-    options: {
-      pageLanguage: string;
-      includedLanguages?: string;
-      layout?: any;
-      autoDisplay?: boolean;
-    },
-    element: string | HTMLElement
-  ): void;
-  InlineLayout?: { SIMPLE: number | string };
+interface TranslateElementOptions {
+  pageLanguage: string;
+  includedLanguages?: string;
+  layout?: any;
+  autoDisplay?: boolean;
 }
-
-interface GoogleTranslate {
-  TranslateElement: TranslateElementConstructor;
-}
-
-declare global {
-  interface Window {
-    google?: {
-      translate: {
-        TranslateElement: new (
-          options: {
-            pageLanguage: string;
-            includedLanguages?: string;
-            layout?: any;
-            autoDisplay?: boolean;
-          },
-          element: string | HTMLElement
-        ) => void;
-        InlineLayout?: {
-          SIMPLE: string;
-        };
-      };
-    };
-    googleTranslateElementInit?: () => void;
-    changeGoogleTranslateLanguage?: (langCode: string) => void;
-  }
-}
-
 
 export default function TranslateWidget() {
   useEffect(() => {
     const setCookie = (value: string) => {
       const domain = window.location.hostname;
-      // Clear existing googtrans cookies for domain and subdomain
+      const cookie = `googtrans=${value};path=/`;
+
       document.cookie = `googtrans=;path=/;domain=${domain};expires=Thu, 01 Jan 1970 00:00:00 GMT`;
       document.cookie = `googtrans=;path=/;domain=.${domain};expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-      // Set new googtrans cookie
-      document.cookie = `googtrans=${value};path=/;domain=${domain}`;
-      document.cookie = `googtrans=${value};path=/;domain=.${domain}`;
-    };
 
-    // Initially set cookie to English -> English (default)
-    setCookie("/en/en");
+      document.cookie = `${cookie};domain=${domain}`;
+      document.cookie = `${cookie};domain=.${domain}`;
+    };
 
     if (!document.getElementById("google-translate-script")) {
       const script = document.createElement("script");
@@ -71,6 +35,7 @@ export default function TranslateWidget() {
           {
             pageLanguage: "en",
             includedLanguages: "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
+            layout: window.google.translate.TranslateElementInit?.InlineLayout?.SIMPLE,
             autoDisplay: false,
           },
           "google_translate_element"
@@ -79,8 +44,9 @@ export default function TranslateWidget() {
     };
 
     window.changeGoogleTranslateLanguage = (langCode: string) => {
-      setCookie(`/en/${langCode}`);
-      setTimeout(() => window.location.reload(), 100); // Delay reload to ensure cookie is saved
+      const value = `/en/${langCode}`;
+      setCookie(value);
+      setTimeout(() => window.location.reload(), 100);
     };
 
     return () => {

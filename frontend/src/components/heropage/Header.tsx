@@ -3,29 +3,6 @@ import AuthModal from "../auth/AuthModal";
 import { useAuth } from "../auth/AuthProvider";
 import type { Page } from "../../types/pages";
 
-declare global {
-  interface Window {
-    google?: {
-      translate: {
-        TranslateElement: new (
-          options: {
-            pageLanguage: string;
-            includedLanguages?: string;
-            layout?: any;
-            autoDisplay?: boolean;
-          },
-          element: string | HTMLElement
-        ) => void;
-        InlineLayout?: {
-          SIMPLE: string;
-        };
-      };
-    };
-    googleTranslateElementInit?: () => void;
-    changeGoogleTranslateLanguage?: (langCode: string) => void;
-  }
-}
-
 type MenuItem = {
   label: string;
   page?: Page;

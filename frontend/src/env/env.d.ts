@@ -48,12 +48,15 @@ declare global {
           },
           element: string | HTMLElement
         ) => void;
-        InlineLayout?: {
-          SIMPLE: string;
+        TranslateElementInit?: {
+          InlineLayout?: {
+            SIMPLE: any;
+          };
         };
       };
     };
     googleTranslateElementInit?: () => void;
+    changeGoogleTranslateLanguage?: (langCode: string) => void;
   }
 }
 
