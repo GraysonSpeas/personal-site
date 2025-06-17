@@ -15,10 +15,7 @@ const setCookie = (value: string) => {
   deleteCookie("googtrans", "speas.org");
   deleteCookie("googtrans", ".speas.org");
 
-  // Set new cookie without domain (best for root domain)
-  document.cookie = `googtrans=${value}; path=/; max-age=31536000; Secure; SameSite=None`;
-
-  // Set new cookie with domain as fallback
+  // Set cookie only on the parent domain
   document.cookie = `googtrans=${value}; path=/; max-age=31536000; domain=.speas.org; Secure; SameSite=None`;
 };
 
