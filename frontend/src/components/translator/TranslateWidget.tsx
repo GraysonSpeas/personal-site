@@ -5,16 +5,14 @@ export default function TranslateWidget() {
     const domain = ".speas.org";
 
     const deleteCookie = (d: string) => {
-      document.cookie = `googtrans=; path=/; domain=${d}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      document.cookie = `googtrans=; path=/; domain=${d}; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None`;
     };
 
     const setCookie = (value: string) => {
-      // Delete both domain variants synchronously first
       deleteCookie("speas.org");
       deleteCookie(domain);
 
-      // Then set new cookie synchronously
-      document.cookie = `googtrans=${value}; path=/; domain=${domain}; max-age=31536000`;
+      document.cookie = `googtrans=${value}; path=/; domain=${domain}; max-age=31536000; Secure; SameSite=None`;
     };
 
     if (!document.getElementById("google-translate-script")) {
@@ -46,7 +44,6 @@ export default function TranslateWidget() {
       const el = document.getElementById("google_translate_element");
       if (el) el.innerHTML = "";
 
-      // Re-init widget after short delay
       setTimeout(() => {
         if (window.google?.translate?.TranslateElement) {
           new window.google.translate.TranslateElement(
