@@ -1,35 +1,25 @@
 import React, { useEffect } from "react";
 
-interface TranslateElementOptions {
-  pageLanguage: string;
-  includedLanguages?: string;
-  layout?: any;
-  autoDisplay?: boolean;
-}
-
 export default function TranslateWidget() {
   useEffect(() => {
+    const domain = ".speas.org";
+
+    const deleteCookie = (d: string) => {
+      document.cookie = `googtrans=; path=/; domain=${d}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    };
+
     const setCookie = (value: string) => {
-      const domain = ".speas.org";
-
-      const deleteCookie = (d: string) => {
-        document.cookie = `googtrans=; path=/; domain=${d}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-      };
-
-      // Delete old cookies for both domain variants
+      // Delete both domain variants synchronously first
       deleteCookie("speas.org");
       deleteCookie(domain);
 
-      setTimeout(() => {
-        const cookieValue = `googtrans=${value}; path=/; domain=${domain}; max-age=31536000`;
-        document.cookie = cookieValue;
-      }, 100);
+      // Then set new cookie synchronously
+      document.cookie = `googtrans=${value}; path=/; domain=${domain}; max-age=31536000`;
     };
 
     if (!document.getElementById("google-translate-script")) {
       const script = document.createElement("script");
-      script.src =
-        "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+      script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
       script.id = "google-translate-script";
       script.async = true;
       document.body.appendChild(script);
@@ -40,8 +30,7 @@ export default function TranslateWidget() {
         new window.google.translate.TranslateElement(
           {
             pageLanguage: "en",
-            includedLanguages:
-              "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
+            includedLanguages: "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
             layout: window.google.translate.InlineLayout.SIMPLE,
             autoDisplay: false,
           },
@@ -54,17 +43,16 @@ export default function TranslateWidget() {
       const value = `/en/${langCode}`;
       setCookie(value);
 
-      // Remove and re-initialize widget
       const el = document.getElementById("google_translate_element");
       if (el) el.innerHTML = "";
 
+      // Re-init widget after short delay
       setTimeout(() => {
         if (window.google?.translate?.TranslateElement) {
           new window.google.translate.TranslateElement(
             {
               pageLanguage: "en",
-              includedLanguages:
-                "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
+              includedLanguages: "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
               layout: window.google.translate.InlineLayout.SIMPLE,
               autoDisplay: false,
             },
