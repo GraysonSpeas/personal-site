@@ -113,17 +113,28 @@ export default function Header({ onNavigate }: HeaderProps) {
   };
 
   // -- LANGUAGE SWITCHER: set googtrans cookie and reload --
-  const changeLanguage = (langCode: string) => {
+function deleteCookie(name: string, domain?: string) {
+  const domainPart = domain ? `;domain=${domain}` : "";
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/${domainPart}`;
+}
+
+const changeLanguage = (langCode: string) => {
+  const host = window.location.hostname;
+
+  // Delete googtrans cookie on all domain variants
+  deleteCookie("googtrans");
+  deleteCookie("googtrans", host);
+  deleteCookie("googtrans", `.${host}`);
+
   if ((window as any).changeGoogleTranslateLanguage) {
     (window as any).changeGoogleTranslateLanguage(langCode);
   } else {
-    // fallback: set cookie and reload
     const value = `/en/${langCode}`;
-    const host = window.location.hostname;
     setCookie("googtrans", value, 365, `.${host}`);
     window.location.replace(window.location.pathname + window.location.search + window.location.hash);
   }
 };
+
 
 
   return (
