@@ -4,15 +4,21 @@ export default function TranslateWidget() {
   useEffect(() => {
     const domain = ".speas.org";
 
-    const deleteCookie = (d: string) => {
-      document.cookie = `googtrans=; path=/; domain=${d}; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None`;
+    const deleteCookie = (d?: string) => {
+      const base = `googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None`;
+      document.cookie = d ? `${base}; domain=${d}` : base;
     };
 
     const setCookie = (value: string) => {
+      // Delete all variants
+      deleteCookie();
       deleteCookie("speas.org");
       deleteCookie(domain);
 
-      document.cookie = `googtrans=${value}; path=/; domain=${domain}; max-age=31536000; Secure; SameSite=None`;
+      // Set both variants
+      const base = `googtrans=${value}; path=/; max-age=31536000; Secure; SameSite=None`;
+      document.cookie = base;
+      document.cookie = `${base}; domain=${domain}`;
     };
 
     if (!document.getElementById("google-translate-script")) {
