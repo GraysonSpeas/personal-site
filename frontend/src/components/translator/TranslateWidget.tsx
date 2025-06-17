@@ -34,8 +34,9 @@ export default function TranslateWidget() {
         new window.google.translate.TranslateElement(
           {
             pageLanguage: "en",
-            includedLanguages: "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
-            layout: window.google.translate.TranslateElementInit?.InlineLayout?.SIMPLE,
+            includedLanguages:
+              "en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja",
+            layout: window.google.translate.InlineLayout.SIMPLE,
             autoDisplay: false,
           },
           "google_translate_element"
@@ -46,7 +47,21 @@ export default function TranslateWidget() {
     window.changeGoogleTranslateLanguage = (langCode: string) => {
       const value = `/en/${langCode}`;
       setCookie(value);
-      setTimeout(() => window.location.reload(), 100);
+
+      const trySetLanguage = () => {
+        const select = document.querySelector(
+          "#google_translate_element select"
+        ) as HTMLSelectElement | null;
+
+        if (select) {
+          select.value = langCode;
+          select.dispatchEvent(new Event("change"));
+        } else {
+          setTimeout(trySetLanguage, 100);
+        }
+      };
+
+      trySetLanguage();
     };
 
     return () => {

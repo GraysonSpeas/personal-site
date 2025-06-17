@@ -48,10 +48,8 @@ declare global {
           },
           element: string | HTMLElement
         ) => void;
-        TranslateElementInit?: {
-          InlineLayout?: {
-            SIMPLE: any;
-          };
+        InlineLayout: {
+          SIMPLE: any;
         };
       };
     };
