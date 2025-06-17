@@ -2,29 +2,47 @@ import React, { useEffect } from 'react';
 
 export default function TranslateHide() {
   useEffect(() => {
-    const hideBanner = () => {
-      // Hide the Google Translate top banner iframe
-      const bannerFrame = document.querySelector('iframe.goog-te-banner-frame');
-      if (bannerFrame) {
-        (bannerFrame as HTMLElement).style.display = 'none';
-      }
-
-      // Also hide the banner container div if it exists
-      const bannerContainer = document.querySelector('.goog-te-banner-frame.skiptranslate');
-      if (bannerContainer) {
-        (bannerContainer as HTMLElement).style.display = 'none';
-      }
-
-      // Fix body offset
+    const hideTranslateBanner = () => {
       document.body.style.top = '0px';
+      document.querySelectorAll('iframe').forEach((el) => {
+        if (
+          el.classList.contains('skiptranslate') ||
+          (el.src && el.src.includes('translate.google.com'))
+        ) {
+          el.style.display = 'none';
+          el.style.zIndex = '-9999';
+          el.style.position = 'absolute';
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+          el.style.height = '1px';
+          el.style.width = '1px';
+        }
+      });
+
+      // Also hide the container banner div if it exists
+      const banner = document.querySelector('.goog-te-banner-frame.skiptranslate');
+      if (banner) {
+        (banner as HTMLElement).style.display = 'none';
+      }
     };
 
-    hideBanner();
+    // Hide immediately on mount
+    hideTranslateBanner();
 
-    const observer = new MutationObserver(hideBanner);
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Setup MutationObserver to watch for new iframes or banner
+    const observer = new MutationObserver(() => {
+      hideTranslateBanner();
+    });
 
-    return () => observer.disconnect();
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Cleanup on unmount
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   return null;

@@ -5,20 +5,10 @@ import type { Page } from "../../types/pages";
 
 declare global {
   interface Window {
-    google?: {
-      translate: {
-        TranslateElement: new (options: {
-          pageLanguage: string;
-          includedLanguages?: string;
-          layout?: any;
-          autoDisplay?: boolean;
-        }, element: string | HTMLElement) => void;
-      };
-    };
+    google?: any;
     googleTranslateElementInit?: () => void;
   }
 }
-
 
 type MenuItem = {
   label: string;
@@ -104,6 +94,7 @@ export default function Header({ onNavigate }: HeaderProps) {
         {
           pageLanguage: "en",
           includedLanguages: LANGUAGES.map((l) => l.code).join(","),
+          layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
           autoDisplay: false,
         },
         "google_translate_element"
@@ -131,18 +122,14 @@ export default function Header({ onNavigate }: HeaderProps) {
 
   // -- LANGUAGE SWITCHER: set googtrans cookie and reload --
   const changeLanguage = (langCode: string) => {
-  if ((window as any).changeGoogleTranslateLanguage) {
-    (window as any).changeGoogleTranslateLanguage(langCode);
-  } else {
-    // fallback: set cookie and reload
+    // Set "googtrans=/en/{langCode}" for both bare and dot-prefixed domain
     const value = `/en/${langCode}`;
     const host = window.location.hostname;
-    setCookie("googtrans", value, 365, host);
-    setCookie("googtrans", value, 365, `.${host}`);
+    setCookie("googtrans", value, 365, host);           // example.com
+    setCookie("googtrans", value, 365, `.${host}`);     // .example.com
+    // now reload preserving path and hash
     window.location.replace(window.location.pathname + window.location.search + window.location.hash);
-  }
-};
-
+  };
 
   return (
     <header

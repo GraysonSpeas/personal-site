@@ -1,8 +1,38 @@
 import React, { useEffect } from 'react';
 
+interface TranslateElementConstructor {
+  new (
+    options: {
+      pageLanguage: string;
+      includedLanguages?: string;
+      layout?: any;
+      autoDisplay?: boolean;
+    },
+    element: string | HTMLElement
+  ): void;
+  InlineLayout?: { SIMPLE: number | string };
+}
+
+interface GoogleTranslate {
+  TranslateElement: TranslateElementConstructor;
+}
+
+declare global {
+  interface Window {
+    googleTranslateElementInit?: () => void;
+    changeGoogleTranslateLanguage?: (langCode: string) => void;
+  }
+}
+
 export default function TranslateWidget() {
   useEffect(() => {
-    // Load Google Translate script if not already loaded
+    const setCookie = (value: string) => {
+      const domain = window.location.hostname;
+      document.cookie = `googtrans=${value};path=/;domain=${domain}`;
+      document.cookie = `googtrans=${value};path=/;domain=.${domain}`;
+    };
+    setCookie('/en/en');
+
     if (!document.getElementById('google-translate-script')) {
       const script = document.createElement('script');
       script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
@@ -11,14 +41,12 @@ export default function TranslateWidget() {
       document.body.appendChild(script);
     }
 
-    // Define the global callback for Google Translate initialization
-    (window as any).googleTranslateElementInit = () => {
-      if (window.google && window.google.translate) {
+    window.googleTranslateElementInit = () => {
+      if (window.google?.translate) {
         new window.google.translate.TranslateElement(
           {
             pageLanguage: 'en',
-            includedLanguages: 'en,es,fr,de,it',
-            layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+            includedLanguages: 'en,es,fr,de,it,hi,pt,ar,ru,zh-CN,ko,ja',
             autoDisplay: false,
           },
           'google_translate_element'
@@ -26,12 +54,16 @@ export default function TranslateWidget() {
       }
     };
 
-    // Cleanup function on unmount
+    window.changeGoogleTranslateLanguage = (langCode: string) => {
+      setCookie(`/en/${langCode}`);
+      window.location.reload();
+    };
+
     return () => {
-      delete (window as any).googleTranslateElementInit;
+      delete window.googleTranslateElementInit;
+      delete window.changeGoogleTranslateLanguage;
     };
   }, []);
 
-  // Render the container where Google Translate will load
-  return <div id="google_translate_element" />;
+  return <div id="google_translate_element" style={{ display: 'none' }} />;
 }
