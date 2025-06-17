@@ -10,21 +10,19 @@ interface TranslateElementOptions {
 export default function TranslateWidget() {
   useEffect(() => {
     const setCookie = (value: string) => {
-      const domain = window.location.hostname;
+      const domain = ".speas.org";
+
       const deleteCookie = (d: string) => {
         document.cookie = `googtrans=; path=/; domain=${d}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
       };
 
-      // Delete old cookies
+      // Delete old cookies for both domain variants
+      deleteCookie("speas.org");
       deleteCookie(domain);
-      deleteCookie(`.${domain}`);
 
-      // Delay before setting new cookie
       setTimeout(() => {
         const cookieValue = `googtrans=${value}; path=/; domain=${domain}; max-age=31536000`;
-        const cookieValueDot = `googtrans=${value}; path=/; domain=.${domain}; max-age=31536000`;
         document.cookie = cookieValue;
-        document.cookie = cookieValueDot;
       }, 100);
     };
 
