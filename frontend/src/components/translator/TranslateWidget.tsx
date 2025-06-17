@@ -2,14 +2,26 @@ import React, { useEffect } from "react";
 
 export default function TranslateWidget() {
   useEffect(() => {
-    const deleteCookie = () => {
-      document.cookie = `googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=None`;
-    };
+    const deleteCookie = (name: string, domain?: string) => {
+  const domainPart = domain ? `; domain=${domain}` : "";
+  // Delete with and without Secure and SameSite flags
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${domainPart}; Secure; SameSite=None`;
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT${domainPart}`;
+};
 
-    const setCookie = (value: string) => {
-      deleteCookie();
-      document.cookie = `googtrans=${value}; path=/; max-age=31536000; Secure; SameSite=None`;
-    };
+const setCookie = (value: string) => {
+  // Delete all domain variants
+  deleteCookie("googtrans");
+  deleteCookie("googtrans", "speas.org");
+  deleteCookie("googtrans", ".speas.org");
+
+  // Set new cookie without domain (best for root domain)
+  document.cookie = `googtrans=${value}; path=/; max-age=31536000; Secure; SameSite=None`;
+
+  // Set new cookie with domain as fallback
+  document.cookie = `googtrans=${value}; path=/; max-age=31536000; domain=.speas.org; Secure; SameSite=None`;
+};
+
 
     if (!document.getElementById("google-translate-script")) {
       const script = document.createElement("script");
