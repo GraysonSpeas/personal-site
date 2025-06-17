@@ -120,7 +120,6 @@ export default function Header({ onNavigate }: HeaderProps) {
     // fallback: set cookie and reload
     const value = `/en/${langCode}`;
     const host = window.location.hostname;
-    setCookie("googtrans", value, 365, host);
     setCookie("googtrans", value, 365, `.${host}`);
     window.location.replace(window.location.pathname + window.location.search + window.location.hash);
   }
