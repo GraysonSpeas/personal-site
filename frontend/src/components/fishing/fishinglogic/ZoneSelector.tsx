@@ -21,6 +21,7 @@ export function ZoneSelector({ refetch }: { refetch: () => void }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zoneId }),
+        credentials: 'include',
       });
       const data = await res.json();
       if (data.success) {
