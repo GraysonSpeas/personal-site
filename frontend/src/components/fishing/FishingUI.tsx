@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
 import { FishingInventoryUI } from './fishingui/FishingInventoryUI';
-import { BasicFishingUI } from './fishingui/BasicFishingUI';
+import { FishingMinigameUI } from './fishingui/FishingMinigameUI';
 import { ZoneSelector } from './fishinglogic/ZoneSelector';
 
 export function FishingUI() {
@@ -21,7 +21,7 @@ export function FishingUI() {
         <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <BasicFishingUI refetch={refetch} />
+        <FishingMinigameUI refetch={refetch} />
         <ZoneSelector refetch={refetch} />
       </div>
     </div>
