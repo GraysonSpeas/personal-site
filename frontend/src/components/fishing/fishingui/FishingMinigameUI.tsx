@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { API_BASE } from '../../../config'
 import { FishingMinigame } from '../fishinglogic/fishingMinigameLogic'
 
@@ -21,10 +21,13 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
   }>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const caughtCalledRef = useRef(false)
+
   async function startFishing() {
     setPhase('waiting')
     setError(null)
     setCaughtFish(null)
+    caughtCalledRef.current = false
 
     try {
       const res = await fetch(`${API_BASE}/minigame/start`, {
@@ -36,7 +39,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
       const json = await res.json()
       setFishPreview(json.fishPreview)
 
-      await new Promise((r) => setTimeout(r, json.biteDelay))
+      await new Promise((r) => setTimeout(r, json.biteDelay + 200))
       setPhase('ready')
     } catch (e: any) {
       setPhase('idle')
@@ -49,39 +52,44 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
     setError(null)
   }
 
-async function onResult(result: 'caught' | 'escaped') {
-  if (!fishPreview) {
-    setPhase('idle');
-    return;
-  }
+  async function onResult(result: 'caught' | 'escaped') {
+    if (caughtCalledRef.current) return
+    caughtCalledRef.current = true
 
-  if (result === 'caught') {
-    try {
-      const res = await fetch(`${API_BASE}/minigame/catch`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to catch fish');
-
-      setCaughtFish(json.fish);
-      setPhase('success');
-      await refetch();
-    } catch (e: any) {
-      setError(e.message || 'Unknown error');
-      setPhase('failed');
+    if (!fishPreview) {
+      setPhase('idle')
+      caughtCalledRef.current = false
+      return
     }
-  } else {
-    setPhase('failed');
-  }
 
-  setFishPreview(null);
-}
+    if (result === 'caught') {
+      try {
+        const res = await fetch(`${API_BASE}/minigame/catch`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Failed to catch fish')
+
+        setCaughtFish(json.fish)
+        setPhase('success')
+        await refetch()
+      } catch (e: any) {
+        setError(e.message || 'Unknown error')
+        setPhase('failed')
+      }
+    } else {
+      setPhase('failed')
+    }
+
+    setFishPreview(null)
+  }
 
   function reset() {
     setPhase('idle')
     setCaughtFish(null)
     setError(null)
+    caughtCalledRef.current = false
   }
 
   return (

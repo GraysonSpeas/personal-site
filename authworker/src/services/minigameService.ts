@@ -1,12 +1,12 @@
 import { generateFish } from './generateFishService';
 import { saveCaughtFish } from './putFish';
+import { getUserEmail } from './authHelperService';
+import type { Context } from 'hono';
 
 interface FishCatchSession {
   fish: any;
   biteTime: number;
 }
-
-const sessions = new Map<string, FishCatchSession>();
 
 async function getUserIdByEmail(db: D1Database, email: string): Promise<number | null> {
   const result = await db
@@ -60,7 +60,12 @@ async function getFishTypesForZone(db: D1Database, zoneId: number): Promise<any[
   }));
 }
 
-export async function startFishing(email: string, db: D1Database) {
+export async function startFishing(c: Context<{ Bindings: any }>) {
+  const email = await getUserEmail(c);
+  if (!email) throw new Error('Unauthorized');
+
+  const db = c.env.DB as D1Database;
+
   const zoneId = await getUserZone(db, email);
   if (zoneId === null) throw new Error('User zone not found');
 
@@ -69,11 +74,13 @@ export async function startFishing(email: string, db: D1Database) {
   const fishTypes = await getFishTypesForZone(db, zoneId);
 
   const fish = await generateFish(fishTypes, weatherId, zoneName);
-
   const biteDelay = 4000 + Math.random() * 4000;
   const biteTime = Date.now() + biteDelay;
 
-  sessions.set(email, { fish, biteTime });
+  await db.prepare(`
+    INSERT OR REPLACE INTO fishingSessions (email, fish_json, bite_time)
+    VALUES (?, ?, ?)
+  `).bind(email, JSON.stringify(fish), biteTime).run();
 
   return {
     biteDelay: Math.round(biteDelay),
@@ -86,23 +93,37 @@ export async function startFishing(email: string, db: D1Database) {
   };
 }
 
-export async function catchFish(email: string, db: D1Database) {
+export async function catchFish(c: Context<{ Bindings: any }>) {
+  const email = await getUserEmail(c);
+  if (!email) throw new Error('Unauthorized');
+
+  const db = c.env.DB as D1Database;
+
   const userId = await getUserIdByEmail(db, email);
   if (!userId) throw new Error('User not found');
 
-  const session = sessions.get(email);
-  if (!session) throw new Error('No fishing session found');
+  const result = await db.prepare(`
+    SELECT fish_json, bite_time FROM fishingSessions WHERE email = ?
+  `).bind(email).first<{ fish_json: string, bite_time: number }>();
+
+  if (!result) throw new Error('No fishing session found');
+
+  const session: FishCatchSession = {
+    fish: JSON.parse(result.fish_json),
+    biteTime: result.bite_time,
+  };
 
   const now = Date.now();
-  const maxCatchWindow = 15000; // 15s after biteTime
+  const maxCatchWindow = 30000;
 
   if (now > session.biteTime + maxCatchWindow) {
-    sessions.delete(email);
+    await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
     throw new Error('Catch window expired');
   }
 
   await saveCaughtFish(userId, session.fish, db);
-  sessions.delete(email);
+
+  await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
 
   return { caught: true, fish: session.fish };
 }

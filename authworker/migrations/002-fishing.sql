@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS gear;
 DROP TABLE IF EXISTS resources;
 DROP TABLE IF EXISTS permits;
 DROP TABLE IF EXISTS currencies;
+DROP TABLE IF EXISTS fishingSessions;
 DROP TABLE IF EXISTS fishTypeZones;
 DROP TABLE IF EXISTS resourceTypeZones;
 DROP TABLE IF EXISTS users;
@@ -54,7 +55,7 @@ CREATE TABLE IF NOT EXISTS resourceTypeZones (
   PRIMARY KEY (resource_type_id, zone_id)
 );
 
--- Users table, referencing zoneTypes
+-- Users table
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
@@ -73,6 +74,14 @@ CREATE TABLE IF NOT EXISTS users (
   current_zone_id INTEGER DEFAULT 1,
   current_weather_id INTEGER,
   FOREIGN KEY (current_zone_id) REFERENCES zoneTypes(id)
+);
+
+-- Persistent fishing sessions (replaces in-memory sessions)
+CREATE TABLE IF NOT EXISTS fishingSessions (
+  email TEXT PRIMARY KEY,
+  fish_json TEXT NOT NULL,
+  bite_time INTEGER NOT NULL,
+  FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE
 );
 
 -- Dependent tables referencing users
