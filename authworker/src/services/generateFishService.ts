@@ -79,8 +79,9 @@ function pickModifier(): string | null {
   return null;
 }
 
-function generateLength(weight: number): number {
-  return +(weight * (1.8 + Math.random() * 0.4)).toFixed(1);
+function generateLength(weight: number, baseWeight: number, baseLength: number): number {
+  const ratio = weight / baseWeight;
+  return +(baseLength * ratio).toFixed(1);
 }
 
 function isMassive(weight: number, baseWeight: number): boolean {
@@ -121,7 +122,7 @@ export async function generateFish(
   console.log('Selected fish:', fish); // Log the selected fish
 
   const weight = +(fish.base_weight * (0.5 + Math.random())).toFixed(2);
-  const length = generateLength(weight);
+  const length = generateLength(weight, fish.base_weight, fish.base_length);
   const massive = isMassive(weight, fish.base_weight);
   const modifier = pickModifier();
 
