@@ -3,32 +3,45 @@ import { useEffect, useRef, useState } from 'react'
 export function FishingMinigame({
   fish,
   onResult,
+  biteTime,
+  castBonus = 0,
 }: {
   fish: { stamina: number; tug_strength: number; direction_change_rate?: number }
   onResult: (result: 'caught' | 'escaped') => void
+  biteTime: number | null
+  castBonus?: number
 }) {
-  const [stamina, setStamina] = useState(0)
+  // Start stamina with castBonus included
+  const [stamina, setStamina] = useState(castBonus)
   const [balance, setBalance] = useState(50)
   const [focus, setFocus] = useState(100)
-  const [tugDirection, setTugDirection] = useState(1) // fish tug direction (-1 to 1)
+  const [tugDirection, setTugDirection] = useState(1)
 
   const keys = useRef({ left: false, right: false })
   const loopRef = useRef<number | null>(null)
-
-  // For blending tug direction smoothly over time
-  const effectiveTugRef = useRef(0) // -1 to 1, blends fish tug & player input
-
-  // Keep refs updated for latest states inside intervals
+  const effectiveTugRef = useRef(0)
   const balanceRef = useRef(balance)
   const focusRef = useRef(focus)
   const staminaRef = useRef(stamina)
   const tugDirectionRef = useRef(tugDirection)
 
-  useEffect(() => { balanceRef.current = balance }, [balance])
-  useEffect(() => { focusRef.current = focus }, [focus])
-  useEffect(() => { staminaRef.current = stamina }, [stamina])
-  useEffect(() => { tugDirectionRef.current = tugDirection }, [tugDirection])
+  // Track if reaction bonus applied
+  const reactedRef = useRef(false)
 
+  useEffect(() => {
+    balanceRef.current = balance
+  }, [balance])
+  useEffect(() => {
+    focusRef.current = focus
+  }, [focus])
+  useEffect(() => {
+    staminaRef.current = stamina
+  }, [stamina])
+  useEffect(() => {
+    tugDirectionRef.current = tugDirection
+  }, [tugDirection])
+
+  // Input tracking
   const getInput = () => {
     if (keys.current.left && !keys.current.right) return -1
     if (keys.current.right && !keys.current.left) return 1
@@ -53,6 +66,7 @@ export function FishingMinigame({
     }
   }, [])
 
+  // Fish tug oscillation
   useEffect(() => {
     let animationFrame: number
     let phaseStart = Date.now()
@@ -61,33 +75,38 @@ export function FishingMinigame({
     const holdMin = 7000
     const holdMax = 10000
     const transitionDuration = 3000
-
     const rate = fish.direction_change_rate ?? 100
 
-    // Helper to calc a new randomized hold interval for each hold phase
     const getHoldInterval = () =>
       holdMin + (holdMax - holdMin) * (1 - rate / 100) * (0.8 + Math.random() * 0.4)
 
     let holdInterval = getHoldInterval()
-
     let startDirection = tugDirectionRef.current
     let targetDirection = tugDirectionRef.current
+    let directionBias = 0
 
     const step = () => {
       const now = Date.now()
       const elapsed = now - phaseStart
 
       if (phase === 'hold') {
-        // recalc holdInterval on phase start
         if (elapsed < 100) holdInterval = getHoldInterval()
 
+        const sway = Math.sin(now / 300) * 0.2
+        setTugDirection(startDirection + sway)
+
         if (elapsed >= holdInterval) {
-          if (Math.random() < 0.5) targetDirection = startDirection === 1 ? -1 : 1
+          const biasFactor = Math.random() + directionBias * 0.5
+          if (biasFactor > 0.6) targetDirection = 1
+          else if (biasFactor < 0.4) targetDirection = -1
           else targetDirection = startDirection
+
+          directionBias += targetDirection * 0.2
+          directionBias = Math.max(-1, Math.min(1, directionBias))
+
           phase = 'transition'
           phaseStart = now
         }
-        setTugDirection(startDirection)
       } else if (phase === 'transition') {
         const progress = Math.min(elapsed / transitionDuration, 1)
         const newDir = startDirection + (targetDirection - startDirection) * progress
@@ -107,56 +126,50 @@ export function FishingMinigame({
     return () => cancelAnimationFrame(animationFrame)
   }, [fish.direction_change_rate])
 
+  // Game logic loop
   useEffect(() => {
     loopRef.current = window.setInterval(() => {
-      const inputDir = getInput() // -1, 0, or 1
+      const inputDir = getInput()
+
+      if (!reactedRef.current && inputDir !== 0) {
+        // Apply +20 stamina bonus if reacting within 1.5s of biteTime
+        if (biteTime && Date.now() - biteTime <= 1500) {
+          setStamina((s) => Math.min(fish.stamina, s + 20))
+        }
+        reactedRef.current = true
+      }
 
       const currentFocus = focusRef.current
       const currentBalance = balanceRef.current
       const currentStamina = staminaRef.current
       const currentFishTug = tugDirectionRef.current
 
-      // Smooth blend factor, adjust for smoothness
       const blendSpeed = 0.3
-
-      // Adjust focus
       const focusDrain = inputDir !== 0 ? -3.3 : 9
       const newFocus = Math.max(0, Math.min(50, currentFocus + focusDrain))
 
-      // Tug strengths
       const playerTugStrength = newFocus === 0 ? 20 : 90
       const safeFishTugStrength = Math.max(fish.tug_strength, 1)
-
-      // Player tug influence scaled by ratio of player to fish strength
       const playerTugWeight = (playerTugStrength / safeFishTugStrength) * 1.5
 
-      // Desired tug blends fish tug + player tug input weighted
       const desiredTug = currentFishTug + inputDir * playerTugWeight
-
-      // Clamp desired tug between -1 and 1
       const clampedDesiredTug = Math.max(-1, Math.min(1, desiredTug))
 
-      // Smoothly interpolate effective tug toward desired tug
       effectiveTugRef.current += (clampedDesiredTug - effectiveTugRef.current) * blendSpeed
 
-      // Fish tug per tick fixed
       const fishTugPerTick = 2
+      const pullForce = fishTugPerTick * effectiveTugRef.current * 1.5
 
-      // Pull force applied to balance from effective tug
-      const pullForce = fishTugPerTick * effectiveTugRef.current *1.5
-
-      // Update balance
       let newBalance = currentBalance + pullForce
       newBalance = Math.max(0, Math.min(100, newBalance))
 
-      // Stamina gain/loss zones
       let staminaGain = 0
-      if (newBalance >= 35 && newBalance <= 65) staminaGain = 0.7
-      else if (newBalance <= 15 || newBalance >= 85) staminaGain = -0.7
+      if (newBalance >= 35 && newBalance <= 65) staminaGain = 1
+      else if (newBalance <= 15 || newBalance >= 85) staminaGain = -0.5
+      else staminaGain = 0.3
 
       let newStamina = Math.max(0, Math.min(fish.stamina, currentStamina + staminaGain))
 
-      // Update states
       setFocus(newFocus)
       setBalance(newBalance)
       setStamina(newStamina)
@@ -165,7 +178,18 @@ export function FishingMinigame({
     return () => {
       if (loopRef.current) clearInterval(loopRef.current)
     }
-  }, [fish])
+  }, [fish, biteTime])
+
+  // Auto escape if no reaction in 4 seconds
+  useEffect(() => {
+    if (!biteTime) return
+
+    const timeoutId = setTimeout(() => {
+      if (!reactedRef.current) onResult('escaped')
+    }, 4000)
+
+    return () => clearTimeout(timeoutId)
+  }, [biteTime, onResult])
 
   useEffect(() => {
     if (stamina >= fish.stamina) onResult('caught')
@@ -232,7 +256,7 @@ export function FishingMinigame({
 
       <div style={{ marginTop: 16 }}>
         <p>
-          <strong>Fish is tugging</strong>: {tugDirection ? '⬅️ Left' : '➡️ Right'}
+          <strong>Fish is tugging</strong>: {tugDirectionRef.current < 0 ? '⬅️ Left' : '➡️ Right'}
         </p>
         <p>Hold A/D to adjust!</p>
       </div>
