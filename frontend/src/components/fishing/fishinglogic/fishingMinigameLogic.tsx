@@ -15,7 +15,7 @@ export function FishingMinigame({
   const [stamina, setStamina] = useState(castBonus)
   const [balance, setBalance] = useState(50)
   const [focus, setFocus] = useState(100)
-  const [tugDirection, setTugDirection] = useState(1)
+  const [tugDirection, setTugDirection] = useState(Math.random() < 0.5 ? -1 : 1)
 
   const keys = useRef({ left: false, right: false })
   const loopRef = useRef<number | null>(null)

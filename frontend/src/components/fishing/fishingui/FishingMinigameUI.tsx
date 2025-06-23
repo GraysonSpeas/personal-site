@@ -32,7 +32,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
   useEffect(() => {
     if (phase !== 'casting') return
     const id = setInterval(() => {
-      let p = castPowerRef.current + castDirRef.current * 1.4
+      let p = castPowerRef.current + castDirRef.current * 2
       if (p >= 100) {
         p = 100
         castDirRef.current = -1
@@ -184,9 +184,9 @@ return (
     bottom: 0,
     left: 0,
     right: 0,
-    height: `${Math.min(castPower * 1.04, 100)}%`, // scale by 1.05, max 100%
-    backgroundColor: `hsl(${(castPower / 100) * 120}, 80%, 70%)`,
-    transition: 'height 0.1s linear, background-color 0.1s linear',
+    height: `${Math.min(castPowerRef.current * 1.03, 100)}%`,
+    backgroundColor: `hsl(${(castPowerRef.current / 100) * 120}, 80%, 70%)`,
+    transition: phase === 'casting' ? 'none' : 'height 0.1s linear, background-color 0.1s linear',
     borderRadius: 2,
   }}
 />
