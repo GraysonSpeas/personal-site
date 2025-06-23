@@ -75,7 +75,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
     if (castPowerRef.current >= 90) {
       bonus = 20
       txt = 'Perfect'
-    } else if (castPowerRef.current >= 60) {
+    } else if (castPowerRef.current >= 80) {
       bonus = 10
       txt = 'Good'
     }
