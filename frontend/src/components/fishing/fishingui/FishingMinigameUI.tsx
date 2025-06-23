@@ -23,6 +23,20 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
 
   const caughtCalledRef = useRef(false)
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ') {
+        e.preventDefault()
+        if (phase === 'idle') startFishing()
+        else if (phase === 'ready') catchFish()
+        else if (phase === 'success' || phase === 'failed') reset()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [phase])
+
   async function startFishing() {
     setPhase('waiting')
     setError(null)
@@ -95,31 +109,23 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
   return (
     <div>
       {phase === 'idle' && <button onClick={startFishing}>Fish</button>}
-
       {phase === 'waiting' && <p>Waiting for a bite...</p>}
-
       {phase === 'ready' && <button onClick={catchFish}>Catch the fish!</button>}
-
       {phase === 'in-minigame' && fishPreview && (
         <FishingMinigame fish={fishPreview} onResult={onResult} />
       )}
-
       {phase === 'success' && caughtFish && (
         <div>
-          <p>
-            🎉 You caught a {caughtFish.species} ({caughtFish.rarity})!
-          </p>
+          <p>🎉 You caught a {caughtFish.species} ({caughtFish.rarity})!</p>
           <button onClick={reset}>Catch Again</button>
         </div>
       )}
-
       {phase === 'failed' && (
         <div>
           <p>😢 The fish got away.</p>
           <button onClick={reset}>Try Again</button>
         </div>
       )}
-
       {error && <p style={{ color: 'red' }}>Error: {error}</p>}
     </div>
   )
