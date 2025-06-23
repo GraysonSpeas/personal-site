@@ -20,11 +20,11 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
 
   // Pastel color bar with smooth height and color transitions
   const getBarStyle = () => {
-    const hue = (castPower / 100) * 120 // 0=red → 120=green
+    const hue = Math.pow(castPower / 100, 1.5) * 110
+ // 0=red → 120=green
     return {
       height: `${castPower}%`,
-      backgroundColor: `hsl(${hue}, 80%, 70%)`, // pastel colors
-      transition: 'height 0.1s linear, background-color 0.1s linear',
+      backgroundColor: `hsl(${hue}, 70%, 60%)`, // pastel colors
     }
   }
 
@@ -184,12 +184,12 @@ return (
     bottom: 0,
     left: 0,
     right: 0,
-    height: `${Math.min(castPowerRef.current * 1.03, 100)}%`,
-    backgroundColor: `hsl(${(castPowerRef.current / 100) * 120}, 80%, 70%)`,
-    transition: phase === 'casting' ? 'none' : 'height 0.1s linear, background-color 0.1s linear',
     borderRadius: 2,
+    transition: phase === 'casting' ? 'none' : 'height 0.1s linear, background-color 0.1s linear',
+    ...getBarStyle(),
   }}
 />
+
         </div>
       </div>
     )}
