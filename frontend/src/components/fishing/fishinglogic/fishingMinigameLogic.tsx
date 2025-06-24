@@ -11,7 +11,6 @@ export function FishingMinigame({
   biteTime: number | null
   castBonus?: number
 }) {
-  // Start stamina with castBonus included
   const [stamina, setStamina] = useState(castBonus)
   const [balance, setBalance] = useState(50)
   const [focus, setFocus] = useState(100)
@@ -24,8 +23,6 @@ export function FishingMinigame({
   const focusRef = useRef(focus)
   const staminaRef = useRef(stamina)
   const tugDirectionRef = useRef(tugDirection)
-
-  // Track if reaction bonus applied
   const reactedRef = useRef(false)
 
   useEffect(() => {
@@ -41,7 +38,6 @@ export function FishingMinigame({
     tugDirectionRef.current = tugDirection
   }, [tugDirection])
 
-  // Input tracking
   const getInput = () => {
     if (keys.current.left && !keys.current.right) return -1
     if (keys.current.right && !keys.current.left) return 1
@@ -66,32 +62,39 @@ export function FishingMinigame({
     }
   }, [])
 
-  // Fish tug oscillation
   useEffect(() => {
     let animationFrame: number
     let phaseStart = Date.now()
     let phase = 'hold'
 
-    const holdMin = 7000
-    const holdMax = 10000
-    const transitionDuration = 3000
-    const rate = fish.direction_change_rate ?? 100
+    const baseHoldMin = 500
+    const baseHoldMax = 1500
+    const baseTransitionDuration = 200
 
-    const getHoldInterval = () =>
-      holdMin + (holdMax - holdMin) * (1 - rate / 100) * (0.8 + Math.random() * 0.4)
+    const rateRaw = fish.direction_change_rate ?? 100
+    const rate = Math.max(10, rateRaw)
+
+    const holdMultiplier = 100 / rate // Higher rate → shorter hold time
+    const transitionMultiplier = 100 / rate // Higher rate → faster transitions
+
+    const getHoldInterval = () => {
+      const min = baseHoldMin * holdMultiplier
+      const max = baseHoldMax * holdMultiplier * 1.5 // Adds some light RNG
+      return min + Math.random() * (max - min)
+    }
 
     let holdInterval = getHoldInterval()
     let startDirection = tugDirectionRef.current
     let targetDirection = tugDirectionRef.current
     let directionBias = 0
 
+    const smoothstep = (t: number) => t * t * (3 - 2 * t)
+
     const step = () => {
       const now = Date.now()
       const elapsed = now - phaseStart
 
       if (phase === 'hold') {
-        if (elapsed < 100) holdInterval = getHoldInterval()
-
         const sway = Math.sin(now / 300) * 0.2
         setTugDirection(startDirection + sway)
 
@@ -101,21 +104,26 @@ export function FishingMinigame({
           else if (biasFactor < 0.4) targetDirection = -1
           else targetDirection = startDirection
 
-          directionBias += targetDirection * 0.2
+          directionBias += targetDirection * 0.05
           directionBias = Math.max(-1, Math.min(1, directionBias))
 
           phase = 'transition'
           phaseStart = now
         }
       } else if (phase === 'transition') {
+        const transitionDuration = baseTransitionDuration * transitionMultiplier
         const progress = Math.min(elapsed / transitionDuration, 1)
-        const newDir = startDirection + (targetDirection - startDirection) * progress
-        setTugDirection(newDir)
+        const easedProgress = smoothstep(progress)
+        const newDir = startDirection + (targetDirection - startDirection) * easedProgress
+
+        if (progress > 0.9) setTugDirection(targetDirection)
+        else setTugDirection(newDir)
 
         if (progress >= 1) {
           startDirection = targetDirection
           phase = 'hold'
           phaseStart = now
+          holdInterval = getHoldInterval()
         }
       }
 
@@ -126,13 +134,11 @@ export function FishingMinigame({
     return () => cancelAnimationFrame(animationFrame)
   }, [fish.direction_change_rate])
 
-  // Game logic loop
   useEffect(() => {
     loopRef.current = window.setInterval(() => {
       const inputDir = getInput()
 
       if (!reactedRef.current && inputDir !== 0) {
-        // Apply +20 stamina bonus if reacting within 1.5s of biteTime
         if (biteTime && Date.now() - biteTime <= 1500) {
           setStamina((s) => Math.min(fish.stamina, s + 20))
         }
@@ -180,7 +186,6 @@ export function FishingMinigame({
     }
   }, [fish, biteTime])
 
-  // Auto escape if no reaction in 4 seconds
   useEffect(() => {
     if (!biteTime) return
 

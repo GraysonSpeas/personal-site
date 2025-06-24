@@ -237,7 +237,7 @@ const changeLanguage = (langCode: string) => {
     >
       <div className="flex flex-col gap-2">
         <p className="text-sm">Signed in as</p>
-        <p className="font-medium">{user.email}</p>
+        <p className="font-medium">{user.email.split("@")[0]}</p>
         <button
           onClick={() => {
             logout();

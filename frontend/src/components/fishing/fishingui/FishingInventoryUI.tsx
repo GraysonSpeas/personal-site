@@ -58,69 +58,57 @@ export function FishingInventoryUI({ data, loading, error }: Props) {
 
   const zoneName = current_zone_id ? zoneMap[current_zone_id] || `Unknown Zone (${current_zone_id})` : 'No zone selected'
 
-  return (
-    <div>
-      <h2>Username: {email || 'Unknown'}</h2>
+return (
+  <div>
+    <p>
+      <strong>Username:</strong> {email ? email.split("@")[0] : "Unknown"} &nbsp;|&nbsp;{" "}
+      <strong>Current Zone:</strong> {zoneName} &nbsp;|&nbsp;{" "}
+      <strong>Gold:</strong> {currency?.gold || 0}{" "}
+      <strong>Pearls:</strong> {currency?.pearls || 0}{" "}
+      <strong>Coral Shards:</strong> {currency?.coral_shards || 0}{" "}
+      <strong>Echo Shards:</strong> {currency?.echo_shards || 0} &nbsp;|&nbsp;{" "}
+      <strong>Resources:</strong>{" "}
+      {resources?.length
+        ? resources.map((r) => `${r.resource_name}: ${r.quantity}`).join(", ")
+        : "No resources"}{" "}
+      &nbsp;|&nbsp; <strong>Gear:</strong>{" "}
+      {gear?.length
+        ? gear.map((g) => `${g.name} (${g.type})`).join(", ")
+        : "No gear"}{" "}
+      &nbsp;|&nbsp; <strong>Bait:</strong>{" "}
+      {bait?.length
+        ? bait.map((b) => `${b.bait_type}: ${b.quantity}`).join(", ")
+        : "No bait"}
+    </p>
 
-      <h3>Current Zone</h3>
-      <p>{zoneName}</p>
-
-      <h3>Currency</h3>
-      <ul>
-        <li>Gold: {currency?.gold ?? 0}</li>
-        <li>Pearls: {currency?.pearls ?? 0}</li>
-        <li>Coral Shards: {currency?.coral_shards ?? 0}</li>
-        <li>Echo Shards: {currency?.echo_shards ?? 0}</li>
-      </ul>
-
-      <h3>Fish Inventory</h3>
-      <ul>
-        {fishStacks.length ? fishStacks.map((f, i) => (
+    <h3>Fish Inventory:</h3>
+    <ul>
+      {fishStacks.length ? (
+        fishStacks.map((f, i) => (
           <li key={i}>
-            {f.species} {f.modifier ? `(${f.modifier})` : ''} — Qty: {f.quantity}
+            {f.species} {f.modifier ? `(${f.modifier})` : ""} — Qty: {f.quantity}
           </li>
-        )) : <li>No fish caught</li>}
-      </ul>
-
-      <h3>Biggest Fish (All Time)</h3>
-      {biggestFish.length ? (
-        <ul>
-          {biggestFish.map((bf, i) => (
-            <li key={i}>
-              {bf.species} {bf.modifier ? `(${bf.modifier})` : ''} — {typeof bf.max_weight === 'number' ? bf.max_weight.toFixed(2) : 'N/A'} lbs / {typeof bf.max_length === 'number' ? bf.max_length.toFixed(2) : 'N/A'} in caught on {new Date(bf.caught_at).toLocaleDateString()}
-            </li>
-          ))}
-        </ul>
+        ))
       ) : (
-        <p>No biggest fish recorded</p>
+        <li>No fish caught</li>
       )}
+    </ul>
 
-      <h3>Resources</h3>
+    <h3>Biggest Fish (All Time):</h3>
+    {biggestFish.length ? (
       <ul>
-        {resources?.length ? resources.map((r, i) => (
+        {biggestFish.map((bf, i) => (
           <li key={i}>
-            {r.resource_name}: {r.quantity}
+            {bf.species} {bf.modifier ? `(${bf.modifier})` : ""} —{" "}
+            {typeof bf.max_weight === "number" ? bf.max_weight.toFixed(2) : "N/A"} lbs /{" "}
+            {typeof bf.max_length === "number" ? bf.max_length.toFixed(2) : "N/A"} in caught on{" "}
+            {new Date(bf.caught_at).toLocaleDateString()}
           </li>
-        )) : <li>No resources</li>}
+        ))}
       </ul>
-
-      <h3>Gear</h3>
-      <ul>
-        {gear?.length ? gear.map((g, i) => (
-          <li key={i}>
-            {g.name} ({g.type})
-          </li>
-        )) : <li>No gear</li>}
-      </ul>
-
-      <h3>Bait</h3>
-      <ul>
-        {bait?.length ? bait.map((b, i) => (
-          <li key={i}>
-            {b.bait_type}: {b.quantity}
-          </li>
-        )) : <li>No bait</li>}
-      </ul>
-    </div>
-  )
+    ) : (
+      <p>No biggest fish recorded</p>
+    )}
+  </div>
+)
 }
