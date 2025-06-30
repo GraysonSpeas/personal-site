@@ -87,7 +87,7 @@ export function FishingMinigame({
     let yellowSize = 0
     let greenSize = 0
     const direction = directionRef.current
-    const elapsed = (time - Date.now()) / 1000 // adjusted to not rely on biteTime
+    const elapsed = (time - Date.now()) / 1000
 
     switch (barType) {
       case 'dynamicSmall':
@@ -261,6 +261,13 @@ export function FishingMinigame({
 
   useEffect(() => {
     if (snapped) return
+console.log({
+  tugDirection: tugDirectionRef.current,
+  effectiveTug: effectiveTugRef.current,
+  fishTugStrength: fish.tugStrength,
+  keys: keys.current,
+  balance: balanceRef.current,
+})
 
     const interval = setInterval(() => {
       const inputDir =

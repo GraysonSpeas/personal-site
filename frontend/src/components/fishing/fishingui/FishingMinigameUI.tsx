@@ -7,6 +7,9 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [fishPreview, setFishPreview] = useState<any>(null)
+  useEffect(() => {
+  console.log('Updated fishPreview:', fishPreview);
+}, [fishPreview]);
   const [caughtFish, setCaughtFish] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -71,6 +74,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
         throw new Error('Failed to start')
       }
       const json = await res.json()
+      console.log(json)
       setFishPreview(json.fishPreview)
       backendBiteDelayRef.current = json.biteDelay || 4000
     } catch (e: any) {
