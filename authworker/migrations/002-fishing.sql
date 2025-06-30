@@ -1,4 +1,4 @@
--- DROP in order respecting foreign keys
+-- DROP TABLES in order respecting foreign keys
 DROP TABLE IF EXISTS equipped;
 DROP TABLE IF EXISTS achievements;
 DROP TABLE IF EXISTS biggest_fish;
@@ -30,8 +30,16 @@ CREATE TABLE IF NOT EXISTS zoneTypes (
 
 CREATE TABLE IF NOT EXISTS resourceTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT UNIQUE NOT NULL,
-  rarity TEXT NOT NULL DEFAULT 'common'
+  name TEXT UNIQUE,
+  base_weight REAL,
+  base_length REAL,
+  stamina INTEGER,
+  tugStrength INTEGER,
+  changeRate INTEGER,
+  changeStrength INTEGER,
+  sell_price INTEGER,
+  rarity TEXT,
+  barType TEXT
 );
 
 CREATE TABLE IF NOT EXISTS fishTypes (
@@ -40,10 +48,12 @@ CREATE TABLE IF NOT EXISTS fishTypes (
   base_weight REAL NOT NULL,
   base_length REAL NOT NULL,
   stamina INTEGER NOT NULL,
-  tug_strength INTEGER NOT NULL,
-  direction_change_rate INTEGER NOT NULL,
+  tugStrength INTEGER NOT NULL,
+  changeRate INTEGER NOT NULL,
+  changeStrength INTEGER NOT NULL DEFAULT 100,
   sell_price INTEGER NOT NULL,
-  rarity TEXT NOT NULL DEFAULT 'common'
+  rarity TEXT NOT NULL DEFAULT 'common',
+  barType TEXT NOT NULL DEFAULT 'middle'
 );
 
 -- Linking table for resourceTypes and zoneTypes
@@ -107,15 +117,18 @@ CREATE TABLE IF NOT EXISTS permits (
 CREATE TABLE IF NOT EXISTS resources (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
-  resource_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  rarity TEXT NOT NULL DEFAULT 'common',
   quantity INTEGER NOT NULL DEFAULT 0,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  caught_at DATETIME NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS gear (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
-  gear_type TEXT NOT NULL,
+  gear_type TEXT NOT NULL CHECK (gear_type IN ('rod', 'hook')),
   gear_name TEXT NOT NULL,
   stats JSON,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -123,9 +136,11 @@ CREATE TABLE IF NOT EXISTS gear (
 
 CREATE TABLE IF NOT EXISTS bait (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER,
   bait_name TEXT NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0,
+  stats JSON,
+  sell_price INTEGER DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -138,7 +153,6 @@ CREATE TABLE IF NOT EXISTS fish (
   length REAL NOT NULL,
   modifier TEXT,
   quantity INTEGER NOT NULL DEFAULT 0,
-  difficulty INTEGER NOT NULL DEFAULT 1,
   caught_at DATETIME NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE(user_id, species, modifier)
@@ -181,12 +195,10 @@ CREATE TABLE IF NOT EXISTS equipped (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL UNIQUE,
   equipped_rod_id INTEGER,
-  equipped_tool_id INTEGER,
-  equipped_bauble_id INTEGER,
+  equipped_hook_id INTEGER,
   equipped_bait_id INTEGER,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (equipped_rod_id) REFERENCES gear(id),
-  FOREIGN KEY (equipped_tool_id) REFERENCES gear(id),
-  FOREIGN KEY (equipped_bauble_id) REFERENCES gear(id),
+  FOREIGN KEY (equipped_hook_id) REFERENCES gear(id),
   FOREIGN KEY (equipped_bait_id) REFERENCES bait(id)
 );

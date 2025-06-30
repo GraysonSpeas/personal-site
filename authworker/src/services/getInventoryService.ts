@@ -56,9 +56,10 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     `).bind(userId).all(),
 
     db.prepare(`
-      SELECT resource_name, quantity
+      SELECT name AS resource_name, quantity
       FROM resources WHERE user_id = ?
     `).bind(userId).all(),
+
 
     db.prepare(`
       SELECT id AS gear_id, gear_type AS type, gear_name AS name, stats

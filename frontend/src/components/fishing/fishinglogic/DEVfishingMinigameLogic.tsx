@@ -18,26 +18,23 @@ type Fish = {
 
 type Zone = { left: number; width: number; color: string }
 
-type FishingMinigameProps = {
+type FishingMinigameDevProps = {
   fish: Fish
   onResult: (result: 'caught' | 'escaped') => void
+  biteTime: number
   onZoneColorChange?: (color: 'green' | 'yellow' | 'red') => void
   playerFocus: number
   playerLineTension: number
-  castBonus?: number
-  reactionBonus?: number
-  isResource: boolean
 }
 
-export function FishingMinigame({
+export function DEVFishingMinigame({
   fish,
   onResult,
+  biteTime,
   onZoneColorChange,
   playerFocus,
   playerLineTension,
-  castBonus = 0,
-  reactionBonus = 0,
-}: FishingMinigameProps) {
+}: FishingMinigameDevProps) {
   const [stamina, setStamina] = useState(0)
   const [balance, setBalance] = useState(50)
   const [focus, setFocus] = useState(playerFocus)
@@ -48,13 +45,13 @@ export function FishingMinigame({
 
   const keys = useRef({ left: false, right: false })
   const effectiveTugRef = useRef(0)
+  const startTimeRef = useRef(Date.now())
   const directionRef = useRef(Math.random() < 0.5 ? 1 : -1)
   const balanceRef = useRef(balance)
   const focusRef = useRef(focus)
   const staminaRef = useRef(stamina)
   const tugDirectionRef = useRef(tugDirection)
   const lineTensionRef = useRef(lineTension)
-  const reactedRef = useRef(false)
 
   useEffect(() => {
     balanceRef.current = balance
@@ -64,6 +61,7 @@ export function FishingMinigame({
     lineTensionRef.current = lineTension
   }, [balance, focus, stamina, tugDirection, lineTension])
 
+  // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'a') keys.current.left = true
@@ -82,12 +80,13 @@ export function FishingMinigame({
     }
   }, [])
 
+  // Helper: calculate dynamic zone positions at given time
   const calcDynamicZones = (barType: Fish['barType'], time: number): Zone[] => {
     let center = 50
     let yellowSize = 0
     let greenSize = 0
     const direction = directionRef.current
-    const elapsed = (time - Date.now()) / 1000 // adjusted to not rely on biteTime
+    const elapsed = (time - startTimeRef.current) / 1000
 
     switch (barType) {
       case 'dynamicSmall':
@@ -109,6 +108,8 @@ export function FishingMinigame({
         return []
     }
     const totalSize = yellowSize * 2 + greenSize
+
+    // Clamp center so zone stays fully within 0-100%
     const minCenter = totalSize / 2
     const maxCenter = 100 - totalSize / 2
     const clampedCenter = Math.min(maxCenter, Math.max(minCenter, center))
@@ -122,8 +123,9 @@ export function FishingMinigame({
     ]
   }
 
+  // Update dynamicZones state regularly for consistent rendering and logic
   useEffect(() => {
-    if (!fish.barType || !fish.barType.startsWith('dynamic')) return
+    if (!fish.barType.startsWith('dynamic')) return
 
     const interval = setInterval(() => {
       const time = Date.now()
@@ -134,6 +136,7 @@ export function FishingMinigame({
     return () => clearInterval(interval)
   }, [fish.barType])
 
+  // Get zones for rendering and stamina logic (static or dynamicZones state)
   const getZones = (): Zone[] => {
     switch (fish.barType) {
       case 'middle':
@@ -197,6 +200,7 @@ export function FishingMinigame({
     }
   }
 
+  // Determine zone color under current balance for tension logic and callback
   const getZoneColorAtBalance = (balanceVal: number): 'green' | 'yellow' | 'red' => {
     const zones = getZones()
     for (const zone of zones) {
@@ -209,8 +213,9 @@ export function FishingMinigame({
     return 'red'
   }
 
+  // Stamina gain calculation uses getZones to check current zone precisely
   const getStaminaGain = (balanceVal: number, barType: Fish['barType']): number => {
-    if (barType?.startsWith('dynamic')) {
+    if (barType.startsWith('dynamic')) {
       const zones = getZones()
       for (const zone of zones) {
         if (balanceVal >= zone.left && balanceVal <= zone.left + zone.width) {
@@ -230,7 +235,7 @@ export function FishingMinigame({
 
       case 'middleSmall':
         if (balanceVal >= 40 && balanceVal <= 60) return 1
-        if (balanceVal <= 25 || balanceVal >= 75) return -0.5
+        if (balanceVal <= 25|| balanceVal >= 75) return -0.5
         return 0.3
 
       case 'low':
@@ -259,26 +264,13 @@ export function FishingMinigame({
     }
   }
 
+  // Game logic interval
   useEffect(() => {
-    if (snapped) return
+    if (snapped) return // Stop updates if line snapped
 
     const interval = setInterval(() => {
       const inputDir =
-        keys.current.left && !keys.current.right
-          ? -1
-          : keys.current.right && !keys.current.left
-          ? 1
-          : 0
-
-      if (!reactedRef.current && inputDir !== 0) {
-        setStamina((s) =>
-          Math.min(
-            fish.stamina,
-            s + castBonus + reactionBonus // bonuses added once on reaction input
-          )
-        )
-        reactedRef.current = true
-      }
+        keys.current.left && !keys.current.right ? -1 : keys.current.right && !keys.current.left ? 1 : 0
 
       const currentFocus = focusRef.current
       const currentBalance = balanceRef.current
@@ -305,15 +297,18 @@ export function FishingMinigame({
       let newBalance = currentBalance + pullForce
       newBalance = Math.max(0, Math.min(100, newBalance))
 
+      // Update zone color and call callback
       const currentZoneColor = getZoneColorAtBalance(newBalance)
       onZoneColorChange?.(currentZoneColor)
 
+      // Line tension logic
       let newLineTension = currentLineTension
       if (currentZoneColor === 'green') {
         newLineTension = Math.max(0, currentLineTension - 1 * tensionMultiplier)
       } else if (currentZoneColor === 'yellow') {
         newLineTension = Math.min(100, currentLineTension + 1.5 * tensionMultiplier)
       } else {
+        // red
         newLineTension = Math.min(100, currentLineTension + 4.5 * tensionMultiplier)
       }
 
@@ -332,8 +327,9 @@ export function FishingMinigame({
     }, 100)
 
     return () => clearInterval(interval)
-  }, [fish, onResult, snapped, onZoneColorChange, castBonus, reactionBonus, playerFocus, playerLineTension])
+  }, [fish, onResult, snapped, onZoneColorChange])
 
+  // Tug direction animation
   useEffect(() => {
     let animationFrame: number
     let phaseStart = Date.now()
@@ -396,13 +392,17 @@ export function FishingMinigame({
     return () => cancelAnimationFrame(animationFrame)
   }, [fish.changeRate, fish.changeStrength])
 
+  // Bite timeout
   useEffect(() => {
-    if (stamina >= fish.stamina) {
-      onResult('caught')
-    }
-    if (balance <= 0 || balance >= 100) {
-      onResult('escaped')
-    }
+    if (!biteTime) return
+    const timeoutId = setTimeout(() => onResult('escaped'), 4000)
+    return () => clearTimeout(timeoutId)
+  }, [biteTime, onResult])
+
+  // Result check
+  useEffect(() => {
+    if (stamina >= fish.stamina) onResult('caught')
+    if (balance <= 0 || balance >= 100) onResult('escaped')
   }, [stamina, balance, fish.stamina, onResult])
 
   const zones = getZones()
@@ -451,7 +451,7 @@ export function FishingMinigame({
               left: `${zone.left}%`,
               width: `${zone.width}%`,
               background: zone.color,
-              transition: fish.barType?.startsWith('dynamic') ? 'left 0.05s linear, width 0.05s linear' : undefined,
+              transition: fish.barType.startsWith('dynamic') ? 'left 0.05s linear, width 0.05s linear' : undefined,
             }}
           />
         ))}
@@ -504,7 +504,7 @@ export function FishingMinigame({
 
       <div style={{ marginTop: 16 }}>
         <p>
-          <strong>Fish is tugging</strong>: {tugDirectionRef.current < 0 ? '←' : '→'}
+          <strong>Fish is tugging</strong>: {tugDirectionRef.current < 0 ? 'x' : 'x'}
         </p>
         <p>Hold A/D to adjust!</p>
       </div>

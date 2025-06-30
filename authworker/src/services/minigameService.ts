@@ -60,6 +60,25 @@ async function getFishTypesForZone(db: D1Database, zoneId: number): Promise<any[
   }));
 }
 
+async function getResourceTypesForZone(db: D1Database, zoneId: number): Promise<any[]> {
+  const result = await db
+    .prepare(`
+      SELECT rt.*, rtz.zone_id, zt.name as zone_name
+      FROM resourceTypeZones rtz
+      JOIN resourceTypes rt ON rtz.resource_type_id = rt.id
+      JOIN zoneTypes zt ON rtz.zone_id = zt.id
+      WHERE rtz.zone_id = ?
+    `)
+    .bind(zoneId)
+    .all();
+  if (!result || !result.results.length) throw new Error('No resource types found for zone');
+
+  return result.results.map((resource) => ({
+    ...resource,
+    zones: [resource.zone_name],
+  }));
+}
+
 export async function startFishing(c: Context<{ Bindings: any }>) {
   const email = await getUserEmail(c);
   if (!email) throw new Error('Unauthorized');
@@ -72,8 +91,10 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
   const weatherId = (await getUserWeatherId(db, email)) ?? 1;
   const zoneName = await getZoneNameFromId(db, zoneId);
   const fishTypes = await getFishTypesForZone(db, zoneId);
+  const resourceTypes = await getResourceTypesForZone(db, zoneId);
 
-  const fish = await generateFish(fishTypes, weatherId, zoneName);
+  const fish = await generateFish(c, fishTypes, resourceTypes, weatherId, zoneName);
+
   const biteDelay = 4000 + Math.random() * 4000;
   const biteTime = Date.now() + biteDelay;
 
@@ -85,11 +106,17 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
   return {
     biteDelay: Math.round(biteDelay),
     fishPreview: {
-      species: fish.species,
-      rarity: fish.rarity,
-      stamina: fish.stamina,
-      tug_strength: fish.tug_strength,
-    },
+  species: fish.data.species,
+  rarity: fish.data.rarity,
+  stamina: fish.data.stamina,
+  tugStrength: fish.data.tugStrength,
+  changeRate: fish.data.changeRate,
+  changeStrength: fish.data.changeStrength,
+  barType: fish.data.barType,
+  data: fish.data, // include this if your frontend needs the full fish data
+  gearStats: fish.gearStats, // if used in frontend
+  isResource: fish.isResource, // if used in frontend
+},
   };
 }
 
@@ -114,7 +141,7 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
   };
 
   const now = Date.now();
-  const maxCatchWindow = 30000;
+  const maxCatchWindow = 60000;
 
   if (now > session.biteTime + maxCatchWindow) {
     await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
