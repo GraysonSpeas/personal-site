@@ -19,9 +19,8 @@ export async function saveCaughtFish(userId: number, item: any, db: D1Database) 
         .run();
     }
   } else {
-    // Save fish as before
+    // Save fish (no difficulty column)
     const modifier = item.modifier || null;
-    const difficulty = item.difficulty ?? 1;
 
     const existingFish = await db
       .prepare(
@@ -35,10 +34,10 @@ export async function saveCaughtFish(userId: number, item: any, db: D1Database) 
     } else {
       await db
         .prepare(
-          `INSERT INTO fish (user_id, species, rarity, weight, length, modifier, quantity, difficulty, caught_at)
-           VALUES (?, ?, ?, ?, ?, ?, 1, ?, datetime('now'))`
+          `INSERT INTO fish (user_id, species, rarity, weight, length, modifier, quantity, caught_at)
+           VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now'))`
         )
-        .bind(userId, item.species, item.rarity, item.weight, item.length, modifier, difficulty)
+        .bind(userId, item.species, item.rarity, item.weight, item.length, modifier)
         .run();
     }
 

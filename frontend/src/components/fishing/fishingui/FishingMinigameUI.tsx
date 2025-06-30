@@ -124,6 +124,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
             credentials: 'include',
           })
           const json = await res.json()
+          console.log('Catch response:', json);
           if (!res.ok) throw new Error(json.error || 'Failed to catch')
           setCaughtFish(json.fish)
           setPhase('success')

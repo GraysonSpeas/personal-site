@@ -148,9 +148,9 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
     throw new Error('Catch window expired');
   }
 
-  await saveCaughtFish(userId, session.fish, db);
+  await saveCaughtFish(userId, { ...session.fish.data, isResource: session.fish.isResource }, db);
 
   await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
 
-  return { caught: true, fish: session.fish };
+  return { caught: true, fish: session.fish.data };
 }
