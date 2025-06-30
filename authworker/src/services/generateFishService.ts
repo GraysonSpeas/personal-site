@@ -6,9 +6,9 @@ interface FishType {
   base_weight: number;
   base_length: number;
   stamina: number;
-  tug_strength: number;
-  direction_change_rate: number;
-  change_strength: number;
+  tugStrength: number;
+  changeRate: number;
+  changeStrength: number;
   sell_price: number;
   rarity: string;
   zones: string[];
@@ -41,24 +41,24 @@ interface GearStats {
 export async function getPlayerGearStats(c: Context<{ Bindings: any }>): Promise<GearStats> {
   const { getCookie } = await import('hono/cookie');
   const session = getCookie(c, 'session');
-  if (!session) return { focus: 0, lineTension: 0, luck: 0 };
+  if (!session) return { focus: 50, lineTension: 50, luck: 0 };
 
   let email: string;
   try {
     email = atob(session);
   } catch {
-    return { focus: 0, lineTension: 0, luck: 0 };
+    return { focus: 50, lineTension: 50, luck: 0 };
   }
 
   const db = c.env.DB;
   const user = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
-  if (!user) return { focus: 0, lineTension: 0, luck: 0 };
+  if (!user) return { focus: 50, lineTension: 50, luck: 0 };
 
   const equippedRow = await db.prepare(
     `SELECT equipped_rod_id, equipped_hook_id, equipped_bait_id FROM equipped WHERE user_id = ?`
   ).bind(user.id).first();
 
-  if (!equippedRow) return { focus: 0, lineTension: 0, luck: 0 };
+  if (!equippedRow) return { focus: 200, lineTension: 200, luck: 0 };
 
   const gearRows = await db.prepare(
     `SELECT id, stats FROM gear WHERE id IN (?, ?)`
@@ -88,10 +88,14 @@ export async function getPlayerGearStats(c: Context<{ Bindings: any }>): Promise
     else if (gear.id === equippedRow.equipped_hook_id) hookStats = stats;
   }
 
+  const focusSum = (rodStats.focus || 0) + (hookStats.focus || 0) + (baitStats.focus || 0);
+  const lineTensionSum = (rodStats.lineTension || 0) + (hookStats.lineTension || 0) + (baitStats.lineTension || 0);
+  const luckSum = (rodStats.luck || 0) + (hookStats.luck || 0) + (baitStats.luck || 0);
+
   return {
-    focus: (rodStats.focus || 0) + (hookStats.focus || 0) + (baitStats.focus || 0),
-    lineTension: (rodStats.lineTension || 0) + (hookStats.lineTension || 0) + (baitStats.lineTension || 0),
-    luck: (rodStats.luck || 0) + (hookStats.luck || 0) + (baitStats.luck || 0),
+    focus: focusSum > 0 ? focusSum : 200,
+    lineTension: lineTensionSum > 0 ? lineTensionSum : 200,
+    luck: luckSum,
   };
 }
 
@@ -180,14 +184,14 @@ function pickModifier(): string | null {
   return null;
 }
 
-function generateLength(weight: number, baseWeight: number, baseLength: number): number {
-  const ratio = weight / baseWeight;
-  return +(baseLength * ratio).toFixed(1);
+function generateLength(weight: number, base_weight: number, base_length: number): number {
+  const ratio = weight / base_weight;
+  return +(base_length * ratio).toFixed(1);
 }
 
-function isMassive(weight: number, baseWeight: number): boolean {
-  const max = baseWeight * 1.5;
-  const min = baseWeight * 0.5;
+function isMassive(weight: number, base_weight: number): boolean {
+  const max = base_weight * 1.5;
+  const min = base_weight * 0.5;
   return weight >= max - (max - min) * 0.05;
 }
 
@@ -243,9 +247,9 @@ export async function generateFish(
     const modifier = pickModifier();
 
     let stamina = fish.stamina;
-    let tugStrength = fish.tug_strength;
-    let changeRate = fish.direction_change_rate;
-    let changeStrength = fish.change_strength;
+    let tugStrength = fish.tugStrength;
+    let changeRate = fish.changeRate;
+    let changeStrength = fish.changeStrength;
 
     if (modifier === 'Buff') stamina = Math.round(stamina * 1.3);
     else if (modifier === 'Elusive') tugStrength = Math.round(tugStrength * 1.2);

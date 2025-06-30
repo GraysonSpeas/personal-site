@@ -14,7 +14,7 @@ export const resourceTypes = [
   { species: 'Shells', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Ocean'], rarity: 'common', barType: 'middle' },
   { species: 'Rare herbs', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle' },
   { species: 'Berries', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle', 'River'], rarity: 'common', barType: 'middle' },
-  { species: 'Algae', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['River', 'Ocean'], rarity: 'common', barType: 'middle' }
+  { species: 'Algae', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Lava', 'Ocean'], rarity: 'common', barType: 'middle' }
 ];
 
 export const fishTypes = [
