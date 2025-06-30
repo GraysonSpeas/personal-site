@@ -56,6 +56,12 @@ export function FishingMinigame({
   const lineTensionRef = useRef(lineTension)
   const reactedRef = useRef(false)
 
+  const startTimeRef = useRef(Date.now())
+
+useEffect(() => {
+  startTimeRef.current = Date.now()
+}, [fish.barType])
+
 useEffect(() => {
   setStamina((s) =>
     Math.min(fish.stamina, s + castBonus + reactionBonus)
@@ -98,7 +104,7 @@ useEffect(() => {
     let yellowSize = 0
     let greenSize = 0
     const direction = directionRef.current
-    const elapsed = (time - Date.now()) / 1000
+    const elapsed = (time - startTimeRef.current) / 1000
 
     switch (barType) {
       case 'dynamicSmall':
