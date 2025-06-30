@@ -56,6 +56,17 @@ export function FishingMinigame({
   const lineTensionRef = useRef(lineTension)
   const reactedRef = useRef(false)
 
+useEffect(() => {
+  setStamina((s) =>
+    Math.min(fish.stamina, s + castBonus + reactionBonus)
+  )
+}, [castBonus, reactionBonus, fish.stamina])
+
+
+  useEffect(() => {
+  reactedRef.current = false
+}, [fish])
+
   useEffect(() => {
     balanceRef.current = balance
     focusRef.current = focus
@@ -276,16 +287,6 @@ console.log({
           : keys.current.right && !keys.current.left
           ? 1
           : 0
-
-      if (!reactedRef.current && inputDir !== 0) {
-        setStamina((s) =>
-          Math.min(
-            fish.stamina,
-            s + castBonus + reactionBonus // bonuses added once on reaction input
-          )
-        )
-        reactedRef.current = true
-      }
 
       const currentFocus = focusRef.current
       const currentBalance = balanceRef.current

@@ -17,7 +17,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
   const castPowerRef = useRef(0)
   const castDirRef = useRef(1)
   const [feedback, setFeedback] = useState<'Perfect' | 'Good' | 'Ok'>('Ok')
-  const castBonusRef = useRef(0)
+  const [castBonus, setCastBonus] = useState(0)
   const caughtCalledRef = useRef(false)
   const [biteTime, setBiteTime] = useState<number | null>(null)
   const [reactionBonus, setReactionBonus] = useState(0)
@@ -95,7 +95,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
       txt = 'Good'
     }
     setFeedback(txt)
-    castBonusRef.current = bonus
+    setCastBonus(bonus)
     setPhase('waiting')
     setBiteTime(Date.now() + backendBiteDelayRef.current)
   }
@@ -137,7 +137,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
         setPhase('failed')
       }
       setFishPreview(null)
-      castBonusRef.current = 0
+      setCastBonus(0)
       setReactionBonus(0)
     },
     [fishPreview, refetch]
@@ -177,28 +177,31 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
 
   // Space key controls
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== ' ') return
-      e.preventDefault()
-      if (phase === 'idle') startFishing()
-      else if (phase === 'casting') handleCast()
-      else if (phase === 'ready') {
-        if (!biteTime) return
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== ' ') return
+    e.preventDefault()
+    if (phase === 'idle') startFishing()
+    else if (phase === 'casting') handleCast()
+    else if (phase === 'ready') {
+      if (!biteTime) return
 
-        const reactionTime = Date.now() - biteTime
+      const reactionTime = Date.now() - biteTime
 
-        if (reactionTime <= 1500) setReactionBonus(10)
-        else if (reactionTime <= 4000) setReactionBonus(0)
-        else {
-          onResult('escaped')
-          return
-        }
-        catchFish()
+      if (reactionTime <= 1500) setReactionBonus(10)
+      else if (reactionTime <= 4000) setReactionBonus(0)
+      else {
+        onResult('escaped')
+        return
       }
+      catchFish()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [phase, biteTime, onResult])
+    else if (phase === 'success' || phase === 'failed') {
+      setPhase('idle')
+    }
+  }
+  window.addEventListener('keydown', onKey)
+  return () => window.removeEventListener('keydown', onKey)
+}, [phase, biteTime, onResult])
 
   const feedbackColorClass = {
     Perfect: 'text-green-400',
@@ -259,14 +262,14 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
 
       {phase === 'in-minigame' && fishPreview && (
         <FishingMinigame
-          fish={fishPreview.data}
-          onResult={onResult}
-          castBonus={castBonusRef.current + reactionBonus}  // Add reaction bonus here
-          playerFocus={fishPreview?.gearStats?.focus ?? 50}
-          playerLineTension={fishPreview?.gearStats?.lineTension ?? 50}
-          isResource={fishPreview.isResource}
-          reactionBonus={reactionBonus} // pass if needed in minigame
-        />
+  fish={fishPreview.data}
+  onResult={onResult}
+  castBonus={castBonus}        // pass separately
+  reactionBonus={reactionBonus}            // pass separately
+  playerFocus={fishPreview?.gearStats?.focus ?? 50}
+  playerLineTension={fishPreview?.gearStats?.lineTension ?? 50}
+  isResource={fishPreview.isResource}
+/>
       )}
 
       {phase === 'success' && caughtFish && (
