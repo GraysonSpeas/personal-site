@@ -1,4 +1,3 @@
-// src/services/generateFishService.ts
 import type { Context } from 'hono';
 
 interface FishType {
@@ -27,6 +26,10 @@ interface ResourceType {
   name: string;
   rarity: string;
   zones: string[];
+  stamina?: number;
+  tugStrength?: number;
+  changeRate?: number;
+  changeStrength?: number;
   sell_price?: number;
   barType?: FishType['barType'];
 }
@@ -195,7 +198,6 @@ function isMassive(weight: number, base_weight: number): boolean {
   return weight >= max - (max - min) * 0.05;
 }
 
-// Main exported function: gets gear stats from context (cookie), then generates fish/resource with luck applied
 export async function generateFish(
   c: Context<{ Bindings: any }>,
   fishTypes: FishType[],
@@ -226,8 +228,12 @@ export async function generateFish(
       data: {
         species: resource.name,
         rarity: resource.rarity,
-        sellPrice: resource.sell_price ?? 100,
+        stamina: resource.stamina ?? 100,
+        tugStrength: resource.tugStrength ?? 100,
+        changeRate: resource.changeRate ?? 100,
+        changeStrength: resource.changeStrength ?? 100,
         barType: resource.barType ?? 'middle',
+        sellPrice: resource.sell_price ?? 100,
       },
     };
   } else {

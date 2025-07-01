@@ -13,6 +13,7 @@ interface Fish {
 
 interface BiggestFish {
   species: string;
+  rarity?: string | null;  // add this
   modifier?: string | null;
   max_weight: number;
   max_length: number;
@@ -28,16 +29,24 @@ interface FishStack {
   max_length: number;
 }
 
+interface Resource {
+  name: string;
+  quantity: number;
+  rarity?: string | null;
+}
+
 interface FishingInventoryRaw {
   fish: Fish[];
-  biggestFish: BiggestFish[];  // now an array
+  biggestFish: BiggestFish[];
+  resources?: Resource[];
   currentZoneId: number | null;
   [key: string]: any;
 }
 
 interface FishingInventoryProcessed {
   fishStacks: FishStack[];
-  biggestFish: BiggestFish[];  // array here too
+  biggestFish: BiggestFish[];
+  resources: Resource[];
   current_zone_id: number | null;
   [key: string]: any;
 }
@@ -51,7 +60,7 @@ export function useFishingInventory() {
     const fishMap = new Map<string, FishStack>();
 
     for (const fish of fishList) {
-      const key = `${fish.species}-${fish.modifier ?? 'normal'}`;
+      const key = `${fish.species}-${fish.modifier ?? 'normal'}-${fish.rarity}`;
       const existing = fishMap.get(key);
 
       if (existing) {
@@ -76,30 +85,43 @@ export function useFishingInventory() {
     };
   }
 
-const fetchInventory = async () => {
-  setLoading(true);
-  try {
-    console.log('Fetching inventory...');
-    const res = await fetch(`${API_BASE}/inventory`, {
-    credentials: 'include',
-    });
-    if (!res.ok) throw new Error('Failed to fetch inventory');
-    const json = await res.json();
-    console.log('Inventory fetched:', json);
+  function processResources(resources: Resource[] = []) {
+    const resourceMap = new Map<string, Resource>();
 
-    const processed = processFishInventory(json.fish || [], json.biggestFish || []);
+    for (const res of resources) {
+      const key = `${res.name}-${res.rarity ?? 'normal'}`;
+      const existing = resourceMap.get(key);
+      if (existing) {
+        existing.quantity += res.quantity;
+      } else {
+        resourceMap.set(key, { name: res.name, quantity: res.quantity, rarity: res.rarity ?? null });
+      }
+    }
 
-    setData({
-      ...processed,
-      current_zone_id: json.currentZoneId ?? null,
-    });
-  } catch (e: any) {
-    setError(e.message || 'Unknown error');
-  } finally {
-    setLoading(false);
+    return Array.from(resourceMap.values());
   }
-};
 
+  const fetchInventory = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/inventory`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch inventory');
+      const json: FishingInventoryRaw = await res.json();
+
+      const processedFish = processFishInventory(json.fish || [], json.biggestFish || []);
+      const processedResources = processResources(json.resources || []);
+
+      setData({
+        ...processedFish,
+        current_zone_id: json.currentZoneId ?? null,
+        resources: processedResources,
+      });
+    } catch (e: any) {
+      setError(e.message || 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchInventory();

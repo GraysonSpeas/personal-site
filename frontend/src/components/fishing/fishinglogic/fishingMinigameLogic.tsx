@@ -38,6 +38,7 @@ export function FishingMinigame({
   castBonus = 0,
   reactionBonus = 0,
 }: FishingMinigameProps) {
+  if (!fish || typeof fish.stamina !== 'number') return null
   const [stamina, setStamina] = useState(0)
   const [balance, setBalance] = useState(50)
   const [focus, setFocus] = useState(playerFocus)
@@ -57,6 +58,25 @@ export function FishingMinigame({
   const reactedRef = useRef(false)
 
   const startTimeRef = useRef(Date.now())
+
+useEffect(() => {
+  balanceRef.current = 50
+  setBalance(50)
+
+  staminaRef.current = 0
+  setStamina(0)
+
+  focusRef.current = playerFocus
+  setFocus(playerFocus)
+
+  tugDirectionRef.current = Math.random() < 0.5 ? 1 : -1
+  setTugDirection(tugDirectionRef.current)
+
+  lineTensionRef.current = 0
+  setLineTension(0)
+
+  setSnapped(false)
+}, [fish, playerFocus])
 
 useEffect(() => {
   startTimeRef.current = Date.now()

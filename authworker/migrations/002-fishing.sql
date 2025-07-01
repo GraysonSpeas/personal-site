@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS biggest_fish (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   species TEXT NOT NULL,
+  rarity TEXT,             -- added rarity column
   max_weight REAL NOT NULL,
   max_length REAL NOT NULL,
   modifier TEXT,

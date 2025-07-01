@@ -49,14 +49,14 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     `).bind(userId).all(),
 
     db.prepare(`
-      SELECT species, modifier, max_weight, max_length, caught_at
+      SELECT species, modifier, rarity, max_weight, max_length, caught_at
       FROM biggest_fish
       WHERE user_id = ?
       ORDER BY max_weight DESC
     `).bind(userId).all(),
 
     db.prepare(`
-      SELECT name AS resource_name, quantity
+      SELECT name AS name, quantity, rarity
       FROM resources WHERE user_id = ?
     `).bind(userId).all(),
 

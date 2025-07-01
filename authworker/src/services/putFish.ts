@@ -19,7 +19,6 @@ export async function saveCaughtFish(userId: number, item: any, db: D1Database) 
         .run();
     }
   } else {
-    // Save fish (no difficulty column)
     const modifier = item.modifier || null;
 
     const existingFish = await db
@@ -44,7 +43,7 @@ export async function saveCaughtFish(userId: number, item: any, db: D1Database) 
     const biggest = (await db
       .prepare(`SELECT * FROM biggest_fish WHERE user_id = ? AND species = ?`)
       .bind(userId, item.species)
-      .first()) as { max_weight: number; max_length: number; id: string } | undefined;
+      .first()) as { max_weight: number; max_length: number; id: string; rarity?: string | null } | undefined;
 
     if (
       !biggest ||
@@ -54,17 +53,17 @@ export async function saveCaughtFish(userId: number, item: any, db: D1Database) 
       if (biggest) {
         await db
           .prepare(
-            `UPDATE biggest_fish SET max_weight = ?, max_length = ?, modifier = ?, caught_at = datetime('now') WHERE id = ?`
+            `UPDATE biggest_fish SET max_weight = ?, max_length = ?, modifier = ?, rarity = ?, caught_at = datetime('now') WHERE id = ?`
           )
-          .bind(item.weight, item.length, modifier, biggest.id)
+          .bind(item.weight, item.length, modifier, item.rarity, biggest.id)
           .run();
       } else {
         await db
           .prepare(
-            `INSERT INTO biggest_fish (user_id, species, max_weight, max_length, modifier, caught_at)
-             VALUES (?, ?, ?, ?, ?, datetime('now'))`
+            `INSERT INTO biggest_fish (user_id, species, rarity, max_weight, max_length, modifier, caught_at)
+             VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
           )
-          .bind(userId, item.species, item.weight, item.length, modifier)
+          .bind(userId, item.species, item.rarity, item.weight, item.length, modifier)
           .run();
       }
     }
