@@ -16,7 +16,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
   const [castPower, setCastPower] = useState(0)
   const castPowerRef = useRef(0)
   const castDirRef = useRef(1)
-  const [feedback, setFeedback] = useState<'Perfect' | 'Good' | 'Ok'>('Ok')
+  const [feedback, setFeedback] = useState<'Perfect' | 'Good' | 'Ok' | 'Late'>('Ok');
   const [castBonus, setCastBonus] = useState(0)
   const caughtCalledRef = useRef(false)
   const [biteTime, setBiteTime] = useState<number | null>(null)
@@ -84,21 +84,29 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
     }
   }
 
-  const handleCast = () => {
-    let bonus = 0,
-      txt: 'Perfect' | 'Good' | 'Ok' = 'Ok'
-    if (castPowerRef.current >= 90) {
-      bonus = 20
-      txt = 'Perfect'
-    } else if (castPowerRef.current >= 80) {
-      bonus = 10
-      txt = 'Good'
-    }
-    setFeedback(txt)
-    setCastBonus(bonus)
-    setPhase('waiting')
-    setBiteTime(Date.now() + backendBiteDelayRef.current)
+const handleCast = () => {
+  let bonus = 0;
+  let txt: 'Perfect' | 'Good' | 'Ok' | 'Late' = 'Late';
+
+  const power = castPowerRef.current;
+
+  if (power >= 95) {
+    bonus = 25;
+    txt = 'Perfect';
+  } else if (power >= 85) {
+    bonus = 15;
+    txt = 'Good';
+  } else if (power >= 60) {
+    bonus = 5;
+    txt = 'Ok';
   }
+
+  setFeedback(txt);
+  setCastBonus(bonus);
+  setPhase('waiting');
+  setBiteTime(Date.now() + backendBiteDelayRef.current);
+};
+
 
   const catchFish = () => {
     if (reactionTimeoutRef.current) {
@@ -207,6 +215,7 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
     Perfect: 'text-green-400',
     Good: 'text-blue-400',
     Ok: 'text-yellow-400',
+    Late: 'text-red-500',
   }[feedback]
 
   return (
@@ -255,8 +264,15 @@ export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
 
       {(phase === 'waiting' || phase === 'ready') && (
         <div className="text-center space-y-1">
-          <p className={`font-bold ${feedbackColorClass}`}>{feedback}</p>
-          <p>{phase === 'waiting' ? 'Waiting for a bite…' : 'Fish is biting! Press space quickly!'}</p>
+          <p className={`font-bold ${feedbackColorClass}`}>
+            {feedback} ({castPower.toFixed(1)}%)
+          </p>
+
+          <p>
+  {phase === 'waiting' 
+    ? 'Waiting for a bite…' 
+    : <>Fish is biting! <strong>Press space quickly!</strong></>}
+</p>
         </div>
       )}
 
