@@ -91,10 +91,10 @@ const handleCast = () => {
   const power = castPowerRef.current;
 
   if (power >= 95) {
-    bonus = 25;
+    bonus = 20;
     txt = 'Perfect';
   } else if (power >= 85) {
-    bonus = 15;
+    bonus = 10;
     txt = 'Good';
   } else if (power >= 60) {
     bonus = 5;
