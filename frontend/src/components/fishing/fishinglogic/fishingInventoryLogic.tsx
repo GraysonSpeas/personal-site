@@ -64,7 +64,7 @@ export function useFishingInventory() {
   const fetchInventory = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/inventory`, {
+      const res = await fetch(`${API_BASE}/inventory`, {
   credentials: 'include',
 });
 
