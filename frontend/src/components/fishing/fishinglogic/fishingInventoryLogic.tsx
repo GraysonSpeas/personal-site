@@ -1,5 +1,6 @@
 // src/components/fishing/fishinglogic/fishingInventoryLogic.ts
 import { useEffect, useState, useCallback } from 'react';
+import { API_BASE } from '../../../config';
 
 type FishStack = {
   species: string;
@@ -63,7 +64,10 @@ export function useFishingInventory() {
   const fetchInventory = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/inventory');
+      const res = await fetch(`${API_BASE}/api/inventory`, {
+  credentials: 'include',
+});
+
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const json = await res.json();
 
