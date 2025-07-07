@@ -25,17 +25,13 @@ export const fishTypes = [
 ];
 
 export const rodTypes = [
-  { id: 1, name: 'Basic Rod', stats: { focus: 1, lineTension: 1, luck: 1 }, sell_price: 1 },
-  { id: 2, name: 'Advanced Rod', stats: { focus: 1, lineTension: 1, luck: 1 }, sell_price: 1 },
+  { id: 1, name: 'Rusty Rod', stats: { focus: 25, lineTension: 25, luck: 0 } },
 ];
 
 export const hookTypes = [
-  { id: 1, name: 'Basic Hook', stats: { focus: 1, lineTension: 1, luck: 1 }, sell_price: 1 },
-  { id: 2, name: 'Advanced Hook', stats: { focus: 1, lineTension: 1, luck: 1 }, sell_price: 1 },
+  { id: 1, name: 'Rusty Hook', stats: { focus: 25, lineTension: 25, luck: 0 } },
 ];
 
 export const baitTypes = [
-  { id: 1, name: 'Basic Bait', stats: { focus: 1, lineTension: 1, luck: 1 }, sell_price: 1 },
-  { id: 2, name: 'Special Bait', stats: { focus: 1, lineTension: 1, luck: 1 }, sell_price: 1 },
+  { id: 1, name: 'Broken Bait', stats: { focus: 10, lineTension: 10, luck: 0 }, sell_price: 1 },
 ];
-

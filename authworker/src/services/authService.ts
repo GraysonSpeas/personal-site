@@ -92,18 +92,64 @@ export async function signup(c: Context<{ Bindings: Bindings }>) {
   const verification_token = generateToken()
   const verification_token_expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
-  // Insert new user (email_verified false)
-  await c.env.DB
-    .prepare(
-      `INSERT INTO users
-       (email,password_hash,name,email_verified,verification_token,verification_token_expiry)
-       VALUES (?,?,?,?,?,?)`
-    )
-    .bind(email, password_hash, name || null, 0, verification_token, verification_token_expiry)
-    .run()
+ // Insert new user (email_verified false)
+await c.env.DB
+  .prepare(
+    `INSERT INTO users
+     (email,password_hash,name,email_verified,verification_token,verification_token_expiry)
+     VALUES (?,?,?,?,?,?)`
+  )
+  .bind(email, password_hash, name || null, 0, verification_token, verification_token_expiry)
+  .run()
 
-  // Send verification email
-  const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${verification_token}`;
+// Get the new user's id
+const userRow = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
+const userId = userRow?.id
+
+if (userId) {
+  // Gear and bait stats from seed data
+  const rustyRodStats = JSON.stringify({ focus: 25, lineTension: 25, luck: 0 })
+  const rustyHookStats = JSON.stringify({ focus: 25, lineTension: 25, luck: 0 })
+  const brokenBaitStats = JSON.stringify({ focus: 10, lineTension: 10, luck: 0 })
+
+  // Insert gear: rod
+  await c.env.DB.prepare(
+    `INSERT INTO gear (user_id, gear_type, type_id, stats) VALUES (?, 'rod', 1, ?)`
+  ).bind(userId, rustyRodStats).run()
+
+  // Insert gear: hook
+  await c.env.DB.prepare(
+    `INSERT INTO gear (user_id, gear_type, type_id, stats) VALUES (?, 'hook', 1, ?)`
+  ).bind(userId, rustyHookStats).run()
+
+  // Insert bait with quantity 1
+  await c.env.DB.prepare(
+    `INSERT INTO bait (user_id, type_id, quantity, stats) VALUES (?, 1, 1, ?)`
+  ).bind(userId, brokenBaitStats).run()
+
+  // Get the inserted gear and bait IDs to set as equipped
+  const rod = await c.env.DB.prepare(
+    `SELECT id FROM gear WHERE user_id = ? AND gear_type = 'rod' AND type_id = 1`
+  ).bind(userId).first()
+
+  const hook = await c.env.DB.prepare(
+    `SELECT id FROM gear WHERE user_id = ? AND gear_type = 'hook' AND type_id = 1`
+  ).bind(userId).first()
+
+  const bait = await c.env.DB.prepare(
+    `SELECT id FROM bait WHERE user_id = ? AND type_id = 1`
+  ).bind(userId).first()
+
+  // Insert into equipped table
+  await c.env.DB.prepare(
+    `INSERT INTO equipped (user_id, equipped_rod_id, equipped_hook_id, equipped_bait_id)
+     VALUES (?, ?, ?, ?)`
+  ).bind(userId, rod?.id || null, hook?.id || null, bait?.id || null).run()
+}
+
+
+// Send verification email
+const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${verification_token}`;
   try {
     await sendEmail(
       c,

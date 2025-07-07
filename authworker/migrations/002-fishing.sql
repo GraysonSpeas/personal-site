@@ -5,6 +5,9 @@ DROP TABLE IF EXISTS biggest_fish;
 DROP TABLE IF EXISTS fish;
 DROP TABLE IF EXISTS bait;
 DROP TABLE IF EXISTS gear;
+DROP TABLE IF EXISTS baitTypes;
+DROP TABLE IF EXISTS hookTypes;
+DROP TABLE IF EXISTS rodTypes;
 DROP TABLE IF EXISTS resources;
 DROP TABLE IF EXISTS permits;
 DROP TABLE IF EXISTS currencies;
@@ -56,13 +59,42 @@ CREATE TABLE IF NOT EXISTS fishTypes (
   barType TEXT NOT NULL DEFAULT 'middle'
 );
 
--- Linking table for resourceTypes and zoneTypes
+-- New static gear type tables
+CREATE TABLE IF NOT EXISTS rodTypes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  base_stats TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS hookTypes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  base_stats TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS baitTypes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  base_stats TEXT NOT NULL,
+  sell_price INTEGER DEFAULT 0
+);
+
+-- Linking tables for resourceTypes and zoneTypes
 CREATE TABLE IF NOT EXISTS resourceTypeZones (
   resource_type_id INTEGER NOT NULL,
   zone_id INTEGER NOT NULL,
   FOREIGN KEY (resource_type_id) REFERENCES resourceTypes(id) ON DELETE CASCADE,
   FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
   PRIMARY KEY (resource_type_id, zone_id)
+);
+
+-- Linking table for fishTypes and zoneTypes
+CREATE TABLE IF NOT EXISTS fishTypeZones (
+  fish_type_id INTEGER NOT NULL,
+  zone_id INTEGER NOT NULL,
+  FOREIGN KEY (fish_type_id) REFERENCES fishTypes(id) ON DELETE CASCADE,
+  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
+  PRIMARY KEY (fish_type_id, zone_id)
 );
 
 -- Users table
@@ -125,23 +157,26 @@ CREATE TABLE IF NOT EXISTS resources (
   UNIQUE(user_id, name)
 );
 
+-- User gear table linking to static rod and hook types
 CREATE TABLE IF NOT EXISTS gear (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
-  gear_type TEXT NOT NULL CHECK (gear_type IN ('rod', 'hook')),
-  gear_name TEXT NOT NULL,
-  stats JSON,
+  gear_type TEXT CHECK(gear_type IN ('rod', 'hook')) NOT NULL,
+  type_id INTEGER NOT NULL,
+  stats TEXT, -- optional overrides
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- User bait table linking to static bait types
 CREATE TABLE IF NOT EXISTS bait (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER,
-  bait_name TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  type_id INTEGER NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0,
-  stats JSON,
+  stats TEXT, -- optional overrides
   sell_price INTEGER DEFAULT 0,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (type_id) REFERENCES baitTypes(id)
 );
 
 CREATE TABLE IF NOT EXISTS fish (
@@ -162,7 +197,7 @@ CREATE TABLE IF NOT EXISTS biggest_fish (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   species TEXT NOT NULL,
-  rarity TEXT,             -- added rarity column
+  rarity TEXT,
   max_weight REAL NOT NULL,
   max_length REAL NOT NULL,
   modifier TEXT,
@@ -182,16 +217,7 @@ CREATE TABLE IF NOT EXISTS achievements (
   UNIQUE(user_id, achievement_key)
 );
 
--- Linking table fishTypeZones after fishTypes and zoneTypes
-CREATE TABLE IF NOT EXISTS fishTypeZones (
-  fish_type_id INTEGER NOT NULL,
-  zone_id INTEGER NOT NULL,
-  FOREIGN KEY (fish_type_id) REFERENCES fishTypes(id) ON DELETE CASCADE,
-  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
-  PRIMARY KEY (fish_type_id, zone_id)
-);
-
--- Equipped gear last, references gear and bait
+-- Equipped gear linking user to gear and bait
 CREATE TABLE IF NOT EXISTS equipped (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL UNIQUE,

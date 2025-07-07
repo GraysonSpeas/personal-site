@@ -10,18 +10,37 @@ type FishStack = {
 }
 
 type BiggestFish = {
-  species: string;
-  rarity?: string | null;
-  modifier?: string | null;
-  max_weight: number;
-  max_length: number;
-  caught_at: string;
+  species: string
+  rarity?: string | null
+  modifier?: string | null
+  max_weight: number
+  max_length: number
+  caught_at: string
 }
 
 type Resource = {
   name: string
   quantity: number
-  rarity?: string | null;
+  rarity?: string | null
+}
+
+type Gear = {
+  gear_id: number
+  name: string
+  type: string
+  type_id?: number
+  stats?: Record<string, any>
+  equipped?: boolean
+}
+
+type Bait = {
+  bait_id: number
+  bait_type: string
+  quantity: number
+  type_id?: number
+  stats?: Record<string, any>
+  sell_price?: number
+  equipped?: boolean
 }
 
 type Props = {
@@ -31,8 +50,8 @@ type Props = {
     email?: string
     currency?: Record<string, number>
     resources?: Resource[]
-    gear?: { name: string; type: string }[]
-    bait?: { bait_type: string; quantity: number }[]
+    gear?: Gear[]
+    bait?: Bait[]
     current_zone_id: number | null
   } | null
   loading: boolean
@@ -62,7 +81,9 @@ export function FishingInventoryUI({ data, loading, error }: Props) {
     current_zone_id,
   } = data
 
-  const zoneName = current_zone_id ? zoneMap[current_zone_id] || `Unknown Zone (${current_zone_id})` : 'No zone selected'
+  const zoneName = current_zone_id
+    ? zoneMap[current_zone_id] || `Unknown Zone (${current_zone_id})`
+    : 'No zone selected'
 
   return (
     <div>
@@ -72,12 +93,43 @@ export function FishingInventoryUI({ data, loading, error }: Props) {
         <strong>Gold:</strong> {currency?.gold || 0}{' '}
         <strong>Pearls:</strong> {currency?.pearls || 0}{' '}
         <strong>Coral Shards:</strong> {currency?.coral_shards || 0}{' '}
-        <strong>Echo Shards:</strong> {currency?.echo_shards || 0} &nbsp;|&nbsp;{' '}
-        <strong>Gear:</strong>{' '}
-        {gear?.length ? gear.map(g => `${g.name} (${g.type})`).join(', ') : 'No gear'} &nbsp;|&nbsp;{' '}
-        <strong>Bait:</strong>{' '}
-        {bait?.length ? bait.map(b => `${b.bait_type}: ${b.quantity}`).join(', ') : 'No bait'}
+        <strong>Echo Shards:</strong> {currency?.echo_shards || 0}
       </p>
+
+      <section>
+        <h3>Gear:</h3>
+        {gear?.length ? (
+          <ul>
+            {gear.map((g, i) => (
+              <li key={i}>
+                {g.name} ({g.type}) {g.equipped ? <strong>(Equipped)</strong> : null} — ID: {g.gear_id} —{' '}
+                {g.type_id ? `Type ID: ${g.type_id} — ` : ''}
+                Stats: {g.stats ? JSON.stringify(g.stats) : 'None'}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No gear</p>
+        )}
+      </section>
+
+      <section>
+        <h3>Bait:</h3>
+        {bait?.length ? (
+          <ul>
+            {bait.map((b, i) => (
+              <li key={i}>
+                {b.bait_type} {b.equipped ? <strong>(Equipped)</strong> : null} — Qty: {b.quantity} — ID: {b.bait_id}{' '}
+                {b.type_id ? `— Type ID: ${b.type_id}` : ''}{' '}
+                {b.stats ? ` — Stats: ${JSON.stringify(b.stats)}` : ''}{' '}
+                {b.sell_price ? ` — Sell Price: ${b.sell_price}` : ''}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No bait</p>
+        )}
+      </section>
 
       <section>
         <h3>Resources:</h3>
@@ -85,7 +137,7 @@ export function FishingInventoryUI({ data, loading, error }: Props) {
           <ul>
             {resources.map((r, i) => (
               <li key={i}>
-                 {r.name} {r.rarity ? `(${r.rarity})` : ''} — Qty: {r.quantity}
+                {r.name} {r.rarity ? `(${r.rarity})` : ''} — Qty: {r.quantity}
               </li>
             ))}
           </ul>

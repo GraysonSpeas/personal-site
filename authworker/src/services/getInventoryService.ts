@@ -1,3 +1,4 @@
+// src/services/getInventoryService.ts
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
 
@@ -60,26 +61,62 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
       FROM resources WHERE user_id = ?
     `).bind(userId).all(),
 
-
     db.prepare(`
-      SELECT id AS gear_id, gear_type AS type, gear_name AS name, stats
-      FROM gear WHERE user_id = ?
+      SELECT 
+        g.id AS gear_id,
+        g.gear_type AS type,
+        g.type_id,
+        COALESCE(r.name, h.name) AS name,
+        g.stats
+      FROM gear g
+      LEFT JOIN rodTypes r ON g.gear_type = 'rod' AND g.type_id = r.id
+      LEFT JOIN hookTypes h ON g.gear_type = 'hook' AND g.type_id = h.id
+      WHERE g.user_id = ?
     `).bind(userId).all(),
 
     db.prepare(`
-      SELECT bait_name AS bait_type, quantity
-      FROM bait WHERE user_id = ?
-    `).bind(userId).all()
+      SELECT 
+        b.id AS bait_id,
+        b.type_id,
+        bt.name AS bait_type,
+        b.quantity,
+        b.stats,
+        b.sell_price
+      FROM bait b
+      JOIN baitTypes bt ON b.type_id = bt.id
+      WHERE b.user_id = ?
+    `).bind(userId).all(),
   ]);
+
+  // Get equipped gear IDs
+  const equippedRow = await db.prepare(
+    `SELECT equipped_rod_id, equipped_hook_id, equipped_bait_id FROM equipped WHERE user_id = ?`
+  ).bind(userId).first();
+
+  // Mark gear as equipped and parse stats JSON
+  const gearWithEquippedFlag = (gear?.results || gear || []).map((g: any) => ({
+    ...g,
+    stats: g.stats ? JSON.parse(g.stats) : undefined,
+    equipped: equippedRow
+      ? g.gear_id === equippedRow.equipped_rod_id || g.gear_id === equippedRow.equipped_hook_id
+      : false,
+  }));
+
+  // Mark bait as equipped and parse stats JSON
+  const baitWithEquippedFlag = (bait?.results || bait || []).map((b: any) => ({
+    ...b,
+    stats: b.stats ? JSON.parse(b.stats) : undefined,
+    equipped: equippedRow ? b.bait_id === equippedRow.equipped_bait_id : false,
+  }));
 
   return {
     email,
     currency: currency || {},
-    fish: fish?.results || [],
-    biggestFish: biggestFish?.results || [], // Now an array
-    resources: resources?.results || [],
-    gear: gear?.results || [],
-    bait: bait?.results || [],
-    currentZoneId: currentZoneId || null
+    fishStacks: fish?.results || fish || [],
+    biggestFish: biggestFish?.results || biggestFish || [],
+    resources: resources?.results || resources || [],
+    gear: gearWithEquippedFlag,
+    bait: baitWithEquippedFlag,
+    current_zone_id: currentZoneId || null,
   };
 }

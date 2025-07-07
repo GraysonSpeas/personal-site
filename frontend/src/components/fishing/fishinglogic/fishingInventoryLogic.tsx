@@ -1,131 +1,94 @@
-import { useEffect, useState } from 'react';
-import { API_BASE } from '../../../config.tsx';
+// src/components/fishing/fishinglogic/fishingInventoryLogic.ts
+import { useEffect, useState, useCallback } from 'react';
 
-interface Fish {
+type FishStack = {
   species: string;
   rarity: string;
   modifier?: string | null;
-  weight: number;
-  length: number;
-  quantity?: number;
-  [key: string]: any;
-}
+  quantity: number;
+  max_weight: number;
+  max_length: number;
+};
 
-interface BiggestFish {
+type BiggestFish = {
   species: string;
-  rarity?: string | null;  // add this
+  rarity?: string | null;
   modifier?: string | null;
   max_weight: number;
   max_length: number;
   caught_at: string;
-}
+};
 
-interface FishStack {
-  species: string;
-  rarity: string;
-  modifier?: string | null;
-  quantity: number;
-  max_weight: number;
-  max_length: number;
-}
-
-interface Resource {
+type Resource = {
   name: string;
   quantity: number;
   rarity?: string | null;
-}
+};
 
-interface FishingInventoryRaw {
-  fish: Fish[];
-  biggestFish: BiggestFish[];
-  resources?: Resource[];
-  currentZoneId: number | null;
-  [key: string]: any;
-}
+type Gear = {
+  gear_id: number;
+  name: string;
+  type: string;
+  type_id?: number;
+  stats?: Record<string, any>;
+  equipped?: boolean;
+};
 
-interface FishingInventoryProcessed {
+type Bait = {
+  bait_id: number;
+  bait_type: string;
+  quantity: number;
+  type_id?: number;
+  stats?: Record<string, any>;
+  sell_price?: number;
+  equipped?: boolean;
+};
+
+export type InventoryData = {
   fishStacks: FishStack[];
   biggestFish: BiggestFish[];
-  resources: Resource[];
+  email?: string;
+  currency?: Record<string, number>;
+  resources?: Resource[];
+  gear?: Gear[];
+  bait?: Bait[];
   current_zone_id: number | null;
-  [key: string]: any;
-}
+};
 
 export function useFishingInventory() {
-  const [data, setData] = useState<FishingInventoryProcessed | null>(null);
+  const [data, setData] = useState<InventoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function processFishInventory(fishList: Fish[], biggestFishList: BiggestFish[]) {
-    const fishMap = new Map<string, FishStack>();
-
-    for (const fish of fishList) {
-      const key = `${fish.species}-${fish.modifier ?? 'normal'}-${fish.rarity}`;
-      const existing = fishMap.get(key);
-
-      if (existing) {
-        existing.quantity += fish.quantity ?? 1;
-        if (fish.weight > existing.max_weight) existing.max_weight = fish.weight;
-        if (fish.length > existing.max_length) existing.max_length = fish.length;
-      } else {
-        fishMap.set(key, {
-          species: fish.species,
-          rarity: fish.rarity,
-          modifier: fish.modifier ?? null,
-          quantity: fish.quantity ?? 1,
-          max_weight: fish.weight,
-          max_length: fish.length,
-        });
-      }
-    }
-
-    return {
-      fishStacks: Array.from(fishMap.values()),
-      biggestFish: biggestFishList || [],
-    };
-  }
-
-  function processResources(resources: Resource[] = []) {
-    const resourceMap = new Map<string, Resource>();
-
-    for (const res of resources) {
-      const key = `${res.name}-${res.rarity ?? 'normal'}`;
-      const existing = resourceMap.get(key);
-      if (existing) {
-        existing.quantity += res.quantity;
-      } else {
-        resourceMap.set(key, { name: res.name, quantity: res.quantity, rarity: res.rarity ?? null });
-      }
-    }
-
-    return Array.from(resourceMap.values());
-  }
-
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/inventory`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch inventory');
-      const json: FishingInventoryRaw = await res.json();
-
-      const processedFish = processFishInventory(json.fish || [], json.biggestFish || []);
-      const processedResources = processResources(json.resources || []);
+      const res = await fetch('/api/inventory');
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const json = await res.json();
 
       setData({
-        ...processedFish,
-        current_zone_id: json.currentZoneId ?? null,
-        resources: processedResources,
+        fishStacks: json.fishStacks || json.fish || [],
+        biggestFish: json.biggestFish || [],
+        email: json.email,
+        currency: json.currency,
+        resources: json.resources,
+        gear: json.gear,
+        bait: json.bait,
+        current_zone_id: json.current_zone_id ?? json.currentZoneId ?? null,
       });
+      setError(null);
     } catch (e: any) {
-      setError(e.message || 'Unknown error');
+      setError(e.message || 'Fetch error');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // Initial fetch
   useEffect(() => {
     fetchInventory();
-  }, []);
+  }, [fetchInventory]);
 
   return { data, loading, error, refetch: fetchInventory };
 }
