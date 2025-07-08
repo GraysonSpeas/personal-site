@@ -106,17 +106,17 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
   return {
     biteDelay: Math.round(biteDelay),
     fishPreview: {
-  species: fish.data.species,
-  rarity: fish.data.rarity,
-  stamina: fish.data.stamina,
-  tugStrength: fish.data.tugStrength,
-  changeRate: fish.data.changeRate,
-  changeStrength: fish.data.changeStrength,
-  barType: fish.data.barType,
-  data: fish.data, // include this if your frontend needs the full fish data
-  gearStats: fish.gearStats, // if used in frontend
-  isResource: fish.isResource, // if used in frontend
-},
+      species: fish.data.species,
+      rarity: fish.data.rarity,
+      stamina: fish.data.stamina,
+      tugStrength: fish.data.tugStrength,
+      changeRate: fish.data.changeRate,
+      changeStrength: fish.data.changeStrength,
+      barType: fish.data.barType,
+      data: fish.data,
+      gearStats: fish.gearStats,
+      isResource: fish.isResource,
+    },
   };
 }
 
@@ -129,28 +129,61 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
   const userId = await getUserIdByEmail(db, email);
   if (!userId) throw new Error('User not found');
 
-  const result = await db.prepare(`
-    SELECT fish_json, bite_time FROM fishingSessions WHERE email = ?
-  `).bind(email).first<{ fish_json: string, bite_time: number }>();
-
-  if (!result) throw new Error('No fishing session found');
+  const sessionRow = await db.prepare(`SELECT fish_json, bite_time FROM fishingSessions WHERE email = ?`).bind(email).first<{ fish_json: string; bite_time: number }>();
+  if (!sessionRow) throw new Error('No fishing session found');
 
   const session: FishCatchSession = {
-    fish: JSON.parse(result.fish_json),
-    biteTime: result.bite_time,
+    fish: JSON.parse(sessionRow.fish_json),
+    biteTime: sessionRow.bite_time,
   };
 
   const now = Date.now();
   const maxCatchWindow = 60000;
-
   if (now > session.biteTime + maxCatchWindow) {
     await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
     throw new Error('Catch window expired');
   }
 
-  await saveCaughtFish(userId, { ...session.fish.data, isResource: session.fish.isResource }, db);
+  // Fetch equipped bait
+  const equipped = await db.prepare(`SELECT equipped_bait_id FROM equipped WHERE user_id = ?`).bind(userId).first<{ equipped_bait_id: number | null }>();
+  let baitStats = { focus: 0, lineTension: 0, luck: 0 };
+
+  if (equipped?.equipped_bait_id) {
+    const bait = await db.prepare(`SELECT quantity, stats FROM bait WHERE id = ? AND user_id = ?`).bind(equipped.equipped_bait_id, userId).first<{ quantity: number; stats: string }>();
+  if (bait && bait.quantity > 0) {
+  if (bait.quantity > 1) {
+    await db.prepare(`UPDATE bait SET quantity = quantity - 1 WHERE id = ?`).bind(equipped.equipped_bait_id).run();
+  } else {
+    // Clear equipped bait reference first
+    await db.prepare(`UPDATE equipped SET equipped_bait_id = NULL WHERE user_id = ?`).bind(userId).run();
+    // Then delete bait
+    await db.prepare(`DELETE FROM bait WHERE id = ?`).bind(equipped.equipped_bait_id).run();
+  }
+
+  // Parse bait stats or fallback to zeros
+  try {
+    const parsedStats = JSON.parse(bait.stats);
+    baitStats = {
+      focus: parsedStats.focus ?? 0,
+      lineTension: parsedStats.lineTension ?? 0,
+      luck: parsedStats.luck ?? 0,
+    };
+  } catch {
+    baitStats = { focus: 0, lineTension: 0, luck: 0 };
+  }
+}
+  }
+
+  // Attach baitStats to fish data before saving
+  const fishDataWithBaitStats = {
+    ...session.fish.data,
+    baitStats,
+    isResource: session.fish.isResource,
+  };
+
+  await saveCaughtFish(userId, fishDataWithBaitStats, db);
 
   await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
 
-  return { caught: true, fish: session.fish.data };
+  return { caught: true, fish: fishDataWithBaitStats };
 }

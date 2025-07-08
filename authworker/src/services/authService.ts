@@ -122,9 +122,9 @@ if (userId) {
     `INSERT INTO gear (user_id, gear_type, type_id, stats) VALUES (?, 'hook', 1, ?)`
   ).bind(userId, rustyHookStats).run()
 
-  // Insert bait with quantity 1
+  // Insert bait with quantity 10
   await c.env.DB.prepare(
-    `INSERT INTO bait (user_id, type_id, quantity, stats) VALUES (?, 1, 1, ?)`
+    `INSERT INTO bait (user_id, type_id, quantity, stats) VALUES (?, 1, 10, ?)`
   ).bind(userId, brokenBaitStats).run()
 
   // Get the inserted gear and bait IDs to set as equipped

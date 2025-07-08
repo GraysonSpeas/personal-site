@@ -1,4 +1,3 @@
-
 // src/components/fishing/FishingUI.tsx
 import React from 'react';
 import { useAuth } from '../auth/AuthProvider';
@@ -6,6 +5,7 @@ import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
 import { FishingInventoryUI } from './fishingui/FishingInventoryUI';
 import { FishingMinigameUI } from './fishingui/FishingMinigameUI';
 import { ZoneSelector } from './fishinglogic/ZoneSelector';
+import { GearSelector } from './fishinglogic/GearSelector'; // adjust import path if needed
 
 export function FishingUI() {
   const { user, loading: authLoading } = useAuth();
@@ -23,7 +23,14 @@ export function FishingUI() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <FishingMinigameUI refetch={refetch} />
-        <ZoneSelector refetch={refetch} />
+        <ZoneSelector refetch={refetch} currentZoneId={data?.current_zone_id ?? null} />
+        {combinedData && (
+          <GearSelector
+  gear={combinedData.gear ?? []}
+  bait={combinedData.bait ?? []}
+  refetch={refetch}
+/>
+        )}
       </div>
     </div>
   );
