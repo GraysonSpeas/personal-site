@@ -4,10 +4,10 @@ export const weatherTypes = [
 ];
 
 export const zoneTypes = [
-    { name: 'Jungle' },
-    { name: 'Ocean' },
-    { name: 'River' },
-    { name: 'Lava' }
+  { name: 'Jungle', xp_multiplier: 1.0 },
+  { name: 'Ocean', xp_multiplier: 1.1 },
+  { name: 'River', xp_multiplier: 1.2 },
+  { name: 'Lava', xp_multiplier: 1.3 },
 ];
 
 export const resourceTypes = [

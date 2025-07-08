@@ -23,9 +23,13 @@ export async function seedDatabase(db: D1Database) {
     console.log('Starting database seeding...');
 
     // Seed zone types
-    for (const zone of zoneTypes) {
-      await db.prepare(`INSERT OR IGNORE INTO zoneTypes (name) VALUES (?)`).bind(zone.name).run();
-    }
+for (const zone of zoneTypes) {
+  await db
+    .prepare(`INSERT OR IGNORE INTO zoneTypes (name, xp_multiplier) VALUES (?, ?)`)
+    .bind(zone.name, zone.xp_multiplier ?? 1.0)
+    .run();
+}
+
     console.log('Zone types seeded successfully.');
 
     // Seed weather types

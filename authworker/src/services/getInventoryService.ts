@@ -26,6 +26,9 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
   const userId = user.id;
   const currentZoneId = user.current_zone_id;
 
+  // Get user XP and level
+  const userXPLevel = await db.prepare('SELECT xp, level FROM users WHERE id = ?').bind(userId).first();
+
   // Ensure currencies row exists
   const currencyExists = await db.prepare('SELECT 1 FROM currencies WHERE user_id = ?').bind(userId).first();
   if (!currencyExists) {
@@ -118,5 +121,7 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     gear: gearWithEquippedFlag,
     bait: baitWithEquippedFlag,
     current_zone_id: currentZoneId || null,
+    xp: userXPLevel?.xp ?? 0,
+    level: userXPLevel?.level ?? 1,
   };
 }

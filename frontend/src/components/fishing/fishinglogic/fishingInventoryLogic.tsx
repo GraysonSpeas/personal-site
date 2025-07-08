@@ -54,7 +54,20 @@ export type InventoryData = {
   gear?: Gear[];
   bait?: Bait[];
   current_zone_id: number | null;
+  xp?: number;
+  level?: number;
 };
+
+// XP calculation helpers
+function xpToLevel(n: number): number {
+  return Math.round(10 * Math.pow(1.056, n - 1));
+}
+
+export function totalXpToLevel(n: number): number {
+  let total = 0;
+  for (let i = 1; i < n; i++) total += xpToLevel(i);
+  return total;
+}
 
 export function useFishingInventory() {
   const [data, setData] = useState<InventoryData | null>(null);
@@ -65,8 +78,8 @@ export function useFishingInventory() {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/inventory`, {
-  credentials: 'include',
-});
+        credentials: 'include',
+      });
 
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const json = await res.json();
@@ -80,6 +93,8 @@ export function useFishingInventory() {
         gear: json.gear,
         bait: json.bait,
         current_zone_id: json.current_zone_id ?? json.currentZoneId ?? null,
+        xp: json.xp,
+        level: json.level,
       });
       setError(null);
     } catch (e: any) {
@@ -89,10 +104,12 @@ export function useFishingInventory() {
     }
   }, []);
 
-  // Initial fetch
   useEffect(() => {
     fetchInventory();
   }, [fetchInventory]);
 
-  return { data, loading, error, refetch: fetchInventory };
+  const xpNeeded = data && data.level ? totalXpToLevel(data.level + 1) - (data.xp ?? 0) : 0;
+  const xpDisplay = data ? `${data.xp ?? 0} / ${totalXpToLevel((data.level ?? 1) + 1)}` : '';
+
+  return { data, loading, error, refetch: fetchInventory, xpNeeded, xpDisplay };
 }

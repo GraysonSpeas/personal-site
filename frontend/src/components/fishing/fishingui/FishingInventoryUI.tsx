@@ -1,3 +1,4 @@
+// src/components/fishing/fishingui/FishingInventoryUI.ts
 import React from 'react'
 
 type FishStack = {
@@ -53,9 +54,12 @@ type Props = {
     gear?: Gear[]
     bait?: Bait[]
     current_zone_id: number | null
+    xp?: number
+    level?: number
   } | null
   loading: boolean
   error: string | null
+  xpDisplay?: string
 }
 
 const zoneMap: Record<number, string> = {
@@ -65,7 +69,7 @@ const zoneMap: Record<number, string> = {
   4: 'Lava',
 }
 
-export function FishingInventoryUI({ data, loading, error }: Props) {
+export function FishingInventoryUI({ data, loading, error, xpDisplay }: Props) {
   if (loading) return <p>Loading...</p>
   if (error) return <p>Error: {error}</p>
   if (!data) return <p>No data</p>
@@ -79,6 +83,8 @@ export function FishingInventoryUI({ data, loading, error }: Props) {
     gear,
     bait,
     current_zone_id,
+    xp,
+    level,
   } = data
 
   const zoneName = current_zone_id
@@ -89,6 +95,30 @@ export function FishingInventoryUI({ data, loading, error }: Props) {
     <div>
       <p>
         <strong>Username:</strong> {email ? email.split('@')[0] : 'Unknown'} &nbsp;|&nbsp;{' '}
+        <strong>Level:</strong> {level ?? 1} &nbsp;|&nbsp;{' '}
+        {(() => {
+  const xpCurrent = xp ?? 0;
+  const levelCurrent = level ?? 1;
+
+  const xpToLevel = (n: number) => Math.round(10 * Math.pow(1.056, n - 1));
+  const totalXpToLevel = (n: number) => {
+    let total = 0;
+    for (let i = 1; i < n; i++) total += xpToLevel(i);
+    return total;
+  };
+
+  const xpNextLevel = totalXpToLevel(levelCurrent + 1);
+  const xpPrevLevel = totalXpToLevel(levelCurrent);
+  const xpNeeded = xpNextLevel - xpPrevLevel;
+  const xpIntoLevel = xpCurrent - xpPrevLevel;
+
+  return (
+    <>
+      <strong>XP:</strong> {xpIntoLevel} / {xpNeeded} &nbsp;|&nbsp;{' '}
+    </>
+  );
+})()}
+
         <strong>Current Zone:</strong> {zoneName} &nbsp;|&nbsp;{' '}
         <strong>Gold:</strong> {currency?.gold || 0}{' '}
         <strong>Pearls:</strong> {currency?.pearls || 0}{' '}

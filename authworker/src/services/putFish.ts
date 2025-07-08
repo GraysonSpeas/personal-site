@@ -68,4 +68,47 @@ export async function saveCaughtFish(userId: number, item: any, db: D1Database) 
       }
     }
   }
+// --- XP gain and level up ---
+const rarityXP: Record<'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic', number> = {
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  epic: 10,
+  legendary: 50,
+  mythic: 200,
+};
+
+const rarityKey = (String(item.rarity).toLowerCase() as keyof typeof rarityXP);
+const fishXP: number = rarityXP[rarityKey] ?? 0;
+
+const user = await db
+  .prepare(`SELECT xp, level, current_zone_id FROM users WHERE id = ?`)
+  .bind(userId)
+  .first<{ xp: number; level: number; current_zone_id: number }>();
+
+if (user) {
+  const zone = await db
+    .prepare(`SELECT xp_multiplier FROM zoneTypes WHERE id = ?`)
+    .bind(user.current_zone_id)
+    .first<{ xp_multiplier: number }>();
+
+  const multiplier: number = typeof zone?.xp_multiplier === 'number' ? zone.xp_multiplier : 1.0;
+  const gainedXP: number = Math.round(fishXP * multiplier);
+  const newXP: number = user.xp + gainedXP;
+
+  const xpToLevel = (n: number): number => Math.round(10 * Math.pow(1.056, n - 1));
+  const totalXpToLevel = (n: number): number => {
+    let total = 0;
+    for (let i = 1; i < n; i++) total += xpToLevel(i);
+    return total;
+  };
+
+  let newLevel: number = user.level;
+  while (newXP >= totalXpToLevel(newLevel + 1)) newLevel++;
+
+  await db
+    .prepare(`UPDATE users SET xp = ?, level = ? WHERE id = ?`)
+    .bind(newXP, newLevel, userId)
+    .run();
+}
 }
