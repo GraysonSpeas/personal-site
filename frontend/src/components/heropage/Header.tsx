@@ -150,17 +150,24 @@ const changeLanguage = (langCode: string) => {
     >
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
-        <a
-          href="/"
-          className="flex items-center"
-          onClick={(e) => {
-            e.preventDefault();
-            onNavigate?.("home");
-            setMenuOpen(false);
-          }}
-        >
-          <img src="/assets/logo.png" alt="Site Logo" className="h-10 md:h-12 w-auto" />
-        </a>
+      <a
+  href="/"
+  className="flex items-center"
+  onClick={(e) => {
+    e.preventDefault();
+    onNavigate?.("home");
+    setMenuOpen(false);
+  }}
+>
+  <img
+    src="/assets/logo.png"
+    alt="Site Logo"
+className="h-10 md:h-12 w-auto transition duration-300 filter hover:brightness-100 hover:drop-shadow-[0_0_2px_rgba(252,211,77,0.5)]
+ hover:scale-110"
+  />
+</a>
+
+
 
         {/* Desktop nav */}
         <nav className="hidden md:flex gap-8">
@@ -168,7 +175,7 @@ const changeLanguage = (langCode: string) => {
             <a
               key={item.label}
               href={item.href ?? `#${item.page ?? item.label.toLowerCase()}`}
-              className="nav-link text-white/90 hover:text-white uppercase font-medium tracking-wider"
+className="nav-link text-white/90 hover:text-yellow-400 hover:brightness-100 uppercase font-medium tracking-wider transition duration-300 transform hover:scale-110"
               onClick={(e) => handleMenuItemClick(e, item)}
             >
               {item.label}
@@ -182,8 +189,8 @@ const changeLanguage = (langCode: string) => {
           <div className="relative" ref={translateRef}>
             <button
               onClick={() => setLangOpen((o) => !o)}
-              className="btn btn-outline rounded-full text-sm"
-            >
+className="nav-link text-white/90 hover:text-yellow-400 hover:brightness-100 uppercase font-medium tracking-wider transition duration-300 transform hover:scale-110"
+>
               🌐 Language
             </button>
             {langOpen && (
@@ -192,7 +199,7 @@ const changeLanguage = (langCode: string) => {
                   <button
                     key={code}
                     onClick={() => changeLanguage(code)}
-                    className="block w-full text-left px-3 py-1 hover:bg-gray-100"
+                    className="block w-full text-left px-3 py-1 uppercase font-medium tracking-wider hover:bg-gray-100"
                   >
                     {label}
                   </button>
@@ -205,29 +212,30 @@ const changeLanguage = (langCode: string) => {
 
           {/* Account dropdown */}
           <div className="relative inline-block" ref={containerRef}>
-            <button
-              id="auth-toggle-button"
-              onClick={() => setAuthModalOpen((o) => !o)}
-              className="text-white/90 hover:text-white"
-              aria-label="Toggle account modal"
-              type="button"
-            >
-              {/* user icon */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="w-6 h-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                />
-              </svg>
-            </button>
+<button
+  id="auth-toggle-button"
+  onClick={() => setAuthModalOpen((o) => !o)}
+  className="text-white/90 hover:text-yellow-400 hover:brightness-100 transition duration-300 transform hover:scale-110 inline-block"
+  aria-label="Toggle account modal"
+  type="button"
+  style={{ width: 24, height: 24 }} // Fix button size
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className="w-6 h-6"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+    />
+  </svg>
+</button>
+
             {authModalOpen && (
   user ? (
     // ——— Only when user is signed in ———
@@ -280,7 +288,7 @@ const changeLanguage = (langCode: string) => {
               <a
                 key={item.label}
                 href={item.href ?? `#${item.page ?? item.label.toLowerCase()}`}
-                className="text-white/90 hover:text-white uppercase font-medium py-2"
+className="text-white/90 hover:text-yellow-400 hover:brightness-100 uppercase font-medium py-2 transition duration-300 transform hover:scale-110"
                 onClick={(e) => handleMenuItemClick(e, item)}
               >
                 {item.label}

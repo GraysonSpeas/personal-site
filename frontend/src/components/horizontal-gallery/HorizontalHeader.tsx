@@ -27,8 +27,12 @@ const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
     <div className="horizontal-header">
       {/* Logo */}
       <button className="logo" onClick={onLogoClick} aria-label="Home">
-        <img src="/assets/logo.png" alt="Speas Logo" className="h-10 md:h-12 w-auto" />
-      </button>
+  <img
+    src="/assets/logo.png"
+    alt="Speas Logo"
+    className="h-10 md:h-12 w-auto transition duration-300 filter hover:brightness-110 hover:drop-shadow-[0_0_2px_rgba(252,211,77,0.5)] hover:scale-110"
+  />
+</button>
 
       {/* Navigation menu */}
       <nav className={`nav-menu ${isMenuOpen ? "open" : ""}`}>
@@ -52,15 +56,15 @@ const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
 
       {/* Hamburger */}
       <button
-        className={`hamburger ${isMenuOpen ? "open" : ""}`}
-        type="button"
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        aria-label="Toggle menu"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
+  className={`hamburger ${isMenuOpen ? "open" : ""} transition duration-300 transform hover:brightness-110 hover:drop-shadow-[0_0_2px_rgba(252,211,77,0.5)] hover:scale-110`}
+  type="button"
+  onClick={() => setIsMenuOpen(!isMenuOpen)}
+  aria-label="Toggle menu"
+>
+  <span></span>
+  <span></span>
+  <span></span>
+</button>
     </div>
   );
 };
