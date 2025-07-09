@@ -11,6 +11,7 @@ import inventoryRouter from './routes/inventoryRouter'
 import minigameRouter from './routes/minigameRouter'
 import zoneSelectionRouter from './routes/zoneSelectionRouter'
 import gearRouter from './routes/gearRouter'
+import timeContentRouter from './routes/timeContentRouter';
 
 // Bindings interface for environment variables and DB
 interface Bindings {
@@ -43,6 +44,7 @@ app.route('/inventory', inventoryRouter)
 app.route('/minigame', minigameRouter)
 app.route('/zone', zoneSelectionRouter)
 app.route('/gear', gearRouter)
+app.route('/timecontent', timeContentRouter);
 
 // Global error handler
 app.onError((err, c) => {

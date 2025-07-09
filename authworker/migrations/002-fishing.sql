@@ -1,17 +1,19 @@
--- DROP TABLES in order respecting foreign keys
+-- DROP TABLES respecting foreign keys order
 DROP TABLE IF EXISTS equipped;
+DROP TABLE IF EXISTS user_quests;
+DROP TABLE IF EXISTS questTemplates;
 DROP TABLE IF EXISTS achievements;
 DROP TABLE IF EXISTS biggest_fish;
 DROP TABLE IF EXISTS fish;
 DROP TABLE IF EXISTS bait;
 DROP TABLE IF EXISTS gear;
+DROP TABLE IF EXISTS fishingSessions;
+DROP TABLE IF EXISTS permits;
+DROP TABLE IF EXISTS currencies;
+DROP TABLE IF EXISTS resources;
 DROP TABLE IF EXISTS baitTypes;
 DROP TABLE IF EXISTS hookTypes;
 DROP TABLE IF EXISTS rodTypes;
-DROP TABLE IF EXISTS resources;
-DROP TABLE IF EXISTS permits;
-DROP TABLE IF EXISTS currencies;
-DROP TABLE IF EXISTS fishingSessions;
 DROP TABLE IF EXISTS fishTypeZones;
 DROP TABLE IF EXISTS resourceTypeZones;
 DROP TABLE IF EXISTS users;
@@ -229,4 +231,39 @@ CREATE TABLE IF NOT EXISTS equipped (
   FOREIGN KEY (equipped_rod_id) REFERENCES gear(id),
   FOREIGN KEY (equipped_hook_id) REFERENCES gear(id),
   FOREIGN KEY (equipped_bait_id) REFERENCES bait(id)
+);
+
+-- New quests template table supporting conditions and constraints
+CREATE TABLE IF NOT EXISTS questTemplates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT UNIQUE NOT NULL,
+  description TEXT NOT NULL,
+  type TEXT CHECK(type IN ('daily', 'weekly', 'monthly')) NOT NULL,
+  target INTEGER NOT NULL,
+  specific_species TEXT,           -- e.g. 'Trout', or NULL
+  rarity_exact TEXT,               -- e.g. 'rare', or NULL
+  rarity_min TEXT,                 -- e.g. 'epic', or NULL
+  requires_modified INTEGER DEFAULT 0, -- 0 or 1
+  requires_no_bait INTEGER DEFAULT 0,  -- 0 or 1
+  requires_no_rod INTEGER DEFAULT 0,   -- 0 or 1
+  requires_no_hook INTEGER DEFAULT 0,  -- 0 or 1
+  time_of_day TEXT CHECK(time_of_day IN ('day', 'night')) DEFAULT NULL,
+  zone_id INTEGER DEFAULT NULL,
+  weather TEXT DEFAULT NULL,       -- e.g. 'rain', 'clear', or NULL
+  weight INTEGER DEFAULT 1,
+  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id)
+);
+
+-- User quest progress table
+CREATE TABLE IF NOT EXISTS user_quests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  quest_template_id INTEGER NOT NULL,
+  quest_key TEXT NOT NULL,
+  progress INTEGER DEFAULT 0,
+  completed INTEGER DEFAULT 0,
+  updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (quest_template_id) REFERENCES questTemplates(id) ON DELETE CASCADE,
+  UNIQUE(user_id, quest_key)
 );
