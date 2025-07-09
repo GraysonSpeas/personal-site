@@ -1,6 +1,8 @@
 // src/services/authService.ts
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { getInventoryService } from './getInventoryService'
+import { assignNewQuests, getQuestKeys, getAllQuests } from '../services/questService';
+
 import type { Context } from 'hono'
 
 // Bindings type for environment variables and DB access
@@ -145,6 +147,12 @@ if (userId) {
     `INSERT INTO equipped (user_id, equipped_rod_id, equipped_hook_id, equipped_bait_id)
      VALUES (?, ?, ?, ?)`
   ).bind(userId, rod?.id || null, hook?.id || null, bait?.id || null).run()
+
+  // <-- NEW: assign quests for the new user
+const quests = await getAllQuests(c.env.DB);
+const questKeys = getQuestKeys();
+await assignNewQuests(c.env.DB, userId, quests, questKeys);
+
 }
 
 

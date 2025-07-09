@@ -26,16 +26,42 @@ timeContentRouter.get('/', async (c) => {
 
   const questKeys = getQuestKeys();
 
+  // Prepare a map of keys for joining on quest_key
+  // We'll fetch quests of all types and left join user_quests for each period key accordingly
+  // For this, use UNION ALL for daily, weekly, monthly separately, then combine
+
+  const questsQuery = `
+    SELECT
+      qt.key,
+      qt.description,
+      qt.type,
+      qt.target,
+      qt.rarity_min,
+      qt.rarity_exact,
+      qt.requires_modified,
+      qt.requires_no_bait,
+      qt.requires_no_rod,
+      qt.requires_no_hook,
+      qt.time_of_day,
+      qt.zone_id,
+      qt.weather,
+      COALESCE(uq.progress, 0) AS progress,
+      COALESCE(uq.completed, 0) AS completed
+    FROM questTemplates qt
+    LEFT JOIN user_quests uq ON uq.user_id = ? AND uq.quest_key = (qt.key || '_' || 
+      CASE
+        WHEN qt.type = 'daily' THEN ?
+        WHEN qt.type = 'weekly' THEN ?
+        WHEN qt.type = 'monthly' THEN ?
+        ELSE ''
+      END
+    )
+    WHERE qt.type IN ('daily', 'weekly', 'monthly')
+  `;
+
   const questRows = await db
-    .prepare(`
-      SELECT qt.key, qt.description, qt.type, qt.target, qt.rarity_min, qt.rarity_exact, qt.requires_modified, 
-             qt.requires_no_bait, qt.requires_no_rod, qt.requires_no_hook, qt.time_of_day, qt.zone_id, qt.weather,
-             uq.progress, uq.completed
-      FROM questTemplates qt
-      LEFT JOIN user_quests uq ON uq.user_id = ? AND uq.quest_key = qt.key || '_' || ?
-      WHERE qt.type IN ('daily', 'weekly', 'monthly')
-    `)
-    .bind(user.id, questKeys.daily)
+    .prepare(questsQuery)
+    .bind(user.id, questKeys.daily, questKeys.weekly, questKeys.monthly)
     .all();
 
   const world = getWorldState();
@@ -47,13 +73,12 @@ timeContentRouter.get('/', async (c) => {
   const rawFishTypes = fishTypes?.results ?? [];
   const catchOfTheDay = getCatchOfTheDay(rawFishTypes);
 
-return c.json({
-  quests: questRows.results,
-  weather,
-  catchOfTheDay: catchOfTheDay.fishes,
-  worldState: world, // ← this line is missing
-});
-
+  return c.json({
+    quests: questRows.results,
+    weather,
+    catchOfTheDay: catchOfTheDay.fishes,
+    worldState: world,
+  });
 });
 
 export default timeContentRouter;

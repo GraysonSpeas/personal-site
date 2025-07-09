@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface Quest {
+interface QuestType {
   key: string;
   description: string;
   progress: number;
@@ -9,31 +9,37 @@ interface Quest {
 }
 
 interface QuestProps {
-  quests: Quest[];
+  quests: QuestType[];
 }
 
 export function Quest({ quests }: QuestProps) {
-  if (quests.length === 0) {
-    return <p>No active quests.</p>;
-  }
+  if (!quests.length) return <p>No active quests.</p>;
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Quests</h2>
-      <ul>
-        {quests.map((quest) => (
-          <li
-            key={quest.key}
-            className={`p-2 border-b last:border-b-0 ${quest.completed ? 'bg-green-200' : ''}`}
-          >
-            <div className="font-medium">{quest.description}</div>
-            <div>
-              Progress: {quest.progress} / {quest.target}{' '}
-              {quest.completed && <span className="text-green-600 font-bold">✓ Completed</span>}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <section aria-label="Quests" className="max-w-md mx-auto p-4">
+      {quests.map(({ key, description, progress, target, completed }) => (
+        <div
+          key={key}
+          className={`quest-item p-4 mb-4 rounded border ${
+            completed ? 'bg-green-100 border-green-400' : 'bg-gray-100 border-gray-300'
+          }`}
+          role="region"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <h3 className="font-semibold text-lg">{description}</h3>
+          <p>
+            Progress: {progress} / {target}{' '}
+            {completed && <span className="text-green-700 font-bold">(Completed)</span>}
+          </p>
+          <progress
+            value={progress}
+            max={target}
+            className="w-full mt-2"
+            aria-label={`Progress for quest: ${description}`}
+          />
+        </div>
+      ))}
+    </section>
   );
 }

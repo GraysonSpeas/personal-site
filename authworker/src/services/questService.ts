@@ -4,7 +4,7 @@ export interface Quest {
   key: string;
   description: string;
   target: number;
-  condition: (fish: { rarity: string; modified?: boolean }) => boolean;
+  condition?: ((fish: { rarity: string; modified?: boolean }) => boolean) | null;
   type: 'daily' | 'weekly' | 'monthly';
   reward: {
     xp: number;
@@ -28,7 +28,7 @@ export interface QuestKeys {
 }
 
 interface PlayerContext {
-  timeOfDay: string; // e.g., 'day' | 'night'
+  timeOfDay: string;
   zone: string;
   weather: string;
   hasBait: boolean;
@@ -76,6 +76,72 @@ function meetsRarityMin(fishRarity: string, rarityMin: string): boolean {
   return rarityOrder.indexOf(fishRarity) >= rarityOrder.indexOf(rarityMin);
 }
 
+// New helper to fetch quests from questTemplates table
+export async function getAllQuests(db: D1Database): Promise<Quest[]> {
+  const rows = await db.prepare('SELECT * FROM questTemplates').all();
+return rows.results.map(row => ({
+  key: String(row.key),
+  description: String(row.description),
+  target: Number(row.target),
+  condition: null,
+  type: row.type as 'daily' | 'weekly' | 'monthly',
+  reward: {
+    xp: Number(row.reward_xp),
+    gold: Number(row.reward_gold),
+  },
+  rarity_min: row.rarity_min ? String(row.rarity_min) : undefined,
+  rarity_exact: row.rarity_exact ? String(row.rarity_exact) : undefined,
+  requires_modified: Boolean(row.requires_modified),
+  requires_no_bait: Boolean(row.requires_no_bait),
+  requires_no_rod: Boolean(row.requires_no_rod),
+  requires_no_hook: Boolean(row.requires_no_hook),
+  time_of_day: row.time_of_day ? String(row.time_of_day) : null,
+  zone: row.zone ? String(row.zone) : null,
+  weather: row.weather ? String(row.weather) : null,
+}));
+
+}
+
+export async function assignNewQuests(
+  db: D1Database,
+  userId: number,
+  quests: Quest[],
+  questKeys: QuestKeys
+) {
+  const types: ('daily' | 'weekly' | 'monthly')[] = ['daily', 'weekly', 'monthly'];
+
+  for (const type of types) {
+    const filtered = quests.filter(q => q.type === type);
+    const selected = filtered.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+    for (const quest of selected) {
+      const periodKey = questKeys[quest.type];
+      const questUniqueKey = `${quest.key}_${periodKey}`;
+
+      const exists = await db
+        .prepare('SELECT 1 FROM user_quests WHERE user_id = ? AND quest_key = ?')
+        .bind(userId, questUniqueKey)
+        .first();
+
+      if (!exists) {
+        // get quest_template_id from questTemplates
+        const template = await db
+          .prepare('SELECT id FROM questTemplates WHERE key = ?')
+          .bind(quest.key)
+          .first();
+
+        if (template?.id) {
+          await db.prepare(`
+            INSERT INTO user_quests (user_id, quest_template_id, quest_key, progress, completed, updated_at)
+            VALUES (?, ?, ?, 0, 0, datetime('now'))
+          `).bind(userId, template.id, questUniqueKey).run();
+        }
+      }
+    }
+  }
+}
+
+
 export async function updateQuestProgress(
   db: D1Database,
   userId: number,
@@ -85,12 +151,10 @@ export async function updateQuestProgress(
   context: PlayerContext
 ) {
   for (const quest of quests) {
-    // Check gear requirements
     if (quest.requires_no_bait && context.hasBait) continue;
     if (quest.requires_no_rod && context.hasRod) continue;
     if (quest.requires_no_hook && context.hasHook) continue;
 
-    // Check time_of_day, zone, weather if specified
     if (quest.time_of_day && quest.time_of_day !== context.timeOfDay) continue;
     if (quest.zone && quest.zone !== context.zone) continue;
     if (quest.weather && quest.weather !== context.weather) continue;
@@ -98,20 +162,11 @@ export async function updateQuestProgress(
     const periodKey = questKeys[quest.type];
     const questUniqueKey = `${quest.key}_${periodKey}`;
 
-    // Filter fish by quest condition and additional properties
     const matchedCount = caughtFish.filter(fish => {
-      // Check rarity exact
       if (quest.rarity_exact && fish.rarity !== quest.rarity_exact) return false;
-
-      // Check rarity min
       if (quest.rarity_min && !meetsRarityMin(fish.rarity, quest.rarity_min)) return false;
-
-      // Check modified if required
       if (quest.requires_modified && !fish.modified) return false;
-
-      // Custom condition function fallback
       if (quest.condition && !quest.condition(fish)) return false;
-
       return true;
     }).length;
 
@@ -124,7 +179,6 @@ export async function updateQuestProgress(
 
     const currentProgress = row?.progress ?? 0;
     const completed = row?.completed ?? 0;
-
     if (completed) continue;
 
     const newProgress = Math.min(currentProgress + matchedCount, quest.target);

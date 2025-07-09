@@ -1,9 +1,8 @@
-// timeContentService.ts
-// Handles time, weather, world state, and catch of the day logic
+import type { D1Database } from '@cloudflare/workers-types';
 
 const CST_OFFSET = -5 * 60; // minutes offset UTC→CST
 
-interface WorldState {
+export interface WorldState {
   phase: 'day' | 'night';
   cycleNum: number;
   cycleMin: number;
@@ -11,24 +10,38 @@ interface WorldState {
   rainStartMin: number | null;
 }
 
-interface CatchOfTheDayFish {
+export interface CatchOfTheDayFish {
   species: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'epic';
   sellLimit: number;
 }
 
-interface CatchOfTheDay {
+export interface CatchOfTheDay {
   fishes: CatchOfTheDayFish[];
+}
+
+export interface QuestTemplate {
+  id: number;
+  key: string;
+  description: string;
+  type: 'daily' | 'weekly' | 'monthly';
+  target: number;
+}
+
+export interface UserQuest extends QuestTemplate {
+  progress: number;
+  completed: boolean;
+  updated_at: string;
 }
 
 // -- Utilities --
 
-function toCST(date: Date): Date {
+export function toCST(date: Date): Date {
   const cstString = date.toLocaleString('en-US', { timeZone: 'America/Chicago' });
   return new Date(cstString);
 }
 
-function startOfDayCST(date: Date): Date {
+export function startOfDayCST(date: Date): Date {
   const cst = toCST(date);
   cst.setHours(0, 0, 0, 0);
   return new Date(cst.getTime() - CST_OFFSET * 60 * 1000);
@@ -56,7 +69,6 @@ function shuffleSeeded<T>(array: T[], rand: () => number): T[] {
 
 export function getWorldState(now = Date.now()): WorldState {
   const cycleLength = 150 * 60 * 1000; // 150 min total
-  const rainDuration = 45 * 60 * 1000;
 
   const worldStart = new Date('2025-07-01T05:00:00Z').getTime();
   const msSinceStart = now - worldStart;
@@ -70,7 +82,6 @@ export function getWorldState(now = Date.now()): WorldState {
   let isRaining = false;
   let rainStartMin: number | null = null;
 
-  // Every 3rd cycle starting at cycle 2 rains at these mins (repeats)
   if (cycleNum % 3 === 2) {
     const rainSchedule = [15, 90, 105];
     const rainIndex = Math.floor((cycleNum / 3) % rainSchedule.length);
@@ -108,19 +119,152 @@ export function getCatchOfTheDay(
 
   const sellLimitForRarity = (rarity: string) => {
     switch (rarity) {
-      case 'common': return 5;
-      case 'uncommon': return 3;
-      case 'rare': return 2;
-      case 'epic': return 1;
-      default: return 5;
+      case 'common':
+        return 5;
+      case 'uncommon':
+        return 3;
+      case 'rare':
+        return 2;
+      case 'epic':
+        return 1;
+      default:
+        return 5;
     }
   };
 
   return {
     fishes: [
-      { species: firstGroup.species, rarity: firstGroup.rarity as any, sellLimit: sellLimitForRarity(firstGroup.rarity) },
-      { species: secondGroup.species, rarity: secondGroup.rarity as any, sellLimit: sellLimitForRarity(secondGroup.rarity) },
-      { species: thirdGroup.species, rarity: thirdGroup.rarity as any, sellLimit: sellLimitForRarity(thirdGroup.rarity) },
+      {
+        species: firstGroup.species,
+        rarity: firstGroup.rarity as any,
+        sellLimit: sellLimitForRarity(firstGroup.rarity),
+      },
+      {
+        species: secondGroup.species,
+        rarity: secondGroup.rarity as any,
+        sellLimit: sellLimitForRarity(secondGroup.rarity),
+      },
+      {
+        species: thirdGroup.species,
+        rarity: thirdGroup.rarity as any,
+        sellLimit: sellLimitForRarity(thirdGroup.rarity),
+      },
     ],
   };
+}
+
+// -- Quest Scheduling Logic --
+
+function getCurrentWeekNumber(date: Date): number {
+  const cstDate = toCST(date);
+  const janFirst = new Date(cstDate.getFullYear(), 0, 1);
+  const days =
+    Math.floor((cstDate.getTime() - janFirst.getTime()) / (24 * 60 * 60 * 1000));
+  return Math.ceil((days + janFirst.getDay() + 1) / 7);
+}
+
+function questsValid(
+  quests: UserQuest[],
+  type: 'daily' | 'weekly' | 'monthly',
+  today: number,
+  thisWeek: number,
+  thisMonth: number
+): boolean {
+  const filtered = quests.filter((q) => q.type === type);
+  if (filtered.length === 0) return false;
+
+  const latest = filtered.reduce((a, b) =>
+    new Date(a.updated_at) > new Date(b.updated_at) ? a : b
+  );
+  const updatedAt = new Date(latest.updated_at);
+  const updatedCST = toCST(updatedAt);
+
+  if (type === 'daily') {
+    return startOfDayCST(updatedAt).getTime() === today;
+  } else if (type === 'weekly') {
+    return getCurrentWeekNumber(updatedAt) === thisWeek;
+  } else if (type === 'monthly') {
+    return updatedCST.getMonth() === thisMonth;
+  }
+  return false;
+}
+
+async function queryDb<T>(db: D1Database, sql: string, params: any[] = []): Promise<T[]> {
+  const result = await db.prepare(sql).bind(...params).all<T>();
+  return result.results ?? [];
+}
+
+export async function assignNewQuests(
+  db: D1Database,
+  userId: number,
+  type: 'daily' | 'weekly' | 'monthly'
+) {
+  await db.prepare(
+    `
+    DELETE FROM user_quests
+    WHERE user_id = ? AND quest_template_id IN (
+      SELECT id FROM questTemplates WHERE type = ?
+    )
+  `
+  ).bind(userId, type).run();
+
+  const quests = await queryDb<QuestTemplate>(
+    db,
+    `SELECT id, key, description, type, target FROM questTemplates WHERE type = ? ORDER BY RANDOM() LIMIT 3`,
+    [type]
+  );
+
+  for (const quest of quests) {
+    await db.prepare(
+      `
+      INSERT INTO user_quests (user_id, quest_template_id, quest_key, progress, completed, updated_at)
+      VALUES (?, ?, ?, 0, 0, datetime('now'))
+    `
+    ).bind(userId, quest.id, quest.key).run();
+  }
+}
+
+export async function checkAndAssignQuests(
+  db: D1Database,
+  userId: number
+): Promise<UserQuest[]> {
+  const now = new Date();
+  const cstNow = toCST(now);
+  const today = startOfDayCST(now).getTime();
+  const thisWeek = getCurrentWeekNumber(now);
+  const thisMonth = cstNow.getMonth();
+
+  const userQuests = await queryDb<UserQuest>(
+    db,
+    `
+    SELECT uq.*, qt.description, qt.target, qt.type
+    FROM user_quests uq
+    JOIN questTemplates qt ON uq.quest_template_id = qt.id
+    WHERE uq.user_id = ?
+  `,
+    [userId]
+  );
+
+  if (!questsValid(userQuests, 'daily', today, thisWeek, thisMonth)) {
+    await assignNewQuests(db, userId, 'daily');
+  }
+  if (!questsValid(userQuests, 'weekly', today, thisWeek, thisMonth)) {
+    await assignNewQuests(db, userId, 'weekly');
+  }
+  if (!questsValid(userQuests, 'monthly', today, thisWeek, thisMonth)) {
+    await assignNewQuests(db, userId, 'monthly');
+  }
+
+  const updatedQuests = await queryDb<UserQuest>(
+    db,
+    `
+    SELECT uq.*, qt.description, qt.target, qt.type
+    FROM user_quests uq
+    JOIN questTemplates qt ON uq.quest_template_id = qt.id
+    WHERE uq.user_id = ?
+  `,
+    [userId]
+  );
+
+  return updatedQuests;
 }
