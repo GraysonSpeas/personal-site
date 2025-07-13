@@ -162,29 +162,31 @@ export async function seedDatabase(db: D1Database) {
     for (const quest of quests) {
       const zoneId = quest.zone ? await getZoneId(db, quest.zone) : null;
 
-      await db
-        .prepare(`
-          INSERT OR IGNORE INTO questTemplates
-            (key, description, type, target, rarity_exact, rarity_min, requires_modified, requires_no_bait, requires_no_rod, requires_no_hook, time_of_day, zone_id, weather, weight)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `)
-        .bind(
-          quest.key,
-          quest.description,
-          quest.type,
-          quest.target,
-          quest.rarity_exact ?? null,
-          quest.rarity_min ?? null,
-          quest.requires_modified ? 1 : 0,
-          quest.requires_no_bait ? 1 : 0,
-          quest.requires_no_rod ? 1 : 0,
-          quest.requires_no_hook ? 1 : 0,
-          quest.time_of_day ?? null,
-          zoneId,
-          quest.weather ?? null,
-          1
-        )
-        .run();
+await db
+  .prepare(`
+    INSERT OR IGNORE INTO questTemplates
+      (key, description, type, target, rarity_exact, rarity_min, requires_modified, requires_no_bait, requires_no_rod, requires_no_hook, time_of_day, zone_id, weather, reward_xp, reward_gold)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `)
+.bind(
+  quest.key,
+  quest.description,
+  quest.type,
+  quest.target,
+  quest.rarity_exact ?? null,
+  quest.rarity_min ?? null,
+  quest.requires_modified ? 1 : 0,
+  quest.requires_no_bait ? 1 : 0,
+  quest.requires_no_rod ? 1 : 0,
+  quest.requires_no_hook ? 1 : 0,
+  quest.time_of_day ?? null,
+  zoneId,
+  quest.weather ?? null,
+  quest.reward.xp, // Ensure this is a valid number
+  quest.reward.gold // Ensure this is a valid number
+)
+  .run();
+
     }
     console.log('Quest templates seeded successfully.');
 

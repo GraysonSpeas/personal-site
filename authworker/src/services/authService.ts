@@ -151,8 +151,8 @@ if (userId) {
   // <-- NEW: assign quests for the new user
 const quests = await getAllQuests(c.env.DB);
 const questKeys = getQuestKeys();
-await assignNewQuests(c.env.DB, userId, quests, questKeys);
-
+const userIdNum = Number(userId);
+await assignNewQuests(c.env.DB, userIdNum, quests, questKeys);
 }
 
 

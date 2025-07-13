@@ -116,40 +116,41 @@ const handleCast = () => {
     setPhase('in-minigame')
   }
 
-  const onResult = useCallback(
-    async (result: 'caught' | 'escaped') => {
-      if (caughtCalledRef.current) return
-      caughtCalledRef.current = true
-      if (!fishPreview) {
-        setPhase('idle')
-        caughtCalledRef.current = false
-        return
+const onResult = useCallback(
+  async (result: 'caught' | 'escaped') => {
+    if (caughtCalledRef.current) return;
+    caughtCalledRef.current = true;
+    if (!fishPreview) {
+      setPhase('idle');
+      caughtCalledRef.current = false;
+      return;
+    }
+    if (result === 'caught') {
+      try {
+        const res = await fetch(`${API_BASE}/minigame/catch`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Failed to catch');
+        setCaughtFish(json.fish);
+        setPhase('success');
+        
+        // Trigger the refetch to update quests and other data after catching fish
+        await refetch(); // Ensure this triggers the latest quest data and time-sensitive content
+      } catch (e: any) {
+        setError(e.message);
+        setPhase('failed');
       }
-      if (result === 'caught') {
-        try {
-          const res = await fetch(`${API_BASE}/minigame/catch`, {
-            method: 'POST',
-            credentials: 'include',
-          })
-          const json = await res.json()
-          console.log('Catch response:', json);
-          if (!res.ok) throw new Error(json.error || 'Failed to catch')
-          setCaughtFish(json.fish)
-          setPhase('success')
-          await refetch()
-        } catch (e: any) {
-          setError(e.message)
-          setPhase('failed')
-        }
-      } else {
-        setPhase('failed')
-      }
-      setFishPreview(null)
-      setCastBonus(0)
-      setReactionBonus(0)
-    },
-    [fishPreview, refetch]
-  )
+    } else {
+      setPhase('failed');
+    }
+    setFishPreview(null);
+    setCastBonus(0);
+    setReactionBonus(0);
+  },
+  [fishPreview, refetch] // refetch will be called here after catching the fish
+)
 
   // Manage bite and reaction timing phases
   useEffect(() => {

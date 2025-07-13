@@ -2,6 +2,7 @@ import { generateFish } from './generateFishService';
 import { saveCaughtFish } from './putFish';
 import { getUserEmail } from './authHelperService';
 import type { Context } from 'hono';
+import { updateQuestProgress, getAllQuests, getQuestKeys } from './questService';
 
 interface FishCatchSession {
   fish: any;
@@ -150,28 +151,25 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
 
   if (equipped?.equipped_bait_id) {
     const bait = await db.prepare(`SELECT quantity, stats FROM bait WHERE id = ? AND user_id = ?`).bind(equipped.equipped_bait_id, userId).first<{ quantity: number; stats: string }>();
-  if (bait && bait.quantity > 0) {
-  if (bait.quantity > 1) {
-    await db.prepare(`UPDATE bait SET quantity = quantity - 1 WHERE id = ?`).bind(equipped.equipped_bait_id).run();
-  } else {
-    // Clear equipped bait reference first
-    await db.prepare(`UPDATE equipped SET equipped_bait_id = NULL WHERE user_id = ?`).bind(userId).run();
-    // Then delete bait
-    await db.prepare(`DELETE FROM bait WHERE id = ?`).bind(equipped.equipped_bait_id).run();
-  }
+    if (bait && bait.quantity > 0) {
+      if (bait.quantity > 1) {
+        await db.prepare(`UPDATE bait SET quantity = quantity - 1 WHERE id = ?`).bind(equipped.equipped_bait_id).run();
+      } else {
+        await db.prepare(`UPDATE equipped SET equipped_bait_id = NULL WHERE user_id = ?`).bind(userId).run();
+        await db.prepare(`DELETE FROM bait WHERE id = ?`).bind(equipped.equipped_bait_id).run();
+      }
 
-  // Parse bait stats or fallback to zeros
-  try {
-    const parsedStats = JSON.parse(bait.stats);
-    baitStats = {
-      focus: parsedStats.focus ?? 0,
-      lineTension: parsedStats.lineTension ?? 0,
-      luck: parsedStats.luck ?? 0,
-    };
-  } catch {
-    baitStats = { focus: 0, lineTension: 0, luck: 0 };
-  }
-}
+      try {
+        const parsedStats = JSON.parse(bait.stats);
+        baitStats = {
+          focus: parsedStats.focus ?? 0,
+          lineTension: parsedStats.lineTension ?? 0,
+          luck: parsedStats.luck ?? 0,
+        };
+      } catch {
+        baitStats = { focus: 0, lineTension: 0, luck: 0 };
+      }
+    }
   }
 
   // Attach baitStats to fish data before saving
@@ -182,6 +180,22 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
   };
 
   await saveCaughtFish(userId, fishDataWithBaitStats, db);
+
+  // QUEST PROGRESS UPDATE START
+  const quests = await getAllQuests(db);
+  const questKeys = getQuestKeys();
+
+  const playerContext = {
+    timeOfDay: 'day', // adjust with actual logic if available
+    zone: await getZoneNameFromId(db, (await getUserZone(db, email)) ?? 1),
+    weather: 'clear', // adjust with actual weather logic if available
+    hasBait: !!(equipped?.equipped_bait_id),
+    hasRod: true, // replace with actual equipped rod check
+    hasHook: true, // replace with actual equipped hook check
+  };
+
+  await updateQuestProgress(db, userId, [fishDataWithBaitStats], quests, questKeys, playerContext);
+  // QUEST PROGRESS UPDATE END
 
   await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
 

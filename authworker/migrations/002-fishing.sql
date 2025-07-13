@@ -250,7 +250,8 @@ CREATE TABLE IF NOT EXISTS questTemplates (
   time_of_day TEXT CHECK(time_of_day IN ('day', 'night')) DEFAULT NULL,
   zone_id INTEGER DEFAULT NULL,
   weather TEXT DEFAULT NULL,       -- e.g. 'rain', 'clear', or NULL
-  weight INTEGER DEFAULT 1,
+  reward_xp INTEGER NOT NULL DEFAULT 0,
+  reward_gold INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (zone_id) REFERENCES zoneTypes(id)
 );
 

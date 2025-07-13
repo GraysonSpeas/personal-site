@@ -1,9 +1,7 @@
-// src/routes/timeContentRouter.ts
 import { Hono } from 'hono';
 import { requireUser } from '../services/authHelperService';
 import { getWorldState, getCatchOfTheDay } from '../services/timeContentService';
 import type { D1Database } from '@cloudflare/workers-types';
-import { getQuestKeys } from '../services/questService';
 
 interface Bindings {
   DB: D1Database;
@@ -24,18 +22,14 @@ timeContentRouter.get('/', async (c) => {
     .first<{ id: number }>();
   if (!user) return c.json({ error: 'User not found' }, 404);
 
-  const questKeys = getQuestKeys();
-
-  // Prepare a map of keys for joining on quest_key
-  // We'll fetch quests of all types and left join user_quests for each period key accordingly
-  // For this, use UNION ALL for daily, weekly, monthly separately, then combine
-
   const questsQuery = `
     SELECT
-      qt.key,
+      uq.quest_key AS key,
       qt.description,
       qt.type,
       qt.target,
+      qt.reward_xp AS reward_xp,
+      qt.reward_gold AS reward_gold,
       qt.rarity_min,
       qt.rarity_exact,
       qt.requires_modified,
@@ -45,24 +39,23 @@ timeContentRouter.get('/', async (c) => {
       qt.time_of_day,
       qt.zone_id,
       qt.weather,
-      COALESCE(uq.progress, 0) AS progress,
-      COALESCE(uq.completed, 0) AS completed
-    FROM questTemplates qt
-    LEFT JOIN user_quests uq ON uq.user_id = ? AND uq.quest_key = (qt.key || '_' || 
-      CASE
-        WHEN qt.type = 'daily' THEN ?
-        WHEN qt.type = 'weekly' THEN ?
-        WHEN qt.type = 'monthly' THEN ?
-        ELSE ''
-      END
-    )
-    WHERE qt.type IN ('daily', 'weekly', 'monthly')
+      uq.progress,
+      uq.completed
+    FROM user_quests uq
+    JOIN questTemplates qt ON uq.quest_template_id = qt.id
+    WHERE uq.user_id = ?
+    ORDER BY
+      CASE qt.type
+        WHEN 'daily' THEN 1
+        WHEN 'weekly' THEN 2
+        WHEN 'monthly' THEN 3
+        ELSE 4
+      END,
+      uq.updated_at DESC
+    LIMIT 9
   `;
 
-  const questRows = await db
-    .prepare(questsQuery)
-    .bind(user.id, questKeys.daily, questKeys.weekly, questKeys.monthly)
-    .all();
+  const questRows = await db.prepare(questsQuery).bind(user.id).all();
 
   const world = getWorldState();
   const weather = world.isRaining ? 'Rainy' : 'Sunny';
@@ -73,8 +66,13 @@ timeContentRouter.get('/', async (c) => {
   const rawFishTypes = fishTypes?.results ?? [];
   const catchOfTheDay = getCatchOfTheDay(rawFishTypes);
 
+  // Return quest data, including rewards
   return c.json({
-    quests: questRows.results,
+    quests: questRows.results.map((quest) => ({
+      ...quest,
+      reward_xp: quest.reward_xp || 0, // Ensure it's never null
+      reward_gold: quest.reward_gold || 0, // Ensure it's never null
+    })),
     weather,
     catchOfTheDay: catchOfTheDay.fishes,
     worldState: world,

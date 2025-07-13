@@ -21,9 +21,7 @@ export function GearSelector({ gear, bait, refetch }: { gear: any[], bait: any[]
   }, [gear, bait, equippedRod, equippedHook, equippedBait]);
 
   const handleEquip = async () => {
-    if (!selectedRod || !selectedHook || !selectedBait) {
-      return setMessage('Please select rod, hook, and bait to equip.');
-    }
+    // No need to require all selected; null means unequip
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/gear/equip`, {
@@ -54,23 +52,22 @@ export function GearSelector({ gear, bait, refetch }: { gear: any[], bait: any[]
     <div className="max-w-sm mx-auto p-4 bg-white shadow-lg rounded-lg">
       <h2 className="text-xl font-semibold mb-4 text-black">Select Gear to Equip</h2>
 
-<div className="mb-4 p-2 border rounded bg-gray-100">
-  <p className="font-semibold text-black">Currently Equipped:</p>
-  <p className="text-black">Rod: {equippedRod ? equippedRod.name : 'Empty'}</p>
-  <p className="text-black">Hook: {equippedHook ? equippedHook.name : 'Empty'}</p>
-  <p className="text-black">
-    Bait: {equippedBait ? `${equippedBait.bait_type} (Qty: ${equippedBait.quantity})` : 'Empty'}
-  </p>
-</div>
-
+      <div className="mb-4 p-2 border rounded bg-gray-100">
+        <p className="font-semibold text-black">Currently Equipped:</p>
+        <p className="text-black">Rod: {equippedRod ? equippedRod.name : 'Empty'}</p>
+        <p className="text-black">Hook: {equippedHook ? equippedHook.name : 'Empty'}</p>
+        <p className="text-black">
+          Bait: {equippedBait ? `${equippedBait.bait_type} (Qty: ${equippedBait.quantity})` : 'Empty'}
+        </p>
+      </div>
 
       <label className="block mb-2 text-black font-medium">Rod</label>
       <select
         className="w-full p-2 mb-4 border rounded focus:outline-none focus:ring focus:ring-blue-300 text-black"
-        onChange={e => setSelectedRod(Number(e.target.value))}
+        onChange={e => setSelectedRod(e.target.value === '' ? null : Number(e.target.value))}
         value={selectedRod ?? ''}
       >
-        <option value="" disabled>Choose a rod</option>
+        <option value="">None</option>
         {gear.filter(g => g.type === 'rod').map(r => (
           <option key={r.gear_id} value={r.gear_id} className="text-black">
             {r.name} {r.equipped ? '(Equipped)' : ''}
@@ -81,10 +78,10 @@ export function GearSelector({ gear, bait, refetch }: { gear: any[], bait: any[]
       <label className="block mb-2 text-black font-medium">Hook</label>
       <select
         className="w-full p-2 mb-4 border rounded focus:outline-none focus:ring focus:ring-blue-300 text-black"
-        onChange={e => setSelectedHook(Number(e.target.value))}
+        onChange={e => setSelectedHook(e.target.value === '' ? null : Number(e.target.value))}
         value={selectedHook ?? ''}
       >
-        <option value="" disabled>Choose a hook</option>
+        <option value="">None</option>
         {gear.filter(g => g.type === 'hook').map(h => (
           <option key={h.gear_id} value={h.gear_id} className="text-black">
             {h.name} {h.equipped ? '(Equipped)' : ''}
@@ -95,10 +92,10 @@ export function GearSelector({ gear, bait, refetch }: { gear: any[], bait: any[]
       <label className="block mb-2 text-black font-medium">Bait</label>
       <select
         className="w-full p-2 mb-4 border rounded focus:outline-none focus:ring focus:ring-blue-300 text-black"
-        onChange={e => setSelectedBait(Number(e.target.value))}
+        onChange={e => setSelectedBait(e.target.value === '' ? null : Number(e.target.value))}
         value={selectedBait ?? ''}
       >
-        <option value="" disabled>Choose bait</option>
+        <option value="">None</option>
         {bait.map(b => (
           <option key={b.bait_id} value={b.bait_id} className="text-black">
             {b.bait_type} (Qty: {b.quantity}) {b.equipped ? '(Equipped)' : ''}

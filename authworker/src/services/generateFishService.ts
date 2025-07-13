@@ -57,49 +57,59 @@ export async function getPlayerGearStats(c: Context<{ Bindings: any }>): Promise
   const user = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
   if (!user) return { focus: 50, lineTension: 50, luck: 0 };
 
-  const equippedRow = await db.prepare(
-    `SELECT equipped_rod_id, equipped_hook_id, equipped_bait_id FROM equipped WHERE user_id = ?`
-  ).bind(user.id).first();
+const equippedRow = await db.prepare(
+  `SELECT equipped_rod_id, equipped_hook_id, equipped_bait_id FROM equipped WHERE user_id = ?`
+).bind(user.id).first();
 
-  if (!equippedRow) return { focus: 200, lineTension: 200, luck: 0 };
+if (!equippedRow) return { focus: 0, lineTension: 0, luck: 0 };
 
+const rodId = equippedRow.equipped_rod_id;
+const hookId = equippedRow.equipped_hook_id;
+const baitId = equippedRow.equipped_bait_id;
+
+let rodStats = { focus: 0, lineTension: 0, luck: 0 };
+let hookStats = { focus: 0, lineTension: 0, luck: 0 };
+let baitStats = { focus: 0, lineTension: 0, luck: 0 };
+
+const gearIdsToFetch = [];
+if (rodId) gearIdsToFetch.push(rodId);
+if (hookId) gearIdsToFetch.push(hookId);
+
+if (gearIdsToFetch.length > 0) {
   const gearRows = await db.prepare(
-    `SELECT id, stats FROM gear WHERE id IN (?, ?)`
-  ).bind(equippedRow.equipped_rod_id, equippedRow.equipped_hook_id).all();
-
-  let baitStats = { focus: 0, lineTension: 0, luck: 0 };
-  if (equippedRow.equipped_bait_id) {
-    const baitRow = await db.prepare(`SELECT stats FROM bait WHERE id = ?`).bind(equippedRow.equipped_bait_id).first();
-    if (baitRow?.stats) {
-      try {
-        baitStats = JSON.parse(baitRow.stats);
-      } catch {
-        baitStats = { focus: 0, lineTension: 0, luck: 0 };
-      }
-    }
-  }
-
-  let rodStats = { focus: 0, lineTension: 0, luck: 0 };
-  let hookStats = { focus: 0, lineTension: 0, luck: 0 };
+    `SELECT id, stats FROM gear WHERE id IN (${gearIdsToFetch.map(() => '?').join(',')})`
+  ).bind(...gearIdsToFetch).all();
 
   for (const gear of gearRows.results || gearRows) {
     let stats = { focus: 0, lineTension: 0, luck: 0 };
     try {
       stats = gear.stats ? JSON.parse(gear.stats) : stats;
     } catch {}
-    if (gear.id === equippedRow.equipped_rod_id) rodStats = stats;
-    else if (gear.id === equippedRow.equipped_hook_id) hookStats = stats;
+    if (gear.id === rodId) rodStats = stats;
+    else if (gear.id === hookId) hookStats = stats;
   }
+}
 
-  const focusSum = (rodStats.focus || 0) + (hookStats.focus || 0) + (baitStats.focus || 0);
-  const lineTensionSum = (rodStats.lineTension || 0) + (hookStats.lineTension || 0) + (baitStats.lineTension || 0);
-  const luckSum = (rodStats.luck || 0) + (hookStats.luck || 0) + (baitStats.luck || 0);
+if (baitId) {
+  const baitRow = await db.prepare(`SELECT stats FROM bait WHERE id = ?`).bind(baitId).first();
+  if (baitRow?.stats) {
+    try {
+      baitStats = JSON.parse(baitRow.stats);
+    } catch {
+      baitStats = { focus: 0, lineTension: 0, luck: 0 };
+    }
+  }
+}
 
-  return {
-    focus: focusSum > 0 ? focusSum : 200,
-    lineTension: lineTensionSum > 0 ? lineTensionSum : 200,
-    luck: luckSum,
-  };
+const focusSum = (rodStats.focus || 0) + (hookStats.focus || 0) + (baitStats.focus || 0);
+const lineTensionSum = (rodStats.lineTension || 0) + (hookStats.lineTension || 0) + (baitStats.lineTension || 0);
+const luckSum = (rodStats.luck || 0) + (hookStats.luck || 0) + (baitStats.luck || 0);
+
+return {
+  focus: focusSum,
+  lineTension: lineTensionSum,
+  luck: luckSum,
+};
 }
 
 const modifierChances = [

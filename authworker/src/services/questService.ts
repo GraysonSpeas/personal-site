@@ -64,6 +64,30 @@ function startOfMonthCST(date: Date): Date {
   return new Date(start.getTime() - (-5 * 60 * 60 * 1000));
 }
 
+// Previous period helpers
+function prevDayCST(date: Date): Date {
+  const d = toCST(date);
+  d.setDate(d.getDate() - 1);
+  d.setHours(0, 0, 0, 0);
+  return new Date(d.getTime() - (-5 * 60 * 60 * 1000));
+}
+
+function prevWeekCST(date: Date): Date {
+  const d = toCST(date);
+  const diff = d.getDay() + 7;
+  d.setDate(d.getDate() - diff);
+  d.setHours(0, 0, 0, 0);
+  return new Date(d.getTime() - (-5 * 60 * 60 * 1000));
+}
+
+function prevMonthCST(date: Date): Date {
+  const d = toCST(date);
+  d.setMonth(d.getMonth() - 1);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return new Date(d.getTime() - (-5 * 60 * 60 * 1000));
+}
+
 export function getQuestKeys(now = Date.now()): QuestKeys {
   return {
     daily: startOfCSTDay(new Date(now)).toISOString().slice(0, 10),
@@ -72,34 +96,40 @@ export function getQuestKeys(now = Date.now()): QuestKeys {
   };
 }
 
+export function getPrevQuestKeys(now = Date.now()): QuestKeys {
+  return {
+    daily: prevDayCST(new Date(now)).toISOString().slice(0, 10),
+    weekly: prevWeekCST(new Date(now)).toISOString().slice(0, 10),
+    monthly: prevMonthCST(new Date(now)).toISOString().slice(0, 7),
+  };
+}
+
 function meetsRarityMin(fishRarity: string, rarityMin: string): boolean {
   return rarityOrder.indexOf(fishRarity) >= rarityOrder.indexOf(rarityMin);
 }
 
-// New helper to fetch quests from questTemplates table
 export async function getAllQuests(db: D1Database): Promise<Quest[]> {
   const rows = await db.prepare('SELECT * FROM questTemplates').all();
-return rows.results.map(row => ({
-  key: String(row.key),
-  description: String(row.description),
-  target: Number(row.target),
-  condition: null,
-  type: row.type as 'daily' | 'weekly' | 'monthly',
-  reward: {
-    xp: Number(row.reward_xp),
-    gold: Number(row.reward_gold),
-  },
-  rarity_min: row.rarity_min ? String(row.rarity_min) : undefined,
-  rarity_exact: row.rarity_exact ? String(row.rarity_exact) : undefined,
-  requires_modified: Boolean(row.requires_modified),
-  requires_no_bait: Boolean(row.requires_no_bait),
-  requires_no_rod: Boolean(row.requires_no_rod),
-  requires_no_hook: Boolean(row.requires_no_hook),
-  time_of_day: row.time_of_day ? String(row.time_of_day) : null,
-  zone: row.zone ? String(row.zone) : null,
-  weather: row.weather ? String(row.weather) : null,
-}));
-
+  return rows.results.map(row => ({
+    key: String(row.key),
+    description: String(row.description),
+    target: Number(row.target),
+    condition: null,
+    type: row.type as 'daily' | 'weekly' | 'monthly',
+    reward: {
+      xp: Number(row.reward_xp),
+      gold: Number(row.reward_gold),
+    },
+    rarity_min: row.rarity_min ? String(row.rarity_min) : undefined,
+    rarity_exact: row.rarity_exact ? String(row.rarity_exact) : undefined,
+    requires_modified: Boolean(row.requires_modified),
+    requires_no_bait: Boolean(row.requires_no_bait),
+    requires_no_rod: Boolean(row.requires_no_rod),
+    requires_no_hook: Boolean(row.requires_no_hook),
+    time_of_day: row.time_of_day ? String(row.time_of_day) : null,
+    zone: row.zone ? String(row.zone) : null,
+    weather: row.weather ? String(row.weather) : null,
+  }));
 }
 
 export async function assignNewQuests(
@@ -124,7 +154,6 @@ export async function assignNewQuests(
         .first();
 
       if (!exists) {
-        // get quest_template_id from questTemplates
         const template = await db
           .prepare('SELECT id FROM questTemplates WHERE key = ?')
           .bind(quest.key)
@@ -141,7 +170,6 @@ export async function assignNewQuests(
   }
 }
 
-
 export async function updateQuestProgress(
   db: D1Database,
   userId: number,
@@ -150,7 +178,49 @@ export async function updateQuestProgress(
   questKeys: QuestKeys,
   context: PlayerContext
 ) {
+  // Get all user quests for current period keys to restrict update only to assigned quests
+  const userQuestsRes = await db
+    .prepare('SELECT quest_key FROM user_quests WHERE user_id = ?')
+    .bind(userId)
+    .all();
+
+const userQuestKeys = new Set<string>(userQuestsRes.results.map(r => String(r.quest_key)));
+  // Auto-refresh quests if missing current period keys
+  const missingTypes = new Set<'daily' | 'weekly' | 'monthly'>();
+
+  for (const type of ['daily', 'weekly', 'monthly'] as const) {
+    const periodKey = questKeys[type];
+const hasKey = [...userQuestKeys].some(key => key.endsWith(periodKey));    if (!hasKey) {
+      missingTypes.add(type);
+    }
+  }
+
+  if (missingTypes.size > 0) {
+    const prevKeys = getPrevQuestKeys(Date.now());
+    for (const type of missingTypes) {
+      await db.prepare(`DELETE FROM user_quests WHERE user_id = ? AND quest_key LIKE ?`)
+        .bind(userId, `%_${prevKeys[type]}%`)
+        .run();
+    }
+    await assignNewQuests(db, userId, quests, questKeys);
+
+    // Refresh userQuestKeys after assignment
+    const refreshed = await db
+      .prepare('SELECT quest_key FROM user_quests WHERE user_id = ?')
+      .bind(userId)
+      .all();
+refreshed.results.forEach(r => userQuestKeys.add(String(r.quest_key)));
+  }
+
+  // Update progress only for quests assigned for current period
   for (const quest of quests) {
+    const periodKey = questKeys[quest.type];
+    const questUniqueKey = `${quest.key}_${periodKey}`;
+
+    if (!userQuestKeys.has(questUniqueKey)) {
+      continue; // Skip unassigned quests
+    }
+
     if (quest.requires_no_bait && context.hasBait) continue;
     if (quest.requires_no_rod && context.hasRod) continue;
     if (quest.requires_no_hook && context.hasHook) continue;
@@ -158,9 +228,6 @@ export async function updateQuestProgress(
     if (quest.time_of_day && quest.time_of_day !== context.timeOfDay) continue;
     if (quest.zone && quest.zone !== context.zone) continue;
     if (quest.weather && quest.weather !== context.weather) continue;
-
-    const periodKey = questKeys[quest.type];
-    const questUniqueKey = `${quest.key}_${periodKey}`;
 
     const matchedCount = caughtFish.filter(fish => {
       if (quest.rarity_exact && fish.rarity !== quest.rarity_exact) return false;
@@ -184,26 +251,19 @@ export async function updateQuestProgress(
     const newProgress = Math.min(currentProgress + matchedCount, quest.target);
     const isCompleted = newProgress >= quest.target;
 
-    if (row) {
-      await db.prepare(`
-        UPDATE user_quests SET progress = ?, completed = ?, updated_at = datetime('now')
-        WHERE user_id = ? AND quest_key = ?
-      `).bind(newProgress, isCompleted ? 1 : 0, userId, questUniqueKey).run();
-    } else {
-      await db.prepare(`
-        INSERT INTO user_quests (user_id, quest_key, progress, completed, updated_at)
-        VALUES (?, ?, ?, ?, datetime('now'))
-      `).bind(userId, questUniqueKey, newProgress, isCompleted ? 1 : 0).run();
-    }
+if (isCompleted) {
+  await db.prepare(`
+    UPDATE users SET xp = xp + ?, updated_at = datetime('now') WHERE id = ?
+  `).bind(quest.reward.xp, userId).run();
 
-    if (isCompleted) {
-      await db.prepare(`
-        UPDATE users SET xp = xp + ?, updated_at = datetime('now') WHERE id = ?
-      `).bind(quest.reward.xp, userId).run();
+  await db.prepare(`
+    UPDATE currencies SET gold = gold + ? WHERE user_id = ?
+  `).bind(quest.reward.gold, userId).run();
+}
 
-      await db.prepare(`
-        UPDATE currencies SET gold = gold + ? WHERE user_id = ?
-      `).bind(quest.reward.gold, userId).run();
-    }
+await db.prepare(`
+  UPDATE user_quests SET progress = ?, completed = ?, updated_at = datetime('now')
+  WHERE user_id = ? AND quest_key = ?
+`).bind(newProgress, isCompleted ? 1 : 0, userId, questUniqueKey).run();
   }
 }

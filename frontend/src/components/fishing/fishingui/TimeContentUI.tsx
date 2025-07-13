@@ -15,6 +15,9 @@ interface QuestType {
   progress: number;
   target: number;
   completed: boolean;
+  type: 'daily' | 'weekly' | 'monthly';
+  reward_xp?: number; // add reward_xp
+  reward_gold?: number; // add reward_gold
 }
 
 interface CatchFish {
@@ -30,7 +33,12 @@ interface TimeContent {
   worldState?: WorldState;
 }
 
-export function TimeContentUI() {
+// Add `refetch` as a prop
+interface TimeContentUIProps {
+  refetch: () => Promise<void>;
+}
+
+export function TimeContentUI({ refetch }: TimeContentUIProps) {
   const [data, setData] = useState<TimeContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +46,7 @@ export function TimeContentUI() {
   const [cycleState, setCycleState] = useState<{ cycleNum: number; cycleMin: number } | null>(
     null
   );
+  const [forceRender, setForceRender] = useState(0);  // Force re-render state
 
   const fetchTimeContent = async () => {
     setLoading(true);
@@ -64,6 +73,7 @@ export function TimeContentUI() {
       setCycleState(null);
     }
     setLoading(false);
+    setForceRender(prev => prev + 1);  // Force re-render
   };
 
   useEffect(() => {
@@ -94,6 +104,11 @@ export function TimeContentUI() {
 
     return () => clearInterval(interval);
   }, [cycleStartTimestamp]);
+
+  // Add this useEffect to confirm when data updates
+  useEffect(() => {
+    console.log('Updated data:', data);
+  }, [data]);
 
   if (!data) {
     return (
