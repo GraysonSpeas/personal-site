@@ -30,7 +30,10 @@ export function FishingUI() {
         <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <FishingMinigameUI refetch={refetchTimeContent} />
+        <FishingMinigameUI
+  refetchTime={refetchTimeContent}
+  refetchInventory={refetchInventory}
+/>
         <ZoneSelector refetch={refetchInventory} currentZoneId={data?.current_zone_id ?? null} />
         {combinedData && (
           <>

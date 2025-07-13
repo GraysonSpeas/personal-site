@@ -2,7 +2,14 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { API_BASE } from '../../../config'
 import { FishingMinigame } from '../fishinglogic/fishingMinigameLogic'
 
-export function FishingMinigameUI({ refetch }: { refetch: () => void }) {
+export function FishingMinigameUI({
+  refetchInventory,
+  refetchTime,
+}: {
+  refetchInventory: () => void;
+  refetchTime: () => void;
+})
+ {
   type Phase = 'idle' | 'casting' | 'waiting' | 'ready' | 'in-minigame' | 'success' | 'failed'
 
   const [phase, setPhase] = useState<Phase>('idle')
@@ -137,7 +144,9 @@ const onResult = useCallback(
         setPhase('success');
         
         // Trigger the refetch to update quests and other data after catching fish
-        await refetch(); // Ensure this triggers the latest quest data and time-sensitive content
+        await refetchTime();
+await refetchInventory();
+ // Ensure this triggers the latest quest data and time-sensitive content
       } catch (e: any) {
         setError(e.message);
         setPhase('failed');
@@ -149,7 +158,7 @@ const onResult = useCallback(
     setCastBonus(0);
     setReactionBonus(0);
   },
-  [fishPreview, refetch] // refetch will be called here after catching the fish
+  [fishPreview, refetchInventory, refetchTime] // refetch will be called here after catching the fish
 )
 
   // Manage bite and reaction timing phases
