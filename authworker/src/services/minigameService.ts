@@ -3,6 +3,12 @@ import { saveCaughtFish } from './putFish';
 import { getUserEmail } from './authHelperService';
 import type { Context } from 'hono';
 import { updateQuestProgress, getAllQuests, getQuestKeys } from './questService';
+import { getWorldState } from './timeContentService';
+
+function getWeatherId(now = Date.now()): number {
+  const worldState = getWorldState(now);
+  return worldState.isRaining ? 2 : 1;
+}
 
 interface FishCatchSession {
   fish: any;
@@ -89,11 +95,11 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
   const zoneId = await getUserZone(db, email);
   if (zoneId === null) throw new Error('User zone not found');
 
-  const weatherId = (await getUserWeatherId(db, email)) ?? 1;
   const zoneName = await getZoneNameFromId(db, zoneId);
   const fishTypes = await getFishTypesForZone(db, zoneId);
   const resourceTypes = await getResourceTypesForZone(db, zoneId);
 
+  const weatherId = getWeatherId();
   const fish = await generateFish(c, fishTypes, resourceTypes, weatherId, zoneName);
 
   const biteDelay = 4000 + Math.random() * 4000;
@@ -185,14 +191,20 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
   const quests = await getAllQuests(db);
   const questKeys = getQuestKeys();
 
-  const playerContext = {
-    timeOfDay: 'day', // adjust with actual logic if available
-    zone: await getZoneNameFromId(db, (await getUserZone(db, email)) ?? 1),
-    weather: 'clear', // adjust with actual weather logic if available
-    hasBait: !!(equipped?.equipped_bait_id),
-    hasRod: true, // replace with actual equipped rod check
-    hasHook: true, // replace with actual equipped hook check
-  };
+  const worldState = getWorldState();
+
+const equippedRow = await db.prepare(
+  `SELECT equipped_rod_id, equipped_hook_id, equipped_bait_id FROM equipped WHERE user_id = ?`
+).bind(userId).first();
+
+const playerContext = {
+  timeOfDay: worldState.phase,
+  zone: await getZoneNameFromId(db, (await getUserZone(db, email)) ?? 1),
+  weather: worldState.isRaining ? 'rainy' : 'sunny',
+  hasBait: !!equippedRow?.equipped_bait_id,
+  hasRod: !!equippedRow?.equipped_rod_id,
+  hasHook: !!equippedRow?.equipped_hook_id,
+};
 
   await updateQuestProgress(db, userId, [fishDataWithBaitStats], quests, questKeys, playerContext);
   // QUEST PROGRESS UPDATE END

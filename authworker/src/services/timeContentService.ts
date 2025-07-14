@@ -1,7 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
 
-const CST_OFFSET = -5 * 60; // minutes offset UTC→CST
-
 export interface WorldState {
   phase: 'day' | 'night';
   cycleNum: number;
@@ -44,7 +42,7 @@ export function toCST(date: Date): Date {
 export function startOfDayCST(date: Date): Date {
   const cst = toCST(date);
   cst.setHours(0, 0, 0, 0);
-  return new Date(cst.getTime() - CST_OFFSET * 60 * 1000);
+  return cst;
 }
 
 function seededRandom(seed: number): () => number {
@@ -65,13 +63,17 @@ function shuffleSeeded<T>(array: T[], rand: () => number): T[] {
   return a;
 }
 
+export function getCurrentTimeCST(): Date {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+}
+
 // -- World State --
 
 export function getWorldState(now = Date.now()): WorldState {
   const cycleLength = 150 * 60 * 1000; // 150 min total
 
   const worldStart = new Date('2025-07-01T05:00:00Z').getTime();
-  const msSinceStart = now - worldStart;
+  const msSinceStart = Math.max(0, now - worldStart);
 
   const cycleNum = Math.floor(msSinceStart / cycleLength);
   const cycleMin = (msSinceStart % cycleLength) / (60 * 1000);
@@ -262,6 +264,7 @@ export async function checkAndAssignQuests(
     FROM user_quests uq
     JOIN questTemplates qt ON uq.quest_template_id = qt.id
     WHERE uq.user_id = ?
+    ORDER BY uq.id
   `,
     [userId]
   );

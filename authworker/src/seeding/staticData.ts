@@ -154,7 +154,7 @@ export const quests: Quest[] = [
     requires_no_hook: false,
     time_of_day: null,
     zone: null,
-    weather: 'Rainy',
+    weather: 'rainy',
     condition: null,
   },
   {
@@ -379,7 +379,7 @@ export const quests: Quest[] = [
     requires_no_hook: false,
     time_of_day: null,
     zone: null,
-    weather: 'Sunny',
+    weather: 'sunny',
     condition: null,
   },
 ];

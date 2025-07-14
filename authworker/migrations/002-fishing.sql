@@ -117,7 +117,6 @@ CREATE TABLE IF NOT EXISTS users (
   reset_token TEXT,
   reset_token_expiry TEXT,
   current_zone_id INTEGER DEFAULT 1,
-  current_weather_id INTEGER,
   FOREIGN KEY (current_zone_id) REFERENCES zoneTypes(id)
 );
 

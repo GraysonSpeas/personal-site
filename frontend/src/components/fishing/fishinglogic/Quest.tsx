@@ -1,14 +1,15 @@
 import React from 'react';
 
 interface QuestType {
+  id: number; // <-- Add this
   key: string;
   description: string;
   progress: number;
   target: number;
   completed: boolean;
   type: 'daily' | 'weekly' | 'monthly';
-  reward_xp?: number; // add reward_xp
-  reward_gold?: number; // add reward_gold
+  reward_xp?: number;
+  reward_gold?: number;
 }
 
 
@@ -19,11 +20,12 @@ interface QuestProps {
 export function Quest({ quests }: QuestProps) {
   if (!quests.length) return <p className="text-black">No active quests.</p>;
 
-  const grouped = {
-    daily: quests.filter(q => q.type === 'daily'),
-    weekly: quests.filter(q => q.type === 'weekly'),
-    monthly: quests.filter(q => q.type === 'monthly'),
-  };
+const grouped = {
+  daily: quests.filter(q => q.type === 'daily').sort((a, b) => a.id - b.id),
+  weekly: quests.filter(q => q.type === 'weekly').sort((a, b) => a.id - b.id),
+  monthly: quests.filter(q => q.type === 'monthly').sort((a, b) => a.id - b.id),
+};
+
 
 const renderQuests = (questList: QuestType[]) =>
   questList.map(({ key, description, progress, target, completed, reward_xp, reward_gold }) => {

@@ -10,15 +10,17 @@ interface WorldState {
 }
 
 interface QuestType {
+  id: number;
   key: string;
   description: string;
   progress: number;
   target: number;
   completed: boolean;
   type: 'daily' | 'weekly' | 'monthly';
-  reward_xp?: number; // add reward_xp
-  reward_gold?: number; // add reward_gold
+  reward_xp?: number;
+  reward_gold?: number;
 }
+
 
 interface CatchFish {
   species: string;

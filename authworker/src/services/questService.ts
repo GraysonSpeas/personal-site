@@ -109,7 +109,12 @@ function meetsRarityMin(fishRarity: string, rarityMin: string): boolean {
 }
 
 export async function getAllQuests(db: D1Database): Promise<Quest[]> {
-  const rows = await db.prepare('SELECT * FROM questTemplates').all();
+  const rows = await db.prepare(`
+    SELECT qt.*, z.name AS zone_name
+    FROM questTemplates qt
+    LEFT JOIN zoneTypes z ON qt.zone_id = z.id
+  `).all();
+
   return rows.results.map(row => ({
     key: String(row.key),
     description: String(row.description),
@@ -127,7 +132,7 @@ export async function getAllQuests(db: D1Database): Promise<Quest[]> {
     requires_no_rod: Boolean(row.requires_no_rod),
     requires_no_hook: Boolean(row.requires_no_hook),
     time_of_day: row.time_of_day ? String(row.time_of_day) : null,
-    zone: row.zone ? String(row.zone) : null,
+    zone: typeof row.zone_name === 'string' ? row.zone_name : null,
     weather: row.weather ? String(row.weather) : null,
   }));
 }
@@ -220,24 +225,60 @@ refreshed.results.forEach(r => userQuestKeys.add(String(r.quest_key)));
     if (!userQuestKeys.has(questUniqueKey)) {
       continue; // Skip unassigned quests
     }
+console.log(`[Quest Check] key=${quest.key}`);
+console.log(`- questUniqueKey: ${questUniqueKey}`);
+console.log(`- assigned: ${userQuestKeys.has(questUniqueKey)}`);
+console.log(`- context:`, context);
+console.log(`- quest.requires_no_bait: ${quest.requires_no_bait}`);
+console.log(`- quest.requires_no_rod: ${quest.requires_no_rod}`);
+console.log(`- quest.requires_no_hook: ${quest.requires_no_hook}`);
+console.log(`- quest.time_of_day: ${quest.time_of_day}`);
+console.log(`- quest.zone: ${quest.zone}`);
+console.log(`- quest.weather: ${quest.weather}`);
 
-    if (quest.requires_no_bait && context.hasBait) continue;
-    if (quest.requires_no_rod && context.hasRod) continue;
-    if (quest.requires_no_hook && context.hasHook) continue;
+if (quest.requires_no_bait && context.hasBait) {
+  console.log(`[Skipped] ${quest.key} - has bait but requires none`);
+  continue;
+}
+if (quest.requires_no_rod && context.hasRod) {
+  console.log(`[Skipped] ${quest.key} - has rod but requires none`);
+  continue;
+}
+if (quest.requires_no_hook && context.hasHook) {
+  console.log(`[Skipped] ${quest.key} - has hook but requires none`);
+  continue;
+}
+if (quest.time_of_day && quest.time_of_day !== context.timeOfDay) {
+  console.log(`[Skipped] ${quest.key} - time mismatch`);
+  continue;
+}
+if (quest.zone && quest.zone !== context.zone) {
+  console.log(`[Skipped] ${quest.key} - zone mismatch`);
+  continue;
+}
+if (quest.weather && quest.weather !== context.weather) {
+  console.log(`[Skipped] ${quest.key} - weather mismatch`);
+  continue;
+}
 
-    if (quest.time_of_day && quest.time_of_day !== context.timeOfDay) continue;
-    if (quest.zone && quest.zone !== context.zone) continue;
-    if (quest.weather && quest.weather !== context.weather) continue;
 
-    const matchedCount = caughtFish.filter(fish => {
-      if (quest.rarity_exact && fish.rarity !== quest.rarity_exact) return false;
-      if (quest.rarity_min && !meetsRarityMin(fish.rarity, quest.rarity_min)) return false;
-      if (quest.requires_modified && !fish.modified) return false;
-      if (quest.condition && !quest.condition(fish)) return false;
-      return true;
-    }).length;
+console.log(`[Quest Check] key=${quest.key} - caughtFish:`, caughtFish);
 
-    if (matchedCount === 0) continue;
+const matchedCount = caughtFish.filter(fish => {
+  if (quest.rarity_exact && fish.rarity !== quest.rarity_exact) return false;
+  if (quest.rarity_min && !meetsRarityMin(fish.rarity, quest.rarity_min)) return false;
+  if (quest.requires_modified && !fish.modified) return false;
+  if (quest.condition && !quest.condition(fish)) return false;
+  return true;
+}).length;
+
+console.log(`[Quest Check] key=${quest.key} - matchedCount: ${matchedCount}`);
+
+if (matchedCount === 0) {
+  console.log(`[Quest Check] key=${quest.key} - no matching fish, skipping progress update`);
+  continue;
+}
+
 
     const row = await db
       .prepare(`SELECT progress, completed FROM user_quests WHERE user_id = ? AND quest_key = ?`)
@@ -250,20 +291,47 @@ refreshed.results.forEach(r => userQuestKeys.add(String(r.quest_key)));
 
     const newProgress = Math.min(currentProgress + matchedCount, quest.target);
     const isCompleted = newProgress >= quest.target;
-
-if (isCompleted) {
-  await db.prepare(`
-    UPDATE users SET xp = xp + ?, updated_at = datetime('now') WHERE id = ?
-  `).bind(quest.reward.xp, userId).run();
-
-  await db.prepare(`
-    UPDATE currencies SET gold = gold + ? WHERE user_id = ?
-  `).bind(quest.reward.gold, userId).run();
-}
-
+    
 await db.prepare(`
-  UPDATE user_quests SET progress = ?, completed = ?, updated_at = datetime('now')
+  UPDATE user_quests
+  SET progress = ?, completed = ?, updated_at = datetime('now')
   WHERE user_id = ? AND quest_key = ?
 `).bind(newProgress, isCompleted ? 1 : 0, userId, questUniqueKey).run();
+
+if (isCompleted) {
+  // Add XP and gold
+  await db.prepare(`UPDATE users SET xp = xp + ?, updated_at = datetime('now') WHERE id = ?`)
+    .bind(quest.reward.xp, userId).run();
+
+  await db.prepare(`UPDATE currencies SET gold = gold + ? WHERE user_id = ?`)
+    .bind(quest.reward.gold, userId).run();
+
+  // Recalculate level
+  const user = await db.prepare(`SELECT xp, level, current_zone_id FROM users WHERE id = ?`)
+    .bind(userId).first<{ xp: number; level: number; current_zone_id: number }>();
+
+  if (user) {
+    const zone = await db.prepare(`SELECT xp_multiplier FROM zoneTypes WHERE id = ?`)
+      .bind(user.current_zone_id).first<{ xp_multiplier: number }>();
+
+    const multiplier = typeof zone?.xp_multiplier === 'number' ? zone.xp_multiplier : 1.0;
+
+    // Use total user XP (already updated above)
+    const xpToLevel = (n: number) => Math.round(10 * Math.pow(1.056, n - 1));
+    const totalXpToLevel = (n: number) => {
+      let total = 0;
+      for (let i = 1; i < n; i++) total += xpToLevel(i);
+      return total;
+    };
+
+    let newLevel = user.level;
+    while (user.xp >= totalXpToLevel(newLevel + 1)) newLevel++;
+
+    if (newLevel > user.level) {
+      await db.prepare(`UPDATE users SET level = ?, updated_at = datetime('now') WHERE id = ?`)
+        .bind(newLevel, userId).run();
+    }
   }
+}
+}
 }
