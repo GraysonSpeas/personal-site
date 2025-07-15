@@ -109,7 +109,7 @@ const userRow = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').b
 const userId = userRow?.id
 
 if (userId) {
-  // Gear and bait stats from seed data
+  // Gear and bait stats from seed data HARDCODE
   const rustyRodStats = JSON.stringify({ focus: 25, lineTension: 25, luck: 0 })
   const rustyHookStats = JSON.stringify({ focus: 25, lineTension: 25, luck: 0 })
   const brokenBaitStats = JSON.stringify({ focus: 10, lineTension: 10, luck: 0 })
@@ -125,9 +125,12 @@ if (userId) {
   ).bind(userId, rustyHookStats).run()
 
   // Insert bait with quantity 10
-  await c.env.DB.prepare(
-    `INSERT INTO bait (user_id, type_id, quantity, stats) VALUES (?, 1, 10, ?)`
-  ).bind(userId, brokenBaitStats).run()
+const brokenBaitSellPrice = 50;
+
+await c.env.DB.prepare(
+  `INSERT INTO bait (user_id, type_id, quantity, stats, sell_price) VALUES (?, 1, 10, ?, ?)`
+).bind(userId, brokenBaitStats, brokenBaitSellPrice).run();
+
 
   // Get the inserted gear and bait IDs to set as equipped
   const rod = await c.env.DB.prepare(

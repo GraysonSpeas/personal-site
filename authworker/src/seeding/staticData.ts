@@ -46,7 +46,7 @@ export const hookTypes = [
 ];
 
 export const baitTypes = [
-  { id: 1, name: 'Broken Bait', stats: { focus: 10, lineTension: 10, luck: 0 }, sell_price: 1 },
+  { id: 1, name: 'Broken Bait', stats: { focus: 10, lineTension: 10, luck: 0 }, sell_price: 50 },
 ];
 
 export interface Quest {

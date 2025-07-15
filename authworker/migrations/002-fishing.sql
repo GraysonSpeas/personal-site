@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS fishingSessions (
 -- Dependent tables referencing users
 CREATE TABLE IF NOT EXISTS currencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL UNIQUE,
   gold INTEGER DEFAULT 0,
   pearls INTEGER DEFAULT 0,
   coral_shards INTEGER DEFAULT 0,
@@ -175,11 +175,13 @@ CREATE TABLE IF NOT EXISTS bait (
   user_id INTEGER NOT NULL,
   type_id INTEGER NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0,
-  stats TEXT, -- optional overrides
+  stats TEXT,
   sell_price INTEGER DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (type_id) REFERENCES baitTypes(id)
+  FOREIGN KEY (type_id) REFERENCES baitTypes(id),
+  UNIQUE(user_id, type_id)
 );
+
 
 CREATE TABLE IF NOT EXISTS fish (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

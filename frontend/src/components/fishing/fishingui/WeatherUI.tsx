@@ -5,7 +5,7 @@ interface WorldState {
   cycleMin: number;
 }
 
-interface TimeWeatherProps {
+interface WeatherUIProps {
   weather: string;
   worldState?: WorldState;
 }
@@ -37,7 +37,7 @@ function formatRealTime(): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
-export function TimeWeather({ weather, worldState }: TimeWeatherProps) {
+export function WeatherUI({ weather, worldState }: WeatherUIProps) {
   if (!worldState) {
     return (
       <div className="max-w-sm mx-auto p-4 bg-white shadow-lg rounded-lg text-black">
@@ -85,9 +85,8 @@ export function TimeWeather({ weather, worldState }: TimeWeatherProps) {
 
       <div className="mb-6 p-2 bg-yellow-100 rounded text-center font-medium">
         <div>
-  Phase: <strong>{phase === 'day' ? 'Day' : 'Night'}</strong>
-</div>
-
+          Phase: <strong>{phase === 'day' ? 'Day' : 'Night'}</strong>
+        </div>
 
         {/* Day/Night Bar */}
         <div className="relative w-full h-4 mt-1 mb-2 rounded overflow-hidden border border-black">
