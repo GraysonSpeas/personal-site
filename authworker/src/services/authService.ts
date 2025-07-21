@@ -2,13 +2,13 @@
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { getInventoryService } from './getInventoryService'
 import { assignNewQuests, getQuestKeys, getAllQuests } from '../services/questService';
-
+import { Resend } from 'resend';
 import type { Context } from 'hono'
 
 // Bindings type for environment variables and DB access
 type Bindings = {
   DB: D1Database
-  SENDGRID_API_KEY: string
+  RESEND_API_KEY: string
   SENDER_EMAIL: string
   BASE_URL: string
 }
@@ -39,7 +39,7 @@ function generateToken(length = 48): string {
   return token
 }
 
-// Send email via SendGrid API
+//resend client for sending emails
 async function sendEmail(
   c: Context<{ Bindings: Bindings }>,
   toEmail: string,
@@ -47,25 +47,15 @@ async function sendEmail(
   text: string,
   html: string
 ) {
-  const body = {
-    personalizations: [{ to: [{ email: toEmail }] }],
-    from: { email: c.env.SENDER_EMAIL, name: 'Speas.org' },
+  const resend = new Resend(c.env.RESEND_API_KEY);
+  await resend.emails.send({
+    from: c.env.SENDER_EMAIL,
+    to: toEmail,
     subject,
-    content: [
-      { type: 'text/plain', value: text },
-      { type: 'text/html', value: html },
-    ],
-  }
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${c.env.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`SendGrid error: ${await res.text()}`)
+    html,
+  });
 }
+
 
 // ─── Route Handlers ─────────────────────────────────────────────────────────
 
