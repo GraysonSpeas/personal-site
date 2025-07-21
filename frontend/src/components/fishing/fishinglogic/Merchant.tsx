@@ -23,10 +23,11 @@ type Bait = {
 };
 
 type MerchantProps = {
-  refetchInventory: () => Promise<void>;
+  refetch: () => Promise<void>;
+  refetchTrigger?: number;
 };
 
-export function Merchant({ refetchInventory }: MerchantProps) {
+export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [fish, setFish] = useState<Fish[]>([]);
   const [bait, setBait] = useState<Bait[]>([]);
@@ -56,7 +57,7 @@ export function Merchant({ refetchInventory }: MerchantProps) {
 
   useEffect(() => {
     fetchInventory();
-  }, []);
+  }, [refetchTrigger]);
 
   function clampQty(q: number) {
     return q < 1 ? 1 : q;
@@ -98,7 +99,7 @@ export function Merchant({ refetchInventory }: MerchantProps) {
       }
       setMessage('Items sold successfully!');
       setSellSelections({});
-      await refetchInventory();
+      await refetch();
       await fetchInventory();
     } catch (e: any) {
       setMessage(e.message || 'Error selling items');
@@ -120,7 +121,7 @@ export function Merchant({ refetchInventory }: MerchantProps) {
       if (!res.ok) throw new Error(data.error || 'Buy failed');
       setMessage(`Bought ${buyQty} broken bait!`);
       setBuyQty(1);
-      await refetchInventory();
+      await refetch();
       await fetchInventory();
     } catch (e: any) {
       setMessage(e.message || 'Error buying broken bait');

@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../../../config.tsx';
-import { WeatherSection } from '../fishinglogic/WeatherSection';
-import { DailyCatchSection } from '../fishinglogic/DailyCatchSection.tsx';
-import { QuestSection } from '../fishinglogic/QuestSection';
 
 export interface WorldState {
   cycleNum: number;

@@ -17,7 +17,7 @@ interface QuestUIProps {
 }
 
 export function QuestUI({ quests }: QuestUIProps) {
-  if (!quests.length) return <p className="text-black">No active quests.</p>;
+  if (!quests.length) return <section className="mb-4"><p className="text-black">No active quests.</p></section>;
 
   const grouped = {
     daily: quests.filter(q => q.type === 'daily').sort((a, b) => a.id - b.id),
@@ -68,7 +68,7 @@ export function QuestUI({ quests }: QuestUIProps) {
   return (
     <section
       aria-label="Quests"
-      className="max-w-full mx-auto p-4 text-black"
+      className="max-w-full mx-auto p-4 text-black mb-4"
       style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}
     >
       {(['daily', 'weekly', 'monthly'] as const).map(type => (

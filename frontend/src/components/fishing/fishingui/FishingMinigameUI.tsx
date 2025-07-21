@@ -5,9 +5,11 @@ import { FishingMinigame } from '../fishinglogic/fishingMinigameLogic'
 export function FishingMinigameUI({
   refetchInventory,
   refetchTime,
+  refetchMerchant,
 }: {
   refetchInventory: () => void;
   refetchTime: () => void;
+  refetchMerchant: () => void;
 })
  {
   type Phase = 'idle' | 'casting' | 'waiting' | 'ready' | 'in-minigame' | 'success' | 'failed'
@@ -146,6 +148,7 @@ const onResult = useCallback(
         // Trigger the refetch to update quests and other data after catching fish
         await refetchTime();
 await refetchInventory();
+await refetchMerchant();
  // Ensure this triggers the latest quest data and time-sensitive content
       } catch (e: any) {
         setError(e.message);
@@ -158,7 +161,7 @@ await refetchInventory();
     setCastBonus(0);
     setReactionBonus(0);
   },
-  [fishPreview, refetchInventory, refetchTime] // refetch will be called here after catching the fish
+  [fishPreview, refetchInventory, refetchTime, refetchMerchant] // refetch will be called here after catching the fish
 )
 
   // Manage bite and reaction timing phases

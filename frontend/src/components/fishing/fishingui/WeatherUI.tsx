@@ -77,7 +77,7 @@ export function WeatherUI({ weather, worldState }: WeatherUIProps) {
   })();
 
   return (
-    <div className="max-w-sm mx-auto p-4 bg-white shadow-lg rounded-lg text-black">
+    <div className="max-w-sm mx-auto p-4 bg-white shadow-lg rounded-lg text-black mb-4">
       <h2 className="text-xl font-semibold mb-4">Current Weather</h2>
       <div className="mb-6 p-2 bg-blue-200 rounded text-center font-medium">
         {weather} - {phase === 'day' ? 'Day' : 'Night'}
