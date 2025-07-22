@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { requireUser } from '../services/authHelperService';
 import { getWorldState, getCatchOfTheDay } from '../services/timeContentService';
 import type { D1Database } from '@cloudflare/workers-types';
+import { updateQuestProgress, getAllQuests, getQuestKeys } from '../services/questService';
 
 interface Bindings {
   DB: D1Database;
@@ -20,7 +21,20 @@ timeContentRouter.get('/', async (c) => {
     .prepare('SELECT id FROM users WHERE email = ?')
     .bind(userEmail)
     .first<{ id: number }>();
-  if (!user) return c.json({ error: 'User not found' }, 404);
+if (!user) return c.json({ error: 'User not found' }, 404);
+
+const questKeys = getQuestKeys();
+const allQuests = await getAllQuests(db);
+const playerContext = {
+  timeOfDay: getWorldState().phase,
+  zone: 'unknown',
+  weather: getWorldState().isRaining ? 'Rainy' : 'Sunny',
+  hasBait: true,
+  hasRod: true,
+  hasHook: true,
+};
+await updateQuestProgress(db, user.id, [], allQuests, questKeys, playerContext);
+
 
   const questsQuery = `
     SELECT

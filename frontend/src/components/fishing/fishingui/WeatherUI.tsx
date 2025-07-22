@@ -86,7 +86,7 @@ const rainInfo = (() => {
   if (cycleMin < rainStartMin) {
     const minutesUntil = rainStartMin - cycleMin;
     const time = minutesToRealTime(minutesUntil);
-    return `Next rain at ${time} for ${rainDuration} min`;
+    return `Next rain at ${time}`;
   }
 
   return 'Rain just ended, next expected in ~3 cycles';
