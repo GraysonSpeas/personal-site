@@ -32,9 +32,11 @@ function calcRain(
 function formatRealTime(): string {
   const now = new Date();
   const cstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-  const hours = cstNow.getHours();
-  const mins = cstNow.getMinutes();
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  return cstNow.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 export function WeatherUI({ weather, worldState }: WeatherUIProps) {
@@ -54,27 +56,41 @@ export function WeatherUI({ weather, worldState }: WeatherUIProps) {
   const { isRaining, rainStartMin } = calcRain(cycleNum, cycleMin);
   const rainDuration = 45;
 
-  const rainInfo = (() => {
-    const rainCycle = cycleNum % 3 === 2;
+const rainInfo = (() => {
+  const rainCycle = cycleNum % 3 === 2;
 
-    if (!rainCycle || rainStartMin === null) {
-      const cyclesUntilRain = (3 - (cycleNum % 3)) % 3 || 3;
-      const minutesUntilNextCycle = (150 - cycleMin) + 150 * (cyclesUntilRain - 1);
-      return `Next rain expected in ~${Math.ceil(minutesUntilNextCycle)} min`;
-    }
+  const minutesToRealTime = (minOffset: number) => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + minOffset);
+    return now.toLocaleTimeString('en-US', {
+      timeZone: 'America/Chicago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
 
-    if (isRaining) {
-      const minutesLeft = Math.ceil(rainStartMin + rainDuration - cycleMin);
-      return `Raining now, ends in ${minutesLeft} min`;
-    }
+  if (!rainCycle || rainStartMin === null) {
+    const cyclesUntilRain = (3 - (cycleNum % 3)) % 3 || 3;
+    const minutesUntilNextCycle = (150 - cycleMin) + 150 * (cyclesUntilRain - 1);
+    const time = minutesToRealTime(minutesUntilNextCycle);
+    return `Next Rainstorm: ${time}`;
+  }
 
-    if (cycleMin < rainStartMin) {
-      const minutesUntil = Math.ceil(rainStartMin - cycleMin);
-      return `Next rain in ${minutesUntil} min for ${rainDuration} min`;
-    }
+  if (isRaining) {
+    const minutesLeft = rainStartMin + rainDuration - cycleMin;
+    const time = minutesToRealTime(minutesLeft);
+    return `Raining now, ends at ${time}`;
+  }
 
-    return 'Rain just ended, next expected in ~3 cycles';
-  })();
+  if (cycleMin < rainStartMin) {
+    const minutesUntil = rainStartMin - cycleMin;
+    const time = minutesToRealTime(minutesUntil);
+    return `Next rain at ${time} for ${rainDuration} min`;
+  }
+
+  return 'Rain just ended, next expected in ~3 cycles';
+})();
 
   return (
     <div className="max-w-sm mx-auto p-4 bg-white shadow-lg rounded-lg text-black mb-4">
@@ -85,7 +101,7 @@ export function WeatherUI({ weather, worldState }: WeatherUIProps) {
 
       <div className="mb-6 p-2 bg-yellow-100 rounded text-center font-medium">
         <div>
-          Phase: <strong>{phase === 'day' ? 'Day' : 'Night'}</strong>
+          Phase: {phase === 'day' ? 'Day' : 'Night'}
         </div>
 
         {/* Day/Night Bar */}
@@ -99,7 +115,7 @@ export function WeatherUI({ weather, worldState }: WeatherUIProps) {
         </div>
 
         <div>
-          Time: <strong>{formatRealTime()}</strong>
+          Time: {formatRealTime()}
         </div>
         <div>{rainInfo}</div>
       </div>

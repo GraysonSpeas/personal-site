@@ -193,12 +193,15 @@ const userQuestKeys = new Set<string>(userQuestsRes.results.map(r => String(r.qu
   // Auto-refresh quests if missing current period keys
   const missingTypes = new Set<'daily' | 'weekly' | 'monthly'>();
 
-  for (const type of ['daily', 'weekly', 'monthly'] as const) {
-    const periodKey = questKeys[type];
-const hasKey = [...userQuestKeys].some(key => key.endsWith(periodKey));    if (!hasKey) {
-      missingTypes.add(type);
-    }
+const prevKeys = getPrevQuestKeys(Date.now());
+for (const type of ['daily', 'weekly', 'monthly'] as const) {
+  const prevPeriodKey = prevKeys[type];
+  const hasOld = [...userQuestKeys].some(key => key.endsWith(prevPeriodKey));
+  if (hasOld) {
+    missingTypes.add(type);
   }
+}
+
 
   if (missingTypes.size > 0) {
     const prevKeys = getPrevQuestKeys(Date.now());
