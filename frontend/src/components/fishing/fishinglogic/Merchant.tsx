@@ -12,6 +12,7 @@ type Fish = {
   length: number;
   modifier: string | null;
   quantity: number;
+  sell_price: number;
 };
 
 type Bait = {
@@ -129,6 +130,25 @@ export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
     setLoading(false);
   }
 
+function getSellTotal() {
+  let total = 0;
+  for (const key in sellSelections) {
+    const qty = sellSelections[key];
+    if (qty <= 0) continue;
+    const [itemType, idStr] = key.split('-');
+    const id = Number(idStr);
+
+    if (itemType === 'bait') {
+      const item = bait.find((b) => b.id === id);
+      if (item) total += item.sell_price * qty;
+    } else if (itemType === 'fish') {
+      const item = fish.find((f) => f.id === id);
+      if (item) total += item.sell_price * qty;
+    }
+  }
+  return total;
+}
+
   return (
     <div className="max-w-lg mx-auto p-4 bg-white rounded shadow-lg text-black">
       <h2 className="text-2xl font-bold mb-4">Merchant</h2>
@@ -168,15 +188,18 @@ export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
               +10
             </button>
           </div>
-          <button
-            onClick={handleBuy}
-            disabled={loading || !canAfford}
-            className={`w-full py-2 rounded ${
-              canAfford ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 cursor-not-allowed text-white'
-            }`}
-          >
-            {loading ? 'Buying...' : `Buy ${buyQty} Broken Bait for ${totalCost} gold`}
-          </button>
+<button
+  onClick={handleBuy}
+  disabled={loading || !canAfford}
+  className={`w-full py-2 rounded ${
+    canAfford
+      ? 'bg-green-600 hover:bg-green-700 text-white'
+      : 'bg-red-600 cursor-not-allowed text-white opacity-50'
+  }`}
+>
+  {loading ? 'Buying...' : `Buy ${buyQty} Broken Bait for ${totalCost} gold`}
+</button>
+
         </div>
       )}
 
@@ -281,12 +304,15 @@ export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
           </div>
 
           <button
-            onClick={handleSell}
-            disabled={loading || Object.values(sellSelections).every((v) => v <= 0)}
-            className="w-full py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? 'Selling...' : 'Sell Selected Items'}
-          </button>
+  onClick={handleSell}
+  disabled={loading || Object.values(sellSelections).every((v) => v <= 0)}
+  className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+>
+  {loading
+    ? 'Selling...'
+    : `Sell Selected Items for ${getSellTotal()} gold`}
+</button>
+
         </div>
       )}
 

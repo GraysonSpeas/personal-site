@@ -21,11 +21,12 @@ export async function getMerchantInventory(c: Context<{ Bindings: any }>) {
   if (!user) return c.json({ error: 'User not found' }, 404);
   const userId = user.id;
 
-  const fishRes = await db.prepare(
-    `SELECT id, species, rarity, weight, length, modifier, quantity
-     FROM fish
-     WHERE user_id = ? AND quantity > 0`
-  ).bind(userId).all();
+const fishRes = await db.prepare(
+  `SELECT fish.id, fish.species, fish.rarity, fish.weight, fish.length, fish.modifier, fish.quantity, fishTypes.sell_price
+   FROM fish
+   JOIN fishTypes ON fish.species = fishTypes.species
+   WHERE fish.user_id = ? AND fish.quantity > 0`
+).bind(userId).all();
 
   const baitRes = await db.prepare(
     `SELECT bait.id, bait.type_id, bait.quantity, bait.sell_price, baitTypes.name
