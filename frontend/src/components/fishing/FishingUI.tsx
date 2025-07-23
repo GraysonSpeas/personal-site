@@ -8,7 +8,6 @@ import { GearSelector } from './fishinglogic/GearSelector';
 import { Merchant } from './fishinglogic/Merchant';
 import { TimeContentProvider } from './fishinglogic/TimeContentProvider';
 import { WeatherUI } from './fishingui/WeatherUI';
-import { DailyCatchUI } from './fishingui/DailyCatchUI';
 import { QuestUI } from './fishingui/QuestUI';
 
 export function FishingUI() {
@@ -26,48 +25,55 @@ export function FishingUI() {
 
   return (
     <TimeContentProvider
-      render={({ weather, catchOfTheDay, quests, worldState, refresh, loading }) => (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '650px 620px 420px', // left wider, right narrower
-            gap: '16px',
-            alignItems: 'flex-start',
-          }}
-        >
-          {/* LEFT: Weather + Quest */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      render={({ weather, catchOfTheDay, quests, worldState, refresh }) => (
+        <>
+          {/* Weather fixed top-right under header */}
+          <div style={{ position: 'fixed', top: '60px', right: '16px', zIndex: 1000 }}>
             <WeatherUI weather={weather} worldState={worldState} />
-            <QuestUI quests={quests} />
           </div>
 
-          {/* MIDDLE: Fishing + Zone + Gear */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ minHeight: '300px' }}>
-              <FishingMinigameUI
-                refetchTime={refresh}
-                refetchInventory={refetchInventory}
-                refetchMerchant={refetchMerchant}
-              />
-            </div>
-            <ZoneSelector refetch={refetchInventory} currentZoneId={data?.current_zone_id ?? null} />
+          {/* Merchant fixed below weather */}
+          <div style={{ position: 'fixed', top: '250px', right: '16px', width: '400px' }}>
+            <Merchant refetch={refetchInventory} refetchTrigger={merchantRefetchTrigger} />
+          </div>
+
+          {/* Left side: Inventory + Quest */}
+          <div style={{ position: 'fixed', top: '80px', left: '16px', width: '400px' }}>
             {combinedData && (
-              <GearSelector gear={combinedData.gear ?? []} bait={combinedData.bait ?? []} refetch={refetchInventory} />
+              <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
             )}
+            <div style={{ marginTop: '16px' }}>
+              <QuestUI quests={quests} />
+            </div>
           </div>
 
-          {/* RIGHT: Inventory + Catch of Day + Merchant */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: 0, marginLeft: '-120px' }}>
-            {combinedData && <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />}
-            <div style={{ width: 385 }}>
-              <DailyCatchUI catchOfTheDay={catchOfTheDay} />
-            </div>
-            <Merchant
-  refetch={refetchInventory}
-  refetchTrigger={merchantRefetchTrigger}
-/>
+          {/* TOP: Fishing game + Gear */}
+          <div
+            style={{
+              maxWidth: '650px',
+              margin: '0 auto',
+              paddingTop: '80px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              zIndex: 500,
+            }}
+          >
+            <FishingMinigameUI
+              refetchTime={refresh}
+              refetchInventory={refetchInventory}
+              refetchMerchant={refetchMerchant}
+            />
+            {combinedData && (
+              <GearSelector
+                gear={combinedData.gear ?? []}
+                bait={combinedData.bait ?? []}
+                refetch={refetchInventory}
+              />
+            )}
+            <ZoneSelector refetch={refetchInventory} currentZoneId={data?.current_zone_id ?? null} />
           </div>
-        </div>
+        </>
       )}
     />
   );
