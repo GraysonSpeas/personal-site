@@ -31,6 +31,7 @@ async function getUserZone(db: D1Database, email: string): Promise<number | null
   return result?.current_zone_id ?? null;
 }
 
+/*
 async function getUserWeatherId(db: D1Database, email: string): Promise<number | null> {
   const result = await db
     .prepare('SELECT current_weather_id FROM users WHERE email = ?')
@@ -38,7 +39,7 @@ async function getUserWeatherId(db: D1Database, email: string): Promise<number |
     .first<{ current_weather_id: number | null }>();
   return result?.current_weather_id ?? null;
 }
-
+*/
 async function getZoneNameFromId(db: D1Database, zoneId: number): Promise<string> {
   const result = await db
     .prepare('SELECT name FROM zoneTypes WHERE id = ?')

@@ -21,6 +21,7 @@ DROP TABLE IF EXISTS fishTypes;
 DROP TABLE IF EXISTS resourceTypes;
 DROP TABLE IF EXISTS zoneTypes;
 DROP TABLE IF EXISTS weatherTypes;
+DROP TABLE IF EXISTS user_fish_sales;
 
 -- CREATE base reference tables first
 CREATE TABLE IF NOT EXISTS weatherTypes (
@@ -118,6 +119,16 @@ CREATE TABLE IF NOT EXISTS users (
   reset_token_expiry TEXT,
   current_zone_id INTEGER DEFAULT 1,
   FOREIGN KEY (current_zone_id) REFERENCES zoneTypes(id)
+);
+
+CREATE TABLE IF NOT EXISTS user_fish_sales (
+  user_id INTEGER NOT NULL,
+  species TEXT NOT NULL,
+  sell_limit INTEGER NOT NULL,
+  sell_amount INTEGER NOT NULL DEFAULT 0,
+  last_assigned TEXT DEFAULT NULL,
+  PRIMARY KEY (user_id, species),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Persistent fishing sessions (replaces in-memory sessions)

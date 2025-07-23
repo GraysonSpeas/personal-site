@@ -22,6 +22,7 @@ export interface CatchFish {
   species: string;
   rarity: string;
   sellLimit: number;
+  sellAmount: number;
 }
 
 interface TimeContentData {
@@ -50,30 +51,30 @@ export function TimeContentProvider({ render }: TimeContentProviderProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchTimeContent = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(`${API_BASE}/timecontent`, { credentials: 'include' });
-      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
-      const json = await res.json();
-      setData(json);
+const fetchTimeContent = async () => {
+  setLoading(true);
+  setError('');
+  try {
+    const res = await fetch(`${API_BASE}/timecontent`, { credentials: 'include' });
+    if (!res.ok) throw new Error(`Error: ${res.statusText}`);
+    const json = await res.json();
+    setData(json);
 
-      if (json.worldState) {
-        setCycleStartTimestamp(Date.now() - json.worldState.cycleMin * 60000);
-        setCycleState(json.worldState);
-      } else {
-        setCycleStartTimestamp(null);
-        setCycleState(null);
-      }
-    } catch (e: any) {
-      setError(e.message || 'Failed to load data');
-      setData(null);
+    if (json.worldState) {
+      setCycleStartTimestamp(Date.now() - json.worldState.cycleMin * 60000);
+      setCycleState(json.worldState);
+    } else {
       setCycleStartTimestamp(null);
       setCycleState(null);
     }
-    setLoading(false);
-  };
+  } catch (e: any) {
+    setError(e.message || 'Failed to load data');
+    setData(null);
+    setCycleStartTimestamp(null);
+    setCycleState(null);
+  }
+  setLoading(false);
+};
 
   useEffect(() => {
     fetchTimeContent();

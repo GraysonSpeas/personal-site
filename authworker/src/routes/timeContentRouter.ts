@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { requireUser } from '../services/authHelperService';
-import { getWorldState, getCatchOfTheDay } from '../services/timeContentService';
+import { getWorldState, getCatchOfTheDay, assignCatchOfTheDayToUser } from '../services/timeContentService';
 import type { D1Database } from '@cloudflare/workers-types';
 import { updateQuestProgress, getAllQuests, getQuestKeys } from '../services/questService';
 
@@ -21,20 +21,21 @@ timeContentRouter.get('/', async (c) => {
     .prepare('SELECT id FROM users WHERE email = ?')
     .bind(userEmail)
     .first<{ id: number }>();
-if (!user) return c.json({ error: 'User not found' }, 404);
+  if (!user) return c.json({ error: 'User not found' }, 404);
 
-const questKeys = getQuestKeys();
-const allQuests = await getAllQuests(db);
-const playerContext = {
-  timeOfDay: getWorldState().phase,
-  zone: 'unknown',
-  weather: getWorldState().isRaining ? 'Rainy' : 'Sunny',
-  hasBait: true,
-  hasRod: true,
-  hasHook: true,
-};
-await updateQuestProgress(db, user.id, [], allQuests, questKeys, playerContext);
+  await assignCatchOfTheDayToUser(db, user.id);
 
+  const questKeys = getQuestKeys();
+  const allQuests = await getAllQuests(db);
+  const playerContext = {
+    timeOfDay: getWorldState().phase,
+    zone: 'unknown',
+    weather: getWorldState().isRaining ? 'Rainy' : 'Sunny',
+    hasBait: true,
+    hasRod: true,
+    hasHook: true,
+  };
+  await updateQuestProgress(db, user.id, [], allQuests, questKeys, playerContext);
 
   const questsQuery = `
     SELECT
@@ -80,15 +81,30 @@ await updateQuestProgress(db, user.id, [], allQuests, questKeys, playerContext);
   const rawFishTypes = fishTypes?.results ?? [];
   const catchOfTheDay = getCatchOfTheDay(rawFishTypes);
 
-  // Return quest data, including rewards
+  // Get user's current sell amounts for catch of the day fish
+  const userFishSales = await db
+    .prepare('SELECT species, sell_amount FROM user_fish_sales WHERE user_id = ?')
+    .bind(user.id)
+    .all<{ species: string; sell_amount: number }>();
+
+  const sellAmountsMap = new Map<string, number>();
+  (userFishSales.results ?? []).forEach(({ species, sell_amount }) => {
+    sellAmountsMap.set(species, sell_amount);
+  });
+
+  const catchOfTheDayWithSell = catchOfTheDay.fishes.map((fish) => ({
+    ...fish,
+    sellAmount: sellAmountsMap.get(fish.species) || 0,
+  }));
+
   return c.json({
     quests: questRows.results.map((quest) => ({
       ...quest,
-      reward_xp: quest.reward_xp || 0, // Ensure it's never null
-      reward_gold: quest.reward_gold || 0, // Ensure it's never null
+      reward_xp: quest.reward_xp || 0,
+      reward_gold: quest.reward_gold || 0,
     })),
     weather,
-    catchOfTheDay: catchOfTheDay.fishes,
+    catchOfTheDay: catchOfTheDayWithSell,
     worldState: world,
   });
 });

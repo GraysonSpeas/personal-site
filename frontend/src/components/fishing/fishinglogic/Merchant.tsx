@@ -23,6 +23,15 @@ type Bait = {
   name: string;
 };
 
+type CatchOfTheDayFish = {
+  species: string;
+  rarity: string;
+  sellLimit: number;
+  sellAmount: number;
+  remaining: number;
+  multiplier: number;
+};
+
 type MerchantProps = {
   refetch: () => Promise<void>;
   refetchTrigger?: number;
@@ -37,6 +46,8 @@ export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
   const [sellSelections, setSellSelections] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [catchOfTheDay, setCatchOfTheDay] = useState<CatchOfTheDayFish[]>([]);
+
   const totalCost = buyQty * BROKEN_BAIT_BUY_PRICE;
   const canAfford = totalCost <= gold;
 
@@ -46,9 +57,11 @@ export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
       const res = await fetch(`${API_BASE}/merchant/inventory`, { credentials: 'include' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to fetch inventory');
+
       setFish(data.fish);
       setBait(data.bait);
       setGold(data.gold);
+      setCatchOfTheDay(data.catchOfTheDay || []);
       setMessage('');
     } catch (e: any) {
       setMessage(e.message || 'Error fetching inventory');
@@ -63,15 +76,52 @@ export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
   function clampQty(q: number) {
     return q < 1 ? 1 : q;
   }
-  function adjustSellQty(key: string, delta: number, max: number) {
+
+  function getFishCatchLimit(species: string): number | null {
+    const entry = catchOfTheDay.find((c) => c.species === species);
+    return entry ? entry.sellLimit : null;
+  }
+
+  function getFishMultiplier(species: string): number {
+    const entry = catchOfTheDay.find((c) => c.species === species);
+    return entry ? entry.multiplier : 1;
+  }
+
+  // New helper: Calculate preview gold for fish qty, applying catch of day rules
+  function getFishSellPreview(f: Fish, qty: number) {
+    if (qty <= 0) return 0;
+    const catchEntry = catchOfTheDay.find(c => c.species === f.species);
+    if (!catchEntry) return qty * f.sell_price;
+    const limit = catchEntry.sellLimit;
+    const multiplier = catchEntry.multiplier;
+    if (qty <= limit) return qty * f.sell_price * multiplier;
+    const overQty = qty - limit;
+    return limit * f.sell_price * multiplier + overQty * f.sell_price;
+  }
+
+  // New helper: Calculate preview gold for bait qty (simple multiply)
+  function getBaitSellPreview(b: Bait, qty: number) {
+    if (qty <= 0) return 0;
+    return qty * b.sell_price;
+  }
+
+  function adjustSellQty(key: string, delta: number, max: number, species?: string) {
     setSellSelections((prev) => {
       const cur = prev[key] ?? 0;
       let next = cur + delta;
       if (next < 0) next = 0;
+
+      // Apply sell limit for catch of the day if species provided
+      if (species) {
+        const catchLimit = getFishCatchLimit(species);
+        if (catchLimit !== null && next > catchLimit) next = catchLimit;
+      }
+
       if (next > max) next = max;
       return { ...prev, [key]: next };
     });
   }
+
   function adjustBuyQty(delta: number) {
     setBuyQty((q) => {
       let next = q + delta;
@@ -143,10 +193,19 @@ function getSellTotal() {
       if (item) total += item.sell_price * qty;
     } else if (itemType === 'fish') {
       const item = fish.find((f) => f.id === id);
-      if (item) total += item.sell_price * qty;
+      if (item) {
+        const catchEntry = catchOfTheDay.find(c => c.species === item.species);
+        if (!catchEntry) {
+          total += item.sell_price * qty;
+        } else {
+          const bonusQty = Math.min(qty, catchEntry.remaining);
+          const baseQty = qty - bonusQty;
+          total += baseQty * item.sell_price + bonusQty * item.sell_price * catchEntry.multiplier;
+        }
+      }
     }
   }
-  return total;
+  return Math.round(total);
 }
 
   return (
@@ -188,18 +247,17 @@ function getSellTotal() {
               +10
             </button>
           </div>
-<button
-  onClick={handleBuy}
-  disabled={loading || !canAfford}
-  className={`w-full py-2 rounded ${
-    canAfford
-      ? 'bg-green-600 hover:bg-green-700 text-white'
-      : 'bg-red-600 cursor-not-allowed text-white opacity-50'
-  }`}
->
-  {loading ? 'Buying...' : `Buy ${buyQty} Broken Bait for ${totalCost} gold`}
-</button>
-
+          <button
+            onClick={handleBuy}
+            disabled={loading || !canAfford}
+            className={`w-full py-2 rounded ${
+              canAfford
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-red-600 cursor-not-allowed text-white opacity-50'
+            }`}
+          >
+            {loading ? 'Buying...' : `Buy ${buyQty} Broken Bait for ${totalCost} gold`}
+          </button>
         </div>
       )}
 
@@ -209,47 +267,89 @@ function getSellTotal() {
 
           <div className="max-h-64 overflow-y-auto mb-4 border rounded p-2">
             <p className="font-semibold mb-1">Fish</p>
+            {catchOfTheDay.length > 0 && (
+  <div className="mb-4 p-2 border rounded bg-gray-100 text-black">
+    <h3 className="font-bold mb-2">Catch of the Day</h3>
+    <ul>
+      {catchOfTheDay.map(({ species, rarity, sellLimit, sellAmount }) => (
+        <li key={species} className="text-sm mb-1">
+          <strong>{species}</strong> — {rarity} <br /> Limit: {sellLimit}, Sold: {sellAmount}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
             {fish.length === 0 && <p className="italic">No fish to sell.</p>}
             {fish.map((f) => {
               const key = `fish-${f.id}`;
               const maxQty = f.quantity;
               const selectedQty = sellSelections[key] ?? 0;
+              // Apply catch of the day sell limit:
+              const catchLimit = getFishCatchLimit(f.species);
+              // Max allowed to sell is min of owned quantity and catch of the day limit if exists
+              const maxSellAllowed = catchLimit !== null ? Math.min(maxQty, catchLimit) : maxQty;
               return (
-                <div key={key} className="flex items-center justify-between mb-1">
-                  <div>
-                    {f.species} (Qty: {f.quantity}) - {f.rarity}
+                <div key={key} className="flex flex-col mb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      {f.species} (Qty: {f.quantity}) <br /> {f.rarity} <br /> {f.sell_price} gold
+                      {catchLimit !== null && catchOfTheDay.find(c => c.species === f.species)?.remaining! > 0 ? (
+  <span className="ml-2 text-sm text-green-600">
+    Catch of the Day Limit Left: {catchOfTheDay.find(c => c.species === f.species)?.remaining}
+  </span>
+) : null}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => adjustSellQty(key, -10, maxSellAllowed, f.species)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        -10
+                      </button>
+                      <button
+                        onClick={() => adjustSellQty(key, -1, maxSellAllowed, f.species)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        -1
+                      </button>
+                      <input
+                        type="number"
+                        readOnly
+                        value={selectedQty}
+                        className="w-12 text-center border rounded"
+                      />
+                      <button
+                        onClick={() => adjustSellQty(key, 1, maxSellAllowed, f.species)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        +1
+                      </button>
+                      <button
+                        onClick={() => adjustSellQty(key, 10, maxSellAllowed, f.species)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        +10
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => adjustSellQty(key, -10, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      -10
-                    </button>
-                    <button
-                      onClick={() => adjustSellQty(key, -1, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      -1
-                    </button>
-                    <input type="number" readOnly value={selectedQty} className="w-12 text-center border rounded" />
-                    <button
-                      onClick={() => adjustSellQty(key, 1, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      +1
-                    </button>
-                    <button
-                      onClick={() => adjustSellQty(key, 10, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      +10
-                    </button>
-                  </div>
+                  {/* New preview below amount selector */}
+{selectedQty > 0 && (
+  (() => {
+    const catchEntry = catchOfTheDay.find(c => c.species === f.species);
+    const basePrice = f.sell_price * selectedQty;
+    const bonusQty = catchEntry ? Math.min(selectedQty, catchEntry.remaining) : 0;
+    const bonusGold = bonusQty * f.sell_price * 0.25; // 25% bonus
+    return (
+      <div className="text-sm text-gray-700 ml-2">
+        {basePrice} + {Math.round(bonusGold)} bonus
+      </div>
+    );
+  })()
+)}
                 </div>
               );
             })}
@@ -263,56 +363,68 @@ function getSellTotal() {
               const maxQty = b.quantity;
               const selectedQty = sellSelections[key] ?? 0;
               return (
-                <div key={key} className="flex items-center justify-between mb-1">
-                  <div>
-                    {b.name} (Qty: {b.quantity})
+                <div key={key} className="flex flex-col mb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      {b.name} (Qty: {b.quantity})
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => adjustSellQty(key, -10, maxQty)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        -10
+                      </button>
+                      <button
+                        onClick={() => adjustSellQty(key, -1, maxQty)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        -1
+                      </button>
+                      <input
+                        type="number"
+                        readOnly
+                        value={selectedQty}
+                        className="w-12 text-center border rounded"
+                      />
+                      <button
+                        onClick={() => adjustSellQty(key, 1, maxQty)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        +1
+                      </button>
+                      <button
+                        onClick={() => adjustSellQty(key, 10, maxQty)}
+                        disabled={loading}
+                        className="px-1 bg-gray-300 rounded"
+                      >
+                        +10
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => adjustSellQty(key, -10, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      -10
-                    </button>
-                    <button
-                      onClick={() => adjustSellQty(key, -1, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      -1
-                    </button>
-                    <input type="number" readOnly value={selectedQty} className="w-12 text-center border rounded" />
-                    <button
-                      onClick={() => adjustSellQty(key, 1, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      +1
-                    </button>
-                    <button
-                      onClick={() => adjustSellQty(key, 10, maxQty)}
-                      disabled={loading}
-                      className="px-1 bg-gray-300 rounded"
-                    >
-                      +10
-                    </button>
-                  </div>
+                  {/* New preview below amount selector */}
+                  {selectedQty > 0 && (
+                    <div className="text-sm text-gray-700 ml-2">
+                      Gold: {getBaitSellPreview(b, selectedQty)}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
           <button
-  onClick={handleSell}
-  disabled={loading || Object.values(sellSelections).every((v) => v <= 0)}
-  className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
->
-  {loading
-    ? 'Selling...'
-    : `Sell Selected Items for ${getSellTotal()} gold`}
-</button>
-
+            onClick={handleSell}
+            disabled={loading || Object.values(sellSelections).every((v) => v <= 0)}
+            className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            {loading
+              ? 'Selling...'
+              : `Sell Selected Items for ${getSellTotal()} gold`}
+          </button>
         </div>
       )}
 

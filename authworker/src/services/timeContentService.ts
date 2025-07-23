@@ -225,6 +225,33 @@ export async function assignNewQuests(
     ).bind(userId, quest.id, quest.key).run();
   }
 }
+export async function assignCatchOfTheDayToUser(db: D1Database, userId: number) {
+  const today = startOfDayCST(new Date()).toISOString();
+
+  // Check last assigned date for this user
+  const lastAssignedRow = await db
+    .prepare('SELECT MAX(last_assigned) as lastAssigned FROM user_fish_sales WHERE user_id = ?')
+    .bind(userId)
+    .first<{ lastAssigned: string | null }>();
+
+  if (lastAssignedRow?.lastAssigned === today) {
+    // Already assigned for today, skip reassigning
+    return;
+  }
+
+  const fishTypes = await db.prepare('SELECT species, rarity FROM fishTypes').all<{ species: string; rarity: string }>();
+  const catchOfTheDay = getCatchOfTheDay(fishTypes.results ?? []);
+
+  await db.prepare('DELETE FROM user_fish_sales WHERE user_id = ?').bind(userId).run();
+
+  for (const fish of catchOfTheDay.fishes) {
+    await db.prepare(
+      `INSERT INTO user_fish_sales (user_id, species, sell_limit, sell_amount, last_assigned)
+       VALUES (?, ?, ?, 0, ?)`
+    ).bind(userId, fish.species, fish.sellLimit, today).run();
+  }
+}
+
 
 export async function checkAndAssignQuests(
   db: D1Database,
