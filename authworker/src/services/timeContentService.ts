@@ -1,4 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import { getAllQuests, assignNewQuests, getQuestKeys } from './questService';
 
 export interface WorldState {
   phase: 'day' | 'night';
@@ -18,20 +19,6 @@ export interface CatchOfTheDay {
   fishes: CatchOfTheDayFish[];
 }
 
-export interface QuestTemplate {
-  id: number;
-  key: string;
-  description: string;
-  type: 'daily' | 'weekly' | 'monthly';
-  target: number;
-}
-
-export interface UserQuest extends QuestTemplate {
-  progress: number;
-  completed: boolean;
-  updated_at: string;
-}
-
 // -- Utilities --
 
 export function toCST(date: Date): Date {
@@ -43,6 +30,10 @@ export function startOfDayCST(date: Date): Date {
   const cst = toCST(date);
   cst.setHours(0, 0, 0, 0);
   return cst;
+}
+
+export function getCurrentTimeCST(): Date {
+  return toCST(new Date());
 }
 
 function seededRandom(seed: number): () => number {
@@ -63,15 +54,10 @@ function shuffleSeeded<T>(array: T[], rand: () => number): T[] {
   return a;
 }
 
-export function getCurrentTimeCST(): Date {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-}
-
 // -- World State --
 
 export function getWorldState(now = Date.now()): WorldState {
   const cycleLength = 150 * 60 * 1000; // 150 min total
-
   const worldStart = new Date('2025-07-01T05:00:00Z').getTime();
   const msSinceStart = Math.max(0, now - worldStart);
 
@@ -155,91 +141,22 @@ export function getCatchOfTheDay(
   };
 }
 
-// -- Quest Scheduling Logic --
-
-function getCurrentWeekNumber(date: Date): number {
-  const cstDate = toCST(date);
-  const janFirst = new Date(cstDate.getFullYear(), 0, 1);
-  const days =
-    Math.floor((cstDate.getTime() - janFirst.getTime()) / (24 * 60 * 60 * 1000));
-  return Math.ceil((days + janFirst.getDay() + 1) / 7);
-}
-
-function questsValid(
-  quests: UserQuest[],
-  type: 'daily' | 'weekly' | 'monthly',
-  today: number,
-  thisWeek: number,
-  thisMonth: number
-): boolean {
-  const filtered = quests.filter((q) => q.type === type);
-  if (filtered.length === 0) return false;
-
-  const latest = filtered.reduce((a, b) =>
-    new Date(a.updated_at) > new Date(b.updated_at) ? a : b
-  );
-  const updatedAt = new Date(latest.updated_at);
-  const updatedCST = toCST(updatedAt);
-
-  if (type === 'daily') {
-    return startOfDayCST(updatedAt).getTime() === today;
-  } else if (type === 'weekly') {
-    return getCurrentWeekNumber(updatedAt) === thisWeek;
-  } else if (type === 'monthly') {
-    return updatedCST.getMonth() === thisMonth;
-  }
-  return false;
-}
-
-async function queryDb<T>(db: D1Database, sql: string, params: any[] = []): Promise<T[]> {
-  const result = await db.prepare(sql).bind(...params).all<T>();
-  return result.results ?? [];
-}
-
-export async function assignNewQuests(
-  db: D1Database,
-  userId: number,
-  type: 'daily' | 'weekly' | 'monthly'
-) {
-  await db.prepare(
-    `
-    DELETE FROM user_quests
-    WHERE user_id = ? AND quest_template_id IN (
-      SELECT id FROM questTemplates WHERE type = ?
-    )
-  `
-  ).bind(userId, type).run();
-
-  const quests = await queryDb<QuestTemplate>(
-    db,
-    `SELECT id, key, description, type, target FROM questTemplates WHERE type = ? ORDER BY RANDOM() LIMIT 3`,
-    [type]
-  );
-
-  for (const quest of quests) {
-    await db.prepare(
-      `
-      INSERT INTO user_quests (user_id, quest_template_id, quest_key, progress, completed, updated_at)
-      VALUES (?, ?, ?, 0, 0, datetime('now'))
-    `
-    ).bind(userId, quest.id, quest.key).run();
-  }
-}
 export async function assignCatchOfTheDayToUser(db: D1Database, userId: number) {
   const today = startOfDayCST(new Date()).toISOString();
 
-  // Check last assigned date for this user
   const lastAssignedRow = await db
     .prepare('SELECT MAX(last_assigned) as lastAssigned FROM user_fish_sales WHERE user_id = ?')
     .bind(userId)
     .first<{ lastAssigned: string | null }>();
 
   if (lastAssignedRow?.lastAssigned === today) {
-    // Already assigned for today, skip reassigning
     return;
   }
 
-  const fishTypes = await db.prepare('SELECT species, rarity FROM fishTypes').all<{ species: string; rarity: string }>();
+  const fishTypes = await db
+    .prepare('SELECT species, rarity FROM fishTypes')
+    .all<{ species: string; rarity: string }>();
+
   const catchOfTheDay = getCatchOfTheDay(fishTypes.results ?? []);
 
   await db.prepare('DELETE FROM user_fish_sales WHERE user_id = ?').bind(userId).run();
@@ -252,49 +169,18 @@ export async function assignCatchOfTheDayToUser(db: D1Database, userId: number) 
   }
 }
 
+export async function checkAndAssignQuests(db: D1Database, userId: number) {
+  const quests = await getAllQuests(db);
+  const questKeys = getQuestKeys();
+  await assignNewQuests(db, userId, quests, questKeys);
 
-export async function checkAndAssignQuests(
-  db: D1Database,
-  userId: number
-): Promise<UserQuest[]> {
-  const now = new Date();
-  const cstNow = toCST(now);
-  const today = startOfDayCST(now).getTime();
-  const thisWeek = getCurrentWeekNumber(now);
-  const thisMonth = cstNow.getMonth();
-
-  const userQuests = await queryDb<UserQuest>(
-    db,
-    `
-    SELECT uq.*, qt.description, qt.target, qt.type
-    FROM user_quests uq
-    JOIN questTemplates qt ON uq.quest_template_id = qt.id
-    WHERE uq.user_id = ?
-  `,
-    [userId]
-  );
-
-  if (!questsValid(userQuests, 'daily', today, thisWeek, thisMonth)) {
-    await assignNewQuests(db, userId, 'daily');
-  }
-  if (!questsValid(userQuests, 'weekly', today, thisWeek, thisMonth)) {
-    await assignNewQuests(db, userId, 'weekly');
-  }
-  if (!questsValid(userQuests, 'monthly', today, thisWeek, thisMonth)) {
-    await assignNewQuests(db, userId, 'monthly');
-  }
-
-  const updatedQuests = await queryDb<UserQuest>(
-    db,
-    `
+  const userQuests = await db.prepare(`
     SELECT uq.*, qt.description, qt.target, qt.type
     FROM user_quests uq
     JOIN questTemplates qt ON uq.quest_template_id = qt.id
     WHERE uq.user_id = ?
     ORDER BY uq.id
-  `,
-    [userId]
-  );
+  `).bind(userId).all();
 
-  return updatedQuests;
+  return userQuests.results;
 }

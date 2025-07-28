@@ -33,7 +33,7 @@ export function FishingUI() {
           </div>
 
           {/* Merchant fixed below weather */}
-          <div style={{ position: 'fixed', top: '250px', right: '16px', width: '400px' }}>
+          <div style={{ position: 'fixed', top: '356px', right: '16px', width: '400px' }}>
             <Merchant refetch={refetchInventory} refetchTrigger={merchantRefetchTrigger} />
           </div>
 

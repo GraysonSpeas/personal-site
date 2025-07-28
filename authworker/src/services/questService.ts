@@ -1,15 +1,14 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import type { D1Database } from '@cloudflare/workers-types';
+
 export interface Quest {
   key: string;
   description: string;
   target: number;
   condition?: ((fish: { rarity: string; modified?: boolean }) => boolean) | null;
   type: 'daily' | 'weekly' | 'monthly';
-  reward: {
-    xp: number;
-    gold: number;
-  };
+  reward: { xp: number; gold: number };
   rarity_min?: string;
   rarity_exact?: string;
   requires_modified?: boolean;
@@ -43,41 +42,39 @@ function toCST(date: Date): Date {
   return new Date(cstString);
 }
 
-function startOfCSTDay(date: Date): Date {
+function startOfDayCST(date: Date): Date {
   const cst = toCST(date);
   cst.setHours(0, 0, 0, 0);
-  return new Date(cst.getTime() - (-5 * 60 * 60 * 1000));
+  return cst;
 }
 
 function startOfWeekCST(date: Date): Date {
   const cst = toCST(date);
   const diff = cst.getDay();
-  const start = new Date(cst);
-  start.setDate(cst.getDate() - diff);
-  start.setHours(0, 0, 0, 0);
-  return new Date(start.getTime() - (-5 * 60 * 60 * 1000));
+  cst.setDate(cst.getDate() - diff);
+  cst.setHours(0, 0, 0, 0);
+  return cst;
 }
 
 function startOfMonthCST(date: Date): Date {
   const cst = toCST(date);
-  const start = new Date(cst.getFullYear(), cst.getMonth(), 1);
-  return new Date(start.getTime() - (-5 * 60 * 60 * 1000));
+  cst.setDate(1);
+  cst.setHours(0, 0, 0, 0);
+  return cst;
 }
 
-// Previous period helpers
 function prevDayCST(date: Date): Date {
   const d = toCST(date);
   d.setDate(d.getDate() - 1);
   d.setHours(0, 0, 0, 0);
-  return new Date(d.getTime() - (-5 * 60 * 60 * 1000));
+  return d;
 }
 
 function prevWeekCST(date: Date): Date {
-  const d = toCST(date);
-  const diff = d.getDay() + 7;
-  d.setDate(d.getDate() - diff);
-  d.setHours(0, 0, 0, 0);
-  return new Date(d.getTime() - (-5 * 60 * 60 * 1000));
+  // compute start of this week, then back up 7 days
+  const cw = startOfWeekCST(date);
+  cw.setDate(cw.getDate() - 7);
+  return cw;
 }
 
 function prevMonthCST(date: Date): Date {
@@ -85,12 +82,12 @@ function prevMonthCST(date: Date): Date {
   d.setMonth(d.getMonth() - 1);
   d.setDate(1);
   d.setHours(0, 0, 0, 0);
-  return new Date(d.getTime() - (-5 * 60 * 60 * 1000));
+  return d;
 }
 
 export function getQuestKeys(now = Date.now()): QuestKeys {
   return {
-    daily: startOfCSTDay(new Date(now)).toISOString().slice(0, 10),
+    daily: startOfDayCST(new Date(now)).toISOString().slice(0, 10),
     weekly: startOfWeekCST(new Date(now)).toISOString().slice(0, 10),
     monthly: startOfMonthCST(new Date(now)).toISOString().slice(0, 7),
   };
@@ -137,38 +134,56 @@ export async function getAllQuests(db: D1Database): Promise<Quest[]> {
   }));
 }
 
+async function cleanOldQuests(db: D1Database, userId: number, questKeys: QuestKeys) {
+  const { daily, weekly, monthly } = questKeys;
+
+  // remove old dailies & weeklies that aren’t in today’s/this week’s slots
+  await db.prepare(`
+    DELETE FROM user_quests
+    WHERE user_id = ?
+      AND (
+        (quest_key LIKE 'daily_%'   AND quest_key NOT LIKE ?)
+     OR (quest_key LIKE 'weekly_%'  AND quest_key NOT LIKE ?)
+      )
+  `).bind(userId, `%_${daily}`, `%_${weekly}`).run();
+
+  // remove *all* monthlies for current YYYY‑MM so you start fresh
+  await db.prepare(`
+    DELETE FROM user_quests
+    WHERE user_id = ?
+      AND quest_key LIKE ?
+  `).bind(userId, `%_${monthly}`).run();
+}
+
 export async function assignNewQuests(
   db: D1Database,
   userId: number,
   quests: Quest[],
   questKeys: QuestKeys
 ) {
-  const types: ('daily' | 'weekly' | 'monthly')[] = ['daily', 'weekly', 'monthly'];
+  await cleanOldQuests(db, userId, questKeys);
 
-  for (const type of types) {
+  for (const type of ['daily', 'weekly', 'monthly'] as const) {
     const filtered = quests.filter(q => q.type === type);
     const selected = filtered.sort(() => 0.5 - Math.random()).slice(0, 3);
-
     for (const quest of selected) {
-      const periodKey = questKeys[quest.type];
+      const periodKey = questKeys[type];
       const questUniqueKey = `${quest.key}_${periodKey}`;
-
       const exists = await db
         .prepare('SELECT 1 FROM user_quests WHERE user_id = ? AND quest_key = ?')
         .bind(userId, questUniqueKey)
         .first();
-
       if (!exists) {
-        const template = await db
+        const tpl = await db
           .prepare('SELECT id FROM questTemplates WHERE key = ?')
           .bind(quest.key)
-          .first();
-
-        if (template?.id) {
+          .first<{ id: number }>();
+        if (tpl?.id) {
           await db.prepare(`
-            INSERT INTO user_quests (user_id, quest_template_id, quest_key, progress, completed, updated_at)
+            INSERT INTO user_quests
+              (user_id, quest_template_id, quest_key, progress, completed, updated_at)
             VALUES (?, ?, ?, 0, 0, datetime('now'))
-          `).bind(userId, template.id, questUniqueKey).run();
+          `).bind(userId, tpl.id, questUniqueKey).run();
         }
       }
     }
@@ -183,158 +198,93 @@ export async function updateQuestProgress(
   questKeys: QuestKeys,
   context: PlayerContext
 ) {
-  // Get all user quests for current period keys to restrict update only to assigned quests
-  const userQuestsRes = await db
+  // Load current user_quests
+  const res = await db
     .prepare('SELECT quest_key FROM user_quests WHERE user_id = ?')
     .bind(userId)
     .all();
+  const userQuestKeys = new Set(res.results.map(r => String(r.quest_key)));
 
-const userQuestKeys = new Set<string>(userQuestsRes.results.map(r => String(r.quest_key)));
-  // Auto-refresh quests if missing current period keys
-  const missingTypes = new Set<'daily' | 'weekly' | 'monthly'>();
-
-const prevKeys = getPrevQuestKeys(Date.now());
-for (const type of ['daily', 'weekly', 'monthly'] as const) {
-  const prevPeriodKey = prevKeys[type];
-  const hasOld = [...userQuestKeys].some(key => key.endsWith(prevPeriodKey));
-  if (hasOld) {
-    missingTypes.add(type);
-  }
-}
-
-
-  if (missingTypes.size > 0) {
-    const prevKeys = getPrevQuestKeys(Date.now());
-    for (const type of missingTypes) {
-      await db.prepare(`DELETE FROM user_quests WHERE user_id = ? AND quest_key LIKE ?`)
-        .bind(userId, `%_${prevKeys[type]}%`)
+  // If any from previous period remain, delete them & re-assign
+  const prev = getPrevQuestKeys(Date.now());
+  for (const t of ['daily', 'weekly', 'monthly'] as const) {
+    const oldKey = prev[t];
+    if ([...userQuestKeys].some(k => k.endsWith(oldKey))) {
+      await db
+        .prepare(`DELETE FROM user_quests WHERE user_id = ? AND quest_key LIKE ?`)
+        .bind(userId, `%_${oldKey}`)
         .run();
+      await assignNewQuests(db, userId, quests, questKeys);
+      const refreshed = await db
+        .prepare('SELECT quest_key FROM user_quests WHERE user_id = ?')
+        .bind(userId)
+        .all();
+      refreshed.results.forEach(r => userQuestKeys.add(String(r.quest_key)));
+      break;
     }
-    await assignNewQuests(db, userId, quests, questKeys);
-
-    // Refresh userQuestKeys after assignment
-    const refreshed = await db
-      .prepare('SELECT quest_key FROM user_quests WHERE user_id = ?')
-      .bind(userId)
-      .all();
-refreshed.results.forEach(r => userQuestKeys.add(String(r.quest_key)));
   }
 
-  // Update progress only for quests assigned for current period
+  // Update progress/completion
   for (const quest of quests) {
-    const periodKey = questKeys[quest.type];
-    const questUniqueKey = `${quest.key}_${periodKey}`;
+    const key = `${quest.key}_${questKeys[quest.type]}`;
+    if (!userQuestKeys.has(key)) continue;
+    if (quest.requires_no_bait && context.hasBait) continue;
+    if (quest.requires_no_rod && context.hasRod) continue;
+    if (quest.requires_no_hook && context.hasHook) continue;
+    if (quest.time_of_day && quest.time_of_day !== context.timeOfDay) continue;
+    if (quest.zone && quest.zone !== context.zone) continue;
+    if (quest.weather && quest.weather !== context.weather) continue;
 
-    if (!userQuestKeys.has(questUniqueKey)) {
-      continue; // Skip unassigned quests
-    }
-console.log(`[Quest Check] key=${quest.key}`);
-console.log(`- questUniqueKey: ${questUniqueKey}`);
-console.log(`- assigned: ${userQuestKeys.has(questUniqueKey)}`);
-console.log(`- context:`, context);
-console.log(`- quest.requires_no_bait: ${quest.requires_no_bait}`);
-console.log(`- quest.requires_no_rod: ${quest.requires_no_rod}`);
-console.log(`- quest.requires_no_hook: ${quest.requires_no_hook}`);
-console.log(`- quest.time_of_day: ${quest.time_of_day}`);
-console.log(`- quest.zone: ${quest.zone}`);
-console.log(`- quest.weather: ${quest.weather}`);
-
-if (quest.requires_no_bait && context.hasBait) {
-  console.log(`[Skipped] ${quest.key} - has bait but requires none`);
-  continue;
-}
-if (quest.requires_no_rod && context.hasRod) {
-  console.log(`[Skipped] ${quest.key} - has rod but requires none`);
-  continue;
-}
-if (quest.requires_no_hook && context.hasHook) {
-  console.log(`[Skipped] ${quest.key} - has hook but requires none`);
-  continue;
-}
-if (quest.time_of_day && quest.time_of_day !== context.timeOfDay) {
-  console.log(`[Skipped] ${quest.key} - time mismatch`);
-  continue;
-}
-if (quest.zone && quest.zone !== context.zone) {
-  console.log(`[Skipped] ${quest.key} - zone mismatch`);
-  continue;
-}
-if (quest.weather && quest.weather !== context.weather) {
-  console.log(`[Skipped] ${quest.key} - weather mismatch`);
-  continue;
-}
-
-
-console.log(`[Quest Check] key=${quest.key} - caughtFish:`, caughtFish);
-
-const matchedCount = caughtFish.filter(fish => {
-  if (quest.rarity_exact && fish.rarity !== quest.rarity_exact) return false;
-  if (quest.rarity_min && !meetsRarityMin(fish.rarity, quest.rarity_min)) return false;
-  if (quest.requires_modified && !fish.modified) return false;
-  if (quest.condition && !quest.condition(fish)) return false;
-  return true;
-}).length;
-
-console.log(`[Quest Check] key=${quest.key} - matchedCount: ${matchedCount}`);
-
-if (matchedCount === 0) {
-  console.log(`[Quest Check] key=${quest.key} - no matching fish, skipping progress update`);
-  continue;
-}
-
+    const matchCount = caughtFish.filter(f => {
+      if (quest.rarity_exact && f.rarity !== quest.rarity_exact) return false;
+      if (quest.rarity_min && !meetsRarityMin(f.rarity, quest.rarity_min!)) return false;
+      if (quest.requires_modified && !f.modified) return false;
+      if (quest.condition && !quest.condition(f)) return false;
+      return true;
+    }).length;
+    if (matchCount === 0) continue;
 
     const row = await db
-      .prepare(`SELECT progress, completed FROM user_quests WHERE user_id = ? AND quest_key = ?`)
-      .bind(userId, questUniqueKey)
+      .prepare('SELECT progress, completed FROM user_quests WHERE user_id = ? AND quest_key = ?')
+      .bind(userId, key)
       .first<{ progress: number; completed: number }>();
+    if (row?.completed) continue;
 
-    const currentProgress = row?.progress ?? 0;
-    const completed = row?.completed ?? 0;
-    if (completed) continue;
+    const newProg = Math.min((row?.progress ?? 0) + matchCount, quest.target);
+    const done = newProg >= quest.target;
 
-    const newProgress = Math.min(currentProgress + matchedCount, quest.target);
-    const isCompleted = newProgress >= quest.target;
-    
-await db.prepare(`
-  UPDATE user_quests
-  SET progress = ?, completed = ?, updated_at = datetime('now')
-  WHERE user_id = ? AND quest_key = ?
-`).bind(newProgress, isCompleted ? 1 : 0, userId, questUniqueKey).run();
+    await db.prepare(`
+      UPDATE user_quests
+      SET progress = ?, completed = ?, updated_at = datetime('now')
+      WHERE user_id = ? AND quest_key = ?
+    `).bind(newProg, done ? 1 : 0, userId, key).run();
 
-if (isCompleted) {
-  // Add XP and gold
-  await db.prepare(`UPDATE users SET xp = xp + ?, updated_at = datetime('now') WHERE id = ?`)
-    .bind(quest.reward.xp, userId).run();
+    if (done) {
+      // grant rewards and handle leveling
+      await db.prepare(`UPDATE users SET xp = xp + ? WHERE id = ?`)
+        .bind(quest.reward.xp, userId).run();
+      await db.prepare(`UPDATE currencies SET gold = gold + ? WHERE user_id = ?`)
+        .bind(quest.reward.gold, userId).run();
 
-  await db.prepare(`UPDATE currencies SET gold = gold + ? WHERE user_id = ?`)
-    .bind(quest.reward.gold, userId).run();
-
-  // Recalculate level
-  const user = await db.prepare(`SELECT xp, level, current_zone_id FROM users WHERE id = ?`)
-    .bind(userId).first<{ xp: number; level: number; current_zone_id: number }>();
-
-  if (user) {
-    const zone = await db.prepare(`SELECT xp_multiplier FROM zoneTypes WHERE id = ?`)
-      .bind(user.current_zone_id).first<{ xp_multiplier: number }>();
-
-    const multiplier = typeof zone?.xp_multiplier === 'number' ? zone.xp_multiplier : 1.0;
-
-    // Use total user XP (already updated above)
-    const xpToLevel = (n: number) => Math.round(10 * Math.pow(1.056, n - 1));
-    const totalXpToLevel = (n: number) => {
-      let total = 0;
-      for (let i = 1; i < n; i++) total += xpToLevel(i);
-      return total;
-    };
-
-    let newLevel = user.level;
-    while (user.xp >= totalXpToLevel(newLevel + 1)) newLevel++;
-
-    if (newLevel > user.level) {
-      await db.prepare(`UPDATE users SET level = ?, updated_at = datetime('now') WHERE id = ?`)
-        .bind(newLevel, userId).run();
+      const user = await db.prepare('SELECT xp, level, current_zone_id FROM users WHERE id = ?')
+        .bind(userId).first<{ xp: number; level: number; current_zone_id: number }>();
+      if (user) {
+        const z = await db.prepare('SELECT xp_multiplier FROM zoneTypes WHERE id = ?')
+          .bind(user.current_zone_id).first<{ xp_multiplier: number }>();
+        const mult = z?.xp_multiplier ?? 1;
+        const xpToLevel = (n: number) => Math.round(10 * Math.pow(1.056, n - 1));
+        const totalXp = (n: number) => {
+          let sum = 0;
+          for (let i = 1; i < n; i++) sum += xpToLevel(i);
+          return sum;
+        };
+        let lvl = user.level;
+        while (user.xp >= totalXp(lvl + 1)) lvl++;
+        if (lvl > user.level) {
+          await db.prepare(`UPDATE users SET level = ? WHERE id = ?`)
+            .bind(lvl, userId).run();
+        }
+      }
     }
   }
-}
-}
 }
