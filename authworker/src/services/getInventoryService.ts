@@ -38,7 +38,7 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     `).bind(userId).run();
   }
 
-  const [currency, fish, biggestFish, resources, gear, bait] = await Promise.all([
+  const [currency, fish, biggestFish, resources, gear, bait, consumables] = await Promise.all([
     db.prepare(`
       SELECT gold, pearls, coral_shards, echo_shards
       FROM currencies WHERE user_id = ?
@@ -89,6 +89,18 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
       JOIN baitTypes bt ON b.type_id = bt.id
       WHERE b.user_id = ?
     `).bind(userId).all(),
+
+    db.prepare(`
+      SELECT 
+        c.id AS consumable_id,
+        c.type_id,
+        ct.name AS consumable_type,
+        c.quantity,
+        c.stats
+      FROM consumables c
+      JOIN consumableTypes ct ON c.type_id = ct.id
+      WHERE c.user_id = ?
+    `).bind(userId).all(),
   ]);
 
   // Get equipped gear IDs
@@ -112,6 +124,12 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     equipped: equippedRow ? b.bait_id === equippedRow.equipped_bait_id : false,
   }));
 
+  // Parse consumables stats JSON
+  const consumablesWithParsedStats = (consumables?.results || consumables || []).map((c: any) => ({
+    ...c,
+    stats: c.stats ? JSON.parse(c.stats) : undefined,
+  }));
+
   return {
     email,
     currency: currency || {},
@@ -120,6 +138,7 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     resources: resources?.results || resources || [],
     gear: gearWithEquippedFlag,
     bait: baitWithEquippedFlag,
+    consumables: consumablesWithParsedStats,
     current_zone_id: currentZoneId || null,
     xp: userXPLevel?.xp ?? 0,
     level: userXPLevel?.level ?? 1,

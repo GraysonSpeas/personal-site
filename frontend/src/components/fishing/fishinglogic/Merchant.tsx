@@ -35,9 +35,10 @@ type CatchOfTheDayFish = {
 type MerchantProps = {
   refetch: () => Promise<void>;
   refetchTrigger?: number;
+  refreshOther: () => void;
 };
 
-export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
+export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProps) {
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [fish, setFish] = useState<Fish[]>([]);
   const [bait, setBait] = useState<Bait[]>([]);
@@ -131,54 +132,56 @@ export function Merchant({ refetch, refetchTrigger }: MerchantProps) {
   }
 
   async function handleSell() {
-    setLoading(true);
-    setMessage('');
-    try {
-      for (const key in sellSelections) {
-        const qty = sellSelections[key];
-        if (qty <= 0) continue;
-        const [itemType, idStr] = key.split('-');
-        const itemId = Number(idStr);
-        const res = await fetch(`${API_BASE}/merchant/sell`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ itemType, itemId, quantity: qty }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Sell failed');
-      }
-      setMessage('Items sold successfully!');
-      setSellSelections({});
-      await refetch();
-      await fetchInventory();
-    } catch (e: any) {
-      setMessage(e.message || 'Error selling items');
-    }
-    setLoading(false);
-  }
-
-  async function handleBuy() {
-    setLoading(true);
-    setMessage('');
-    try {
-      const res = await fetch(`${API_BASE}/merchant/buy`, {
+  setLoading(true);
+  setMessage('');
+  try {
+    for (const key in sellSelections) {
+      const qty = sellSelections[key];
+      if (qty <= 0) continue;
+      const [itemType, idStr] = key.split('-');
+      const itemId = Number(idStr);
+      const res = await fetch(`${API_BASE}/merchant/sell`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ quantity: buyQty }),
+        body: JSON.stringify({ itemType, itemId, quantity: qty }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Buy failed');
-      setMessage(`Bought ${buyQty} broken bait!`);
-      setBuyQty(1);
-      await refetch();
-      await fetchInventory();
-    } catch (e: any) {
-      setMessage(e.message || 'Error buying broken bait');
+      if (!res.ok) throw new Error(data.error || 'Sell failed');
     }
-    setLoading(false);
+    setMessage('Items sold successfully!');
+    setSellSelections({});
+    await refetch();
+    refreshOther();  // <-- Trigger Crafting refresh
+    await fetchInventory();
+  } catch (e: any) {
+    setMessage(e.message || 'Error selling items');
   }
+  setLoading(false);
+}
+
+async function handleBuy() {
+  setLoading(true);
+  setMessage('');
+  try {
+    const res = await fetch(`${API_BASE}/merchant/buy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ quantity: buyQty }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Buy failed');
+    setMessage(`Bought ${buyQty} broken bait!`);
+    setBuyQty(1);
+    await refetch();
+    refreshOther();  // <-- Trigger Crafting refresh
+    await fetchInventory();
+  } catch (e: any) {
+    setMessage(e.message || 'Error buying broken bait');
+  }
+  setLoading(false);
+}
 
 function getSellTotal() {
   let total = 0;

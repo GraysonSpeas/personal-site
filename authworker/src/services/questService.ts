@@ -206,23 +206,29 @@ export async function updateQuestProgress(
   const userQuestKeys = new Set(res.results.map(r => String(r.quest_key)));
 
   // If any from previous period remain, delete them & re-assign
-  const prev = getPrevQuestKeys(Date.now());
-  for (const t of ['daily', 'weekly', 'monthly'] as const) {
-    const oldKey = prev[t];
-    if ([...userQuestKeys].some(k => k.endsWith(oldKey))) {
-      await db
-        .prepare(`DELETE FROM user_quests WHERE user_id = ? AND quest_key LIKE ?`)
-        .bind(userId, `%_${oldKey}`)
-        .run();
-      await assignNewQuests(db, userId, quests, questKeys);
-      const refreshed = await db
-        .prepare('SELECT quest_key FROM user_quests WHERE user_id = ?')
-        .bind(userId)
-        .all();
-      refreshed.results.forEach(r => userQuestKeys.add(String(r.quest_key)));
-      break;
-    }
+for (const t of ['daily', 'weekly', 'monthly'] as const) {
+  const currentKey = questKeys[t];
+  const hasCurrent = [...userQuestKeys].some(k => k.endsWith(currentKey));
+  if (!hasCurrent) {
+    // Clean old quests for this period before assigning new
+    const prevKey = getPrevQuestKeys()[t];
+    await db
+      .prepare(`DELETE FROM user_quests WHERE user_id = ? AND quest_key LIKE ?`)
+      .bind(userId, `%_${prevKey}`)
+      .run();
+
+    await assignNewQuests(db, userId, quests, questKeys);
+
+    // Refresh userQuestKeys
+    const refreshed = await db
+      .prepare('SELECT quest_key FROM user_quests WHERE user_id = ?')
+      .bind(userId)
+      .all();
+    refreshed.results.forEach(r => userQuestKeys.add(String(r.quest_key)));
+
+    break;
   }
+}
 
   // Update progress/completion
   for (const quest of quests) {

@@ -20,7 +20,7 @@ function calcRain(
 ): { isRaining: boolean; rainStartMin: number | null } {
   if (cycleNum % 3 === 2) {
     const rainSchedule = [15, 90, 105];
-    const rainIndex = Math.floor((cycleNum / 3) % rainSchedule.length);
+    const rainIndex = Math.floor(cycleNum / 3) % rainSchedule.length;
     const rainStartMin = rainSchedule[rainIndex];
     const rainEndMin = rainStartMin + 45;
     const isRaining = cycleMin >= rainStartMin && cycleMin < rainEndMin;
@@ -59,16 +59,20 @@ export function WeatherUI({ weather, worldState }: WeatherUIProps) {
 const rainInfo = (() => {
   const rainCycle = cycleNum % 3 === 2;
 
-  const minutesToRealTime = (minOffset: number) => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + minOffset);
-    return now.toLocaleTimeString('en-US', {
-      timeZone: 'America/Chicago',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
+const minutesToRealTime = (minOffset: number) => {
+  const now = new Date();
+  // Convert to CST date/time first
+  const cstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+
+  // Add minutes to CST time
+  cstNow.setMinutes(cstNow.getMinutes() + minOffset);
+
+  return cstNow.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
 
   if (!rainCycle || rainStartMin === null) {
     const cyclesUntilRain = (3 - (cycleNum % 3)) % 3 || 3;
@@ -89,7 +93,11 @@ const rainInfo = (() => {
     return `Next rain at ${time}`;
   }
 
-  return 'Rain just ended, next expected in ~3 cycles';
+const cyclesUntilNextRain = 3;
+const minutesUntilNextRain = (150 - cycleMin) + 150 * (cyclesUntilNextRain - 1);
+const nextRainTime = minutesToRealTime(minutesUntilNextRain);
+return `Next rain expected at ${nextRainTime}`;
+
 })();
 
   return (

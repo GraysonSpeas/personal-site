@@ -55,6 +55,13 @@ function shuffleSeeded<T>(array: T[], rand: () => number): T[] {
 }
 
 // -- World State --
+export function getCycleStartTimestamp(now = Date.now()): number {
+  const cycleLength = 150 * 60 * 1000; // 150 min in ms
+  const worldStart = new Date('2025-07-01T05:00:00Z').getTime();
+  const msSinceStart = Math.max(0, now - worldStart);
+  const cycleNum = Math.floor(msSinceStart / cycleLength);
+  return worldStart + cycleNum * cycleLength;
+}
 
 export function getWorldState(now = Date.now()): WorldState {
   const cycleLength = 150 * 60 * 1000; // 150 min total

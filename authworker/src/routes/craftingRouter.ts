@@ -1,9 +1,25 @@
 // src/routes/craftingRouter.ts
-import { Hono } from 'hono'
-import * as craftingService from '../services/craftingService'
+import { Hono } from 'hono';
+import { craftItem } from '../services/craftingService';
 
-const router = new Hono<{ Bindings: any }>()
+interface Bindings {
+  DB: D1Database;
+}
 
-router.post('/example', craftingService.example)
+const craftingRouter = new Hono<{ Bindings: Bindings }>();
 
-export default router
+craftingRouter.post('/craft', async (c) => {
+  return craftItem(c);
+});
+
+craftingRouter.get('/recipes', async (c) => {
+  const db = c.env.DB as D1Database;
+  try {
+    const recipes = await db.prepare('SELECT id, name, requiredMaterials, outputType, outputTypeId FROM craftingRecipes').all();
+    return c.json({ recipes: recipes.results || [] });
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch recipes' }, 500);
+  }
+});
+
+export default craftingRouter;

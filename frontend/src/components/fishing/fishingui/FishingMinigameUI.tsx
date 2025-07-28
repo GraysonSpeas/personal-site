@@ -6,10 +6,12 @@ export function FishingMinigameUI({
   refetchInventory,
   refetchTime,
   refetchMerchant,
+  refetchCrafting,   // add this
 }: {
   refetchInventory: () => void;
   refetchTime: () => void;
   refetchMerchant: () => void;
+  refetchCrafting: () => void;
 })
  {
   type Phase = 'idle' | 'casting' | 'waiting' | 'ready' | 'in-minigame' | 'success' | 'failed'
@@ -149,6 +151,7 @@ const onResult = useCallback(
         await refetchTime();
 await refetchInventory();
 await refetchMerchant();
+await refetchCrafting();
  // Ensure this triggers the latest quest data and time-sensitive content
       } catch (e: any) {
         setError(e.message);
@@ -161,7 +164,7 @@ await refetchMerchant();
     setCastBonus(0);
     setReactionBonus(0);
   },
-  [fishPreview, refetchInventory, refetchTime, refetchMerchant] // refetch will be called here after catching the fish
+  [fishPreview, refetchInventory, refetchTime, refetchMerchant, refetchCrafting] // refetch will be called here after catching the fish
 )
 
   // Manage bite and reaction timing phases

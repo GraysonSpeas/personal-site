@@ -13,6 +13,8 @@ import zoneSelectionRouter from './routes/zoneSelectionRouter'
 import gearRouter from './routes/gearRouter'
 import timeContentRouter from './routes/timeContentRouter'
 import merchantRouter from './routes/merchantRouter'
+import craftingRouter from './routes/craftingRouter'
+import consumableRouter from './routes/consumableRouter'
 
 // Bindings interface for environment variables and DB
 interface Bindings {
@@ -47,6 +49,8 @@ app.route('/zone', zoneSelectionRouter)
 app.route('/gear', gearRouter)
 app.route('/timecontent', timeContentRouter)
 app.route('/merchant', merchantRouter)
+app.route('/crafting', craftingRouter)
+app.route('/consumables', consumableRouter)
 
 // Global error handler
 app.onError((err, c) => {

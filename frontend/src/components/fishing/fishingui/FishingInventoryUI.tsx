@@ -44,6 +44,15 @@ type Bait = {
   equipped?: boolean
 }
 
+type Consumable = {
+  consumable_id: number;
+  type_id: number;
+  name: string;
+  quantity: number;
+  consumable_type?: string;
+  stats?: Record<string, any>;
+};
+
 type Props = {
   data: {
     fishStacks: FishStack[]
@@ -53,6 +62,7 @@ type Props = {
     resources?: Resource[]
     gear?: Gear[]
     bait?: Bait[]
+    consumables?: Consumable[]
     current_zone_id: number | null
     xp?: number
     level?: number
@@ -82,6 +92,7 @@ export function FishingInventoryUI({ data, loading, error, xpDisplay }: Props) {
     resources,
     gear,
     bait,
+    consumables = [],
     current_zone_id,
     xp,
     level,
@@ -97,27 +108,27 @@ export function FishingInventoryUI({ data, loading, error, xpDisplay }: Props) {
         <strong>Username:</strong> {email ? email.split('@')[0] : 'Unknown'} &nbsp;|&nbsp;{' '}
         <strong>Level:</strong> {level ?? 1} &nbsp;|&nbsp;{' '}
         {(() => {
-  const xpCurrent = xp ?? 0;
-  const levelCurrent = level ?? 1;
+          const xpCurrent = xp ?? 0
+          const levelCurrent = level ?? 1
 
-  const xpToLevel = (n: number) => Math.round(10 * Math.pow(1.056, n - 1));
-  const totalXpToLevel = (n: number) => {
-    let total = 0;
-    for (let i = 1; i < n; i++) total += xpToLevel(i);
-    return total;
-  };
+          const xpToLevel = (n: number) => Math.round(10 * Math.pow(1.056, n - 1))
+          const totalXpToLevel = (n: number) => {
+            let total = 0
+            for (let i = 1; i < n; i++) total += xpToLevel(i)
+            return total
+          }
 
-  const xpNextLevel = totalXpToLevel(levelCurrent + 1);
-  const xpPrevLevel = totalXpToLevel(levelCurrent);
-  const xpNeeded = xpNextLevel - xpPrevLevel;
-  const xpIntoLevel = xpCurrent - xpPrevLevel;
+          const xpNextLevel = totalXpToLevel(levelCurrent + 1)
+          const xpPrevLevel = totalXpToLevel(levelCurrent)
+          const xpNeeded = xpNextLevel - xpPrevLevel
+          const xpIntoLevel = xpCurrent - xpPrevLevel
 
-  return (
-    <>
-      <strong>XP:</strong> {xpIntoLevel} / {xpNeeded} &nbsp;|&nbsp;{' '}
-    </>
-  );
-})()}
+          return (
+            <>
+              <strong>XP:</strong> {xpIntoLevel} / {xpNeeded} &nbsp;|&nbsp;{' '}
+            </>
+          )
+        })()}
 
         <strong>Current Zone:</strong> {zoneName} &nbsp;|&nbsp;{' '}
         <strong>Gold:</strong> {currency?.gold || 0}{' '}
@@ -158,6 +169,23 @@ export function FishingInventoryUI({ data, loading, error, xpDisplay }: Props) {
           </ul>
         ) : (
           <p>No bait</p>
+        )}
+      </section>
+
+      <section>
+        <h3>Consumables:</h3>
+        {consumables.length ? (
+          <ul>
+            {consumables.map((c, i) => (
+              <li key={i}>
+                {c.consumable_type} — Qty: {c.quantity}
+                {c.type_id ? ` — Type ID: ${c.type_id}` : ''}
+                {c.stats ? ` — Stats: ${JSON.stringify(c.stats)}` : ''}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No consumables</p>
         )}
       </section>
 

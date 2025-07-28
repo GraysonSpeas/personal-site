@@ -1,4 +1,3 @@
-// src/components/fishing/fishinglogic/fishingInventoryLogic.ts
 import { useEffect, useState, useCallback } from 'react';
 import { API_BASE } from '../../../config';
 
@@ -45,6 +44,15 @@ type Bait = {
   equipped?: boolean;
 };
 
+type Consumable = {
+  consumable_id: number;
+  type_id: number;
+  name: string;
+  quantity: number;
+  consumable_type?: string;
+  stats?: Record<string, any>;
+};
+
 export type InventoryData = {
   fishStacks: FishStack[];
   biggestFish: BiggestFish[];
@@ -53,6 +61,7 @@ export type InventoryData = {
   resources?: Resource[];
   gear?: Gear[];
   bait?: Bait[];
+  consumables?: Consumable[];
   current_zone_id: number | null;
   xp?: number;
   level?: number;
@@ -92,6 +101,7 @@ export function useFishingInventory() {
         resources: json.resources,
         gear: json.gear,
         bait: json.bait,
+        consumables: json.consumables || [],
         current_zone_id: json.current_zone_id ?? json.currentZoneId ?? null,
         xp: json.xp,
         level: json.level,

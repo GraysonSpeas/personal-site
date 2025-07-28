@@ -121,6 +121,10 @@ await c.env.DB.prepare(
   `INSERT INTO bait (user_id, type_id, quantity, stats, sell_price) VALUES (?, 1, 10, ?, ?)`
 ).bind(userId, brokenBaitStats, brokenBaitSellPrice).run();
 
+// Give 1 Blue Bull consumable (type_id = 1)
+await c.env.DB.prepare(
+  `INSERT INTO consumables (user_id, type_id, quantity) VALUES (?, 1, 1)`
+).bind(userId).run();
 
   // Get the inserted gear and bait IDs to set as equipped
   const rod = await c.env.DB.prepare(
@@ -140,12 +144,6 @@ await c.env.DB.prepare(
     `INSERT INTO equipped (user_id, equipped_rod_id, equipped_hook_id, equipped_bait_id)
      VALUES (?, ?, ?, ?)`
   ).bind(userId, rod?.id || null, hook?.id || null, bait?.id || null).run()
-
-  // <-- NEW: assign quests for the new user
-const quests = await getAllQuests(c.env.DB);
-const questKeys = getQuestKeys();
-const userIdNum = Number(userId);
-await assignNewQuests(c.env.DB, userIdNum, quests, questKeys);
 }
 
 

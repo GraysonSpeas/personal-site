@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { requireUser } from '../services/authHelperService';
-import { getWorldState, getCatchOfTheDay, assignCatchOfTheDayToUser } from '../services/timeContentService';
+import { getWorldState, getCatchOfTheDay, assignCatchOfTheDayToUser, getCycleStartTimestamp } from '../services/timeContentService';
 import type { D1Database } from '@cloudflare/workers-types';
 import { updateQuestProgress, getAllQuests, getQuestKeys } from '../services/questService';
 
@@ -73,6 +73,7 @@ timeContentRouter.get('/', async (c) => {
   const questRows = await db.prepare(questsQuery).bind(user.id).all();
 
   const world = getWorldState();
+  const cycleStartTimestamp = getCycleStartTimestamp();
   const weather = world.isRaining ? 'Rainy' : 'Sunny';
 
   const fishTypes = await db
@@ -106,6 +107,7 @@ timeContentRouter.get('/', async (c) => {
     weather,
     catchOfTheDay: catchOfTheDayWithSell,
     worldState: world,
+    cycleStartTimestamp
   });
 });
 

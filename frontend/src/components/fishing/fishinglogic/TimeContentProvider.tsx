@@ -60,13 +60,13 @@ const fetchTimeContent = async () => {
     const json = await res.json();
     setData(json);
 
-    if (json.worldState) {
-      setCycleStartTimestamp(Date.now() - json.worldState.cycleMin * 60000);
-      setCycleState(json.worldState);
-    } else {
-      setCycleStartTimestamp(null);
-      setCycleState(null);
-    }
+    if (json.cycleStartTimestamp) {
+  setCycleStartTimestamp(json.cycleStartTimestamp);
+  setCycleState(json.worldState);
+} else {
+  setCycleStartTimestamp(null);
+  setCycleState(null);
+}
   } catch (e: any) {
     setError(e.message || 'Failed to load data');
     setData(null);

@@ -37,16 +37,73 @@ export const fishTypes = [
   { species: 'Leviathan', base_weight: 15.0, base_length: 55.0, stamina: 300, tug_strength: 250, direction_change_rate: 60, change_strength: 180, sell_price: 1500, zones: ['Ocean'], rarity: 'epic', barType: 'dynamicLarge' },
 ];
 
+export const consumableTypes = [
+  {
+    id: 1,
+    name: 'Blue Bull',
+    description: 'focus +15% bait +5%',
+    effect: 'focus +15%, bait +5',
+    duration: 300,
+    sell_price: 100,
+  },
+  {
+    id: 2,
+    name: 'Gum',
+    description: '20% bait save',
+    effect: 'bait +20',
+    duration: 300,
+    sell_price: 150,
+  },
+  {
+    id: 3,
+    name: 'Angler',
+    description: '3% rare catch boost',
+    effect: 'luck +3',
+    duration: 300,
+    sell_price: 200,
+  },
+];
+
+
+export const craftingRecipes = [
+  {
+    id: 1,
+    name: 'Simple Rod',
+    description: 'Craft a simple rod',
+    outputType: 'rod',              // use 'rod' instead of 'gear' + 'outputGearType'
+    outputTypeId: 2,
+    requiredMaterials: JSON.stringify([
+      { type: 'resource', name: 'Shells', quantity: 2 },
+      { type: 'gold', quantity: 500 },
+    ]),
+  },
+  {
+    id: 2,
+    name: 'Blue Bull',
+    description: 'Craft a consumable potion from fish',
+    outputType: 'consumable',
+    outputTypeId: 1,
+    requiredMaterials: JSON.stringify([
+      { type: 'fish', species: 'Clownfish', quantity: 2 },
+      { type: 'gold', quantity: 100 },
+    ]),
+  },
+];
+
+
 export const rodTypes = [
   { id: 1, name: 'Rusty Rod', stats: { focus: 25, lineTension: 25, luck: 0 } },
+  { id: 2, name: 'Simple Rod', stats: { focus: 5, lineTension: 5, luck: 5 } },
 ];
 
 export const hookTypes = [
   { id: 1, name: 'Rusty Hook', stats: { focus: 25, lineTension: 25, luck: 0 } },
+  { id: 2, name: 'Simple Hook', stats: { focus: 5, lineTension: 5, luck: 5 } },
 ];
 
 export const baitTypes = [
   { id: 1, name: 'Broken Bait', stats: { focus: 10, lineTension: 10, luck: 0 }, sell_price: 50 },
+  { id: 2, name: 'Simple Bait', stats: { focus: 5, lineTension: 5, luck: 5 }, sell_price: 25 },
 ];
 
 export interface Quest {

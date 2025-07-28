@@ -8,7 +8,9 @@ import {
   rodTypes,
   hookTypes,
   baitTypes,
-  quests, // import quests from staticData
+  consumableTypes,      // new import
+  craftingRecipes,      // new import
+  quests,
 } from './staticData';
 import type { D1Database } from '@cloudflare/workers-types';
 
@@ -158,35 +160,70 @@ export async function seedDatabase(db: D1Database) {
     }
     console.log('Bait types seeded successfully.');
 
-    // Seed quests from imported staticData.quests
+    // Seed consumable types (new)
+for (const consumable of consumableTypes) {
+  await db
+    .prepare(`
+      INSERT OR IGNORE INTO consumableTypes (name, description, effect, duration, sell_price)
+      VALUES (?, ?, ?, ?, ?)
+    `)
+    .bind(
+      consumable.name,
+      consumable.description || null,
+      consumable.effect || null,
+      consumable.duration || null,
+      consumable.sell_price
+    )
+    .run();
+}
+console.log('Consumable types seeded successfully.');
+
+
+// Seed crafting recipes (new)
+for (const recipe of craftingRecipes) {
+  await db
+    .prepare(`
+      INSERT OR IGNORE INTO craftingRecipes (name, requiredMaterials, outputType, outputTypeId)
+      VALUES (?, ?, ?, ?)
+    `)
+    .bind(
+      recipe.name,
+      recipe.requiredMaterials,      // already stringified
+      recipe.outputType,
+      recipe.outputTypeId
+    )
+    .run();
+}
+console.log('Crafting recipes seeded successfully.');
+
+    // Seed quests
     for (const quest of quests) {
       const zoneId = quest.zone ? await getZoneId(db, quest.zone) : null;
 
-await db
-  .prepare(`
-    INSERT OR IGNORE INTO questTemplates
-      (key, description, type, target, rarity_exact, rarity_min, requires_modified, requires_no_bait, requires_no_rod, requires_no_hook, time_of_day, zone_id, weather, reward_xp, reward_gold)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `)
-.bind(
-  quest.key,
-  quest.description,
-  quest.type,
-  quest.target,
-  quest.rarity_exact ?? null,
-  quest.rarity_min ?? null,
-  quest.requires_modified ? 1 : 0,
-  quest.requires_no_bait ? 1 : 0,
-  quest.requires_no_rod ? 1 : 0,
-  quest.requires_no_hook ? 1 : 0,
-  quest.time_of_day ?? null,
-  zoneId,
-  quest.weather ?? null,
-  quest.reward.xp, // Ensure this is a valid number
-  quest.reward.gold // Ensure this is a valid number
-)
-  .run();
-
+      await db
+        .prepare(`
+          INSERT OR IGNORE INTO questTemplates
+            (key, description, type, target, rarity_exact, rarity_min, requires_modified, requires_no_bait, requires_no_rod, requires_no_hook, time_of_day, zone_id, weather, reward_xp, reward_gold)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          quest.key,
+          quest.description,
+          quest.type,
+          quest.target,
+          quest.rarity_exact ?? null,
+          quest.rarity_min ?? null,
+          quest.requires_modified ? 1 : 0,
+          quest.requires_no_bait ? 1 : 0,
+          quest.requires_no_rod ? 1 : 0,
+          quest.requires_no_hook ? 1 : 0,
+          quest.time_of_day ?? null,
+          zoneId,
+          quest.weather ?? null,
+          quest.reward.xp,
+          quest.reward.gold
+        )
+        .run();
     }
     console.log('Quest templates seeded successfully.');
 

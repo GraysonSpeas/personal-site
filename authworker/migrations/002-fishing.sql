@@ -5,23 +5,34 @@ DROP TABLE IF EXISTS questTemplates;
 DROP TABLE IF EXISTS achievements;
 DROP TABLE IF EXISTS biggest_fish;
 DROP TABLE IF EXISTS fish;
+DROP TABLE IF EXISTS consumables;
+DROP TABLE IF EXISTS activeConsumables;
 DROP TABLE IF EXISTS bait;
 DROP TABLE IF EXISTS gear;
 DROP TABLE IF EXISTS fishingSessions;
 DROP TABLE IF EXISTS permits;
 DROP TABLE IF EXISTS currencies;
 DROP TABLE IF EXISTS resources;
-DROP TABLE IF EXISTS baitTypes;
-DROP TABLE IF EXISTS hookTypes;
-DROP TABLE IF EXISTS rodTypes;
+DROP TABLE IF EXISTS user_fish_sales;
+
+-- type links
 DROP TABLE IF EXISTS fishTypeZones;
 DROP TABLE IF EXISTS resourceTypeZones;
+
+-- core user table
 DROP TABLE IF EXISTS users;
+
+-- base types
 DROP TABLE IF EXISTS fishTypes;
 DROP TABLE IF EXISTS resourceTypes;
+DROP TABLE IF EXISTS rodTypes;
+DROP TABLE IF EXISTS hookTypes;
+DROP TABLE IF EXISTS baitTypes;
+DROP TABLE IF EXISTS consumableTypes;
+DROP TABLE IF EXISTS craftingRecipes;
 DROP TABLE IF EXISTS zoneTypes;
 DROP TABLE IF EXISTS weatherTypes;
-DROP TABLE IF EXISTS user_fish_sales;
+
 
 -- CREATE base reference tables first
 CREATE TABLE IF NOT EXISTS weatherTypes (
@@ -81,6 +92,24 @@ CREATE TABLE IF NOT EXISTS baitTypes (
   name TEXT UNIQUE NOT NULL,
   base_stats TEXT NOT NULL,
   sell_price INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS consumableTypes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  effect TEXT,          -- add this
+  duration INTEGER,     -- add this if needed
+  sell_price INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS craftingRecipes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  requiredMaterials TEXT NOT NULL, -- JSON: [{type, species/name, quantity}]
+  outputType TEXT NOT NULL CHECK(outputType IN ('rod', 'hook', 'bait', 'consumable')),
+  outputTypeId INTEGER -- references rodTypes/hookTypes/baitTypes/consumableTypes (nullable)
 );
 
 -- Linking tables for resourceTypes and zoneTypes
@@ -193,6 +222,27 @@ CREATE TABLE IF NOT EXISTS bait (
   UNIQUE(user_id, type_id)
 );
 
+CREATE TABLE IF NOT EXISTS consumables (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type_id INTEGER NOT NULL,      -- FK to consumableTypes.id
+  quantity INTEGER NOT NULL DEFAULT 0,
+  stats TEXT,                    -- optional overrides per item instance
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (type_id) REFERENCES consumableTypes(id),
+  UNIQUE(user_id, type_id)
+);
+
+CREATE TABLE IF NOT EXISTS activeConsumables (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type_id INTEGER NOT NULL,
+  started_at DATETIME NOT NULL DEFAULT (datetime('now')),
+  duration INTEGER NOT NULL, -- seconds
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (type_id) REFERENCES consumableTypes(id),
+  UNIQUE(user_id, type_id)
+);
 
 CREATE TABLE IF NOT EXISTS fish (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
