@@ -100,14 +100,29 @@ export async function craftItem(c: Context<{ Bindings: any }>) {
 
   // Add crafted item
   if (recipe.outputType === 'rod' || recipe.outputType === 'hook') {
+  // Fetch stats from rodTypes table
+  const rodStats = await db
+  .prepare('SELECT base_stats FROM rodTypes WHERE id = ?')
+  .bind(recipe.outputTypeId)
+  .first<{ base_stats: string }>();
+
+  if (rodStats && rodStats.base_stats) {
+    await db
+      .prepare(
+        `INSERT INTO gear (user_id, gear_type, type_id, stats) VALUES (?, ?, ?, ?)`
+      )
+      .bind(userId, recipe.outputType, recipe.outputTypeId, rodStats.base_stats)
+      .run();
+  } else {
+    // fallback without stats if not found
     await db
       .prepare(
         `INSERT INTO gear (user_id, gear_type, type_id) VALUES (?, ?, ?)`
       )
       .bind(userId, recipe.outputType, recipe.outputTypeId)
       .run();
-
-  } else if (recipe.outputType === 'bait') {
+  }
+} else if (recipe.outputType === 'bait') {
     const existing = await db
       .prepare('SELECT id FROM bait WHERE user_id = ? AND type_id = ?')
       .bind(userId, recipe.outputTypeId)

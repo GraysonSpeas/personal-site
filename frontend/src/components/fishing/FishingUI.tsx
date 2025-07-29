@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
 import { FishingInventoryUI } from './fishingui/FishingInventoryUI';
@@ -19,17 +19,26 @@ export function FishingUI() {
   const [merchantRefetchTrigger, setMerchantRefetchTrigger] = useState(0);
   const [craftingRefetchTrigger, setCraftingRefetchTrigger] = useState(0);
 
-  // Inventory + Merchant refresh
   const refetchInventoryAndMerchant = async () => {
     await refetchInventory();
     setMerchantRefetchTrigger((prev) => prev + 1);
   };
 
-  // Inventory + Crafting refresh
   const refetchInventoryAndCrafting = async () => {
     await refetchInventory();
     setCraftingRefetchTrigger((prev) => prev + 1);
   };
+
+  // Stable callbacks for refreshing both
+  const refreshMerchant = useCallback(() => {
+    setMerchantRefetchTrigger((prev) => prev + 1);
+    setCraftingRefetchTrigger((prev) => prev + 1);
+  }, []);
+
+  const refreshCrafting = useCallback(() => {
+    setCraftingRefetchTrigger((prev) => prev + 1);
+    setMerchantRefetchTrigger((prev) => prev + 1);
+  }, []);
 
   if (authLoading) return <p>Loading user...</p>;
   if (!user) return <p>Please log in.</p>;
@@ -48,13 +57,13 @@ export function FishingUI() {
             <Merchant
               refetch={refetchInventoryAndMerchant}
               refetchTrigger={merchantRefetchTrigger}
-              refreshOther={() => setCraftingRefetchTrigger((prev) => prev + 1)}
+              refreshOther={refreshCrafting}
             />
             <div style={{ marginTop: '16px' }}>
               <Crafting
                 refetch={refetchInventoryAndCrafting}
                 refetchTrigger={craftingRefetchTrigger}
-                refreshOther={() => setMerchantRefetchTrigger((prev) => prev + 1)}
+                refreshOther={refreshMerchant}
               />
             </div>
           </div>
@@ -64,23 +73,10 @@ export function FishingUI() {
               <>
                 <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
                 <div style={{ marginTop: '16px' }}>
-<Consumables
-  owned={(combinedData?.consumables ?? [])
-    .filter(
-      (c): c is { consumable_id: number; type_id: number; name: string; quantity: number } =>
-        typeof c.consumable_id === 'number' &&
-        typeof c.type_id === 'number' &&
-        typeof c.name === 'string' &&
-        typeof c.quantity === 'number'
-    )
-    .map((c) => ({
-      consumable_id: c.consumable_id,
-      type_id: c.type_id,
-      name: c.name,
-      quantity: c.quantity,
-    }))}
-  refetch={refetchInventory}
-/>
+                  <Consumables
+                    refetch={refetchInventory}
+                    refreshTrigger={craftingRefetchTrigger}
+                  />
                 </div>
               </>
             )}
@@ -103,8 +99,8 @@ export function FishingUI() {
             <FishingMinigameUI
               refetchTime={refresh}
               refetchInventory={refetchInventory}
-              refetchMerchant={() => setMerchantRefetchTrigger((prev) => prev + 1)}
-              refetchCrafting={() => setCraftingRefetchTrigger((prev) => prev + 1)}
+              refetchMerchant={refreshMerchant}
+              refetchCrafting={refreshCrafting}
             />
             {combinedData && (
               <GearSelector

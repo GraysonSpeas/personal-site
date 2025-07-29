@@ -25,7 +25,7 @@ type Props = {
   refreshOther: () => void;
 };
 
-export function Crafting({ refetchTrigger, refreshOther }: Props) {
+export function Crafting({ refetchTrigger, refetch, refreshOther }: Props) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [gold, setGold] = useState(0);
   const [fishInv, setFishInv] = useState<FishInventory>([]);
@@ -61,7 +61,7 @@ export function Crafting({ refetchTrigger, refreshOther }: Props) {
       setFishInv(invJson.fish || []);
 
       // Assuming resources not available from merchant, set empty or add fetching logic
-      setResourceInv([]);
+      setResourceInv(invJson.resources || []);
     } catch (e: any) {
       setMessage(e.message || 'Failed to load data');
     }
@@ -98,7 +98,10 @@ async function handleCraft(recipeId: number) {
     if (!res.ok) throw new Error(data.error || 'Crafting failed');
     setMessage('Item crafted!');
     await fetchData();
-    refreshOther();  // <-- trigger refresh of the other component (Merchant)
+    await refetch();  // <-- Added this line to update inventory/gear
+    console.log('Crafting success, called refetch');
+    refreshOther();
+    console.log('refreshOther called from Crafting');
   } catch (e: any) {
     setMessage(e.message || 'Error crafting item');
   }

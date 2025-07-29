@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../../../config';
 
-export function Consumables({ refetch }: { refetch: () => void }) {
+export function Consumables({ refetch, refreshTrigger }: { refetch: () => void; refreshTrigger?: number }) {
   const [active, setActive] = useState<
     { typeId: number; name: string; effect: string; timeRemaining: number }[]
   >([]);
@@ -67,6 +67,13 @@ const fetchWeather = async () => {
     fetchOwned();
     fetchWeather();
   }, []);
+useEffect(() => {
+  if (refreshTrigger !== undefined) {
+    fetchActive();
+    fetchOwned();
+    fetchWeather();
+  }
+}, [refreshTrigger]);
 
   // Tick countdown for active consumables
   useEffect(() => {

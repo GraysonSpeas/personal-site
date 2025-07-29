@@ -23,6 +23,14 @@ type Bait = {
   name: string;
 };
 
+type Resource = {
+  id: number;
+  name: string;
+  rarity: string;
+  quantity: number;
+  sell_price: number;
+};
+
 type CatchOfTheDayFish = {
   species: string;
   rarity: string;
@@ -42,6 +50,7 @@ export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProp
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [fish, setFish] = useState<Fish[]>([]);
   const [bait, setBait] = useState<Bait[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [gold, setGold] = useState(0);
   const [buyQty, setBuyQty] = useState(1);
   const [sellSelections, setSellSelections] = useState<Record<string, number>>({});
@@ -61,6 +70,7 @@ export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProp
 
       setFish(data.fish);
       setBait(data.bait);
+      setResources(data.resources || []);
       setGold(data.gold);
       setCatchOfTheDay(data.catchOfTheDay || []);
       setMessage('');
@@ -88,7 +98,6 @@ export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProp
     return entry ? entry.multiplier : 1;
   }
 
-  // New helper: Calculate preview gold for fish qty, applying catch of day rules
   function getFishSellPreview(f: Fish, qty: number) {
     if (qty <= 0) return 0;
     const catchEntry = catchOfTheDay.find(c => c.species === f.species);
@@ -100,7 +109,6 @@ export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProp
     return limit * f.sell_price * multiplier + overQty * f.sell_price;
   }
 
-  // New helper: Calculate preview gold for bait qty (simple multiply)
   function getBaitSellPreview(b: Bait, qty: number) {
     if (qty <= 0) return 0;
     return qty * b.sell_price;
@@ -112,7 +120,6 @@ export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProp
       let next = cur + delta;
       if (next < 0) next = 0;
 
-      // Apply sell limit for catch of the day if species provided
       if (species) {
         const catchLimit = getFishCatchLimit(species);
         if (catchLimit !== null && next > catchLimit) next = catchLimit;
@@ -132,84 +139,87 @@ export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProp
   }
 
   async function handleSell() {
-  setLoading(true);
-  setMessage('');
-  try {
+    setLoading(true);
+    setMessage('');
+    try {
+      for (const key in sellSelections) {
+        const qty = sellSelections[key];
+        if (qty <= 0) continue;
+        const [itemType, idStr] = key.split('-');
+        const itemId = Number(idStr);
+        const res = await fetch(`${API_BASE}/merchant/sell`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ itemType, itemId, quantity: qty }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Sell failed');
+      }
+      setMessage('Items sold successfully!');
+      setSellSelections({});
+      await refetch();
+      refreshOther();
+      await fetchInventory();
+    } catch (e: any) {
+      setMessage(e.message || 'Error selling items');
+    }
+    setLoading(false);
+  }
+
+  async function handleBuy() {
+    setLoading(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/merchant/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ quantity: buyQty }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Buy failed');
+      setMessage(`Bought ${buyQty} broken bait!`);
+      setBuyQty(1);
+      await refetch();
+      refreshOther();
+      await fetchInventory();
+    } catch (e: any) {
+      setMessage(e.message || 'Error buying broken bait');
+    }
+    setLoading(false);
+  }
+
+  function getSellTotal() {
+    let total = 0;
     for (const key in sellSelections) {
       const qty = sellSelections[key];
       if (qty <= 0) continue;
       const [itemType, idStr] = key.split('-');
-      const itemId = Number(idStr);
-      const res = await fetch(`${API_BASE}/merchant/sell`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ itemType, itemId, quantity: qty }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Sell failed');
-    }
-    setMessage('Items sold successfully!');
-    setSellSelections({});
-    await refetch();
-    refreshOther();  // <-- Trigger Crafting refresh
-    await fetchInventory();
-  } catch (e: any) {
-    setMessage(e.message || 'Error selling items');
-  }
-  setLoading(false);
-}
+      const id = Number(idStr);
 
-async function handleBuy() {
-  setLoading(true);
-  setMessage('');
-  try {
-    const res = await fetch(`${API_BASE}/merchant/buy`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ quantity: buyQty }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Buy failed');
-    setMessage(`Bought ${buyQty} broken bait!`);
-    setBuyQty(1);
-    await refetch();
-    refreshOther();  // <-- Trigger Crafting refresh
-    await fetchInventory();
-  } catch (e: any) {
-    setMessage(e.message || 'Error buying broken bait');
-  }
-  setLoading(false);
-}
-
-function getSellTotal() {
-  let total = 0;
-  for (const key in sellSelections) {
-    const qty = sellSelections[key];
-    if (qty <= 0) continue;
-    const [itemType, idStr] = key.split('-');
-    const id = Number(idStr);
-
-    if (itemType === 'bait') {
-      const item = bait.find((b) => b.id === id);
-      if (item) total += item.sell_price * qty;
-    } else if (itemType === 'fish') {
-      const item = fish.find((f) => f.id === id);
-      if (item) {
-        const catchEntry = catchOfTheDay.find(c => c.species === item.species);
-        if (!catchEntry) {
-          total += item.sell_price * qty;
-        } else {
-          const bonusQty = Math.min(qty, catchEntry.remaining);
-          const baseQty = qty - bonusQty;
-          total += baseQty * item.sell_price + bonusQty * item.sell_price * catchEntry.multiplier;
+      if (itemType === 'bait') {
+        const item = bait.find((b) => b.id === id);
+        if (item) total += item.sell_price * qty;
+      } else if (itemType === 'fish') {
+        const item = fish.find((f) => f.id === id);
+        if (item) {
+          const catchEntry = catchOfTheDay.find(c => c.species === item.species);
+          if (!catchEntry) {
+            total += item.sell_price * qty;
+          } else {
+            const bonusQty = Math.min(qty, catchEntry.remaining);
+            const baseQty = qty - bonusQty;
+            total += baseQty * item.sell_price + bonusQty * item.sell_price * catchEntry.multiplier;
+          }
         }
+      } else if (itemType === 'resource') {
+        const item = resources.find((r) => r.id === id);
+        if (item) total += item.sell_price * qty;
       }
     }
+    return Math.round(total);
   }
-  return Math.round(total);
-}
 
   return (
     <div className="max-w-lg mx-auto p-4 bg-white rounded shadow-lg text-black">
@@ -236,19 +246,11 @@ function getSellTotal() {
         <div>
           <h3 className="mb-2 font-semibold">Buy Broken Bait (100 gold each)</h3>
           <div className="flex items-center gap-2 mb-4">
-            <button onClick={() => adjustBuyQty(-10)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">
-              -10
-            </button>
-            <button onClick={() => adjustBuyQty(-1)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">
-              -1
-            </button>
+            <button onClick={() => adjustBuyQty(-10)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">-10</button>
+            <button onClick={() => adjustBuyQty(-1)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">-1</button>
             <input type="number" min={1} value={buyQty} readOnly className="w-16 text-center border rounded" />
-            <button onClick={() => adjustBuyQty(1)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">
-              +1
-            </button>
-            <button onClick={() => adjustBuyQty(10)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">
-              +10
-            </button>
+            <button onClick={() => adjustBuyQty(1)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">+1</button>
+            <button onClick={() => adjustBuyQty(10)} disabled={loading} className="px-2 py-1 bg-gray-300 rounded">+10</button>
           </div>
           <button
             onClick={handleBuy}
@@ -271,25 +273,23 @@ function getSellTotal() {
           <div className="max-h-64 overflow-y-auto mb-4 border rounded p-2">
             <p className="font-semibold mb-1">Fish</p>
             {catchOfTheDay.length > 0 && (
-  <div className="mb-4 p-2 border rounded bg-gray-100 text-black">
-    <h3 className="font-bold mb-2">Catch of the Day</h3>
-    <ul>
-      {catchOfTheDay.map(({ species, rarity, sellLimit, sellAmount }) => (
-        <li key={species} className="text-sm mb-1">
-          <strong>{species}</strong> — {rarity} <br /> Limit: {sellLimit}, Sold: {sellAmount}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+              <div className="mb-4 p-2 border rounded bg-gray-100 text-black">
+                <h3 className="font-bold mb-2">Catch of the Day</h3>
+                <ul>
+                  {catchOfTheDay.map(({ species, rarity, sellLimit, sellAmount }) => (
+                    <li key={species} className="text-sm mb-1">
+                      <strong>{species}</strong> — {rarity} <br /> Limit: {sellLimit}, Sold: {sellAmount}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {fish.length === 0 && <p className="italic">No fish to sell.</p>}
             {fish.map((f) => {
               const key = `fish-${f.id}`;
               const maxQty = f.quantity;
               const selectedQty = sellSelections[key] ?? 0;
-              // Apply catch of the day sell limit:
               const catchLimit = getFishCatchLimit(f.species);
-              // Max allowed to sell is min of owned quantity and catch of the day limit if exists
               const maxSellAllowed = catchLimit !== null ? Math.min(maxQty, catchLimit) : maxQty;
               return (
                 <div key={key} className="flex flex-col mb-2">
@@ -297,62 +297,30 @@ function getSellTotal() {
                     <div>
                       {f.species} (Qty: {f.quantity}) <br /> {f.rarity} <br /> {f.sell_price} gold
                       {catchLimit !== null && catchOfTheDay.find(c => c.species === f.species)?.remaining! > 0 ? (
-  <span className="ml-2 text-sm text-green-600">
-    Catch of the Day Limit Left: {catchOfTheDay.find(c => c.species === f.species)?.remaining}
-  </span>
-) : null}
+                        <span className="ml-2 text-sm text-green-600">
+                          Catch of the Day Limit Left: {catchOfTheDay.find(c => c.species === f.species)?.remaining}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => adjustSellQty(key, -10, maxSellAllowed, f.species)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        -10
-                      </button>
-                      <button
-                        onClick={() => adjustSellQty(key, -1, maxSellAllowed, f.species)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        -1
-                      </button>
-                      <input
-                        type="number"
-                        readOnly
-                        value={selectedQty}
-                        className="w-12 text-center border rounded"
-                      />
-                      <button
-                        onClick={() => adjustSellQty(key, 1, maxSellAllowed, f.species)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        +1
-                      </button>
-                      <button
-                        onClick={() => adjustSellQty(key, 10, maxSellAllowed, f.species)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        +10
-                      </button>
+                      <button onClick={() => adjustSellQty(key, -10, maxSellAllowed, f.species)} disabled={loading} className="px-1 bg-gray-300 rounded">-10</button>
+                      <button onClick={() => adjustSellQty(key, -1, maxSellAllowed, f.species)} disabled={loading} className="px-1 bg-gray-300 rounded">-1</button>
+                      <input type="number" readOnly value={selectedQty} className="w-12 text-center border rounded" />
+                      <button onClick={() => adjustSellQty(key, 1, maxSellAllowed, f.species)} disabled={loading} className="px-1 bg-gray-300 rounded">+1</button>
+                      <button onClick={() => adjustSellQty(key, 10, maxSellAllowed, f.species)} disabled={loading} className="px-1 bg-gray-300 rounded">+10</button>
                     </div>
                   </div>
-                  {/* New preview below amount selector */}
-{selectedQty > 0 && (
-  (() => {
-    const catchEntry = catchOfTheDay.find(c => c.species === f.species);
-    const basePrice = f.sell_price * selectedQty;
-    const bonusQty = catchEntry ? Math.min(selectedQty, catchEntry.remaining) : 0;
-    const bonusGold = bonusQty * f.sell_price * 0.25; // 25% bonus
-    return (
-      <div className="text-sm text-gray-700 ml-2">
-        {basePrice} + {Math.round(bonusGold)} bonus
-      </div>
-    );
-  })()
-)}
+                  {selectedQty > 0 && (() => {
+                    const catchEntry = catchOfTheDay.find(c => c.species === f.species);
+                    const basePrice = f.sell_price * selectedQty;
+                    const bonusQty = catchEntry ? Math.min(selectedQty, catchEntry.remaining) : 0;
+                    const bonusGold = bonusQty * f.sell_price * 0.25;
+                    return (
+                      <div className="text-sm text-gray-700 ml-2">
+                        {basePrice} + {Math.round(bonusGold)} bonus
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -368,50 +336,47 @@ function getSellTotal() {
               return (
                 <div key={key} className="flex flex-col mb-2">
                   <div className="flex items-center justify-between">
-                    <div>
-                      {b.name} (Qty: {b.quantity})
-                    </div>
+                    <div>{b.name} (Qty: {b.quantity})</div>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => adjustSellQty(key, -10, maxQty)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        -10
-                      </button>
-                      <button
-                        onClick={() => adjustSellQty(key, -1, maxQty)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        -1
-                      </button>
-                      <input
-                        type="number"
-                        readOnly
-                        value={selectedQty}
-                        className="w-12 text-center border rounded"
-                      />
-                      <button
-                        onClick={() => adjustSellQty(key, 1, maxQty)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        +1
-                      </button>
-                      <button
-                        onClick={() => adjustSellQty(key, 10, maxQty)}
-                        disabled={loading}
-                        className="px-1 bg-gray-300 rounded"
-                      >
-                        +10
-                      </button>
+                      <button onClick={() => adjustSellQty(key, -10, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">-10</button>
+                      <button onClick={() => adjustSellQty(key, -1, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">-1</button>
+                      <input type="number" readOnly value={selectedQty} className="w-12 text-center border rounded" />
+                      <button onClick={() => adjustSellQty(key, 1, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">+1</button>
+                      <button onClick={() => adjustSellQty(key, 10, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">+10</button>
                     </div>
                   </div>
-                  {/* New preview below amount selector */}
+                  {selectedQty > 0 && (
+                    <div className="text-sm text-gray-700 ml-2">Gold: {getBaitSellPreview(b, selectedQty)}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="max-h-64 overflow-y-auto mb-4 border rounded p-2">
+            <p className="font-semibold mb-1">Resources</p>
+            {resources.length === 0 && <p className="italic">No resources to sell.</p>}
+            {resources.map((r) => {
+              const key = `resource-${r.id}`;
+              const maxQty = r.quantity;
+              const selectedQty = sellSelections[key] ?? 0;
+              return (
+                <div key={key} className="flex flex-col mb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      {r.name} (Qty: {r.quantity}) <br />{r.rarity} <br />{r.sell_price} gold
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => adjustSellQty(key, -10, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">-10</button>
+                      <button onClick={() => adjustSellQty(key, -1, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">-1</button>
+                      <input type="number" readOnly value={selectedQty} className="w-12 text-center border rounded" />
+                      <button onClick={() => adjustSellQty(key, 1, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">+1</button>
+                      <button onClick={() => adjustSellQty(key, 10, maxQty)} disabled={loading} className="px-1 bg-gray-300 rounded">+10</button>
+                    </div>
+                  </div>
                   {selectedQty > 0 && (
                     <div className="text-sm text-gray-700 ml-2">
-                      Gold: {getBaitSellPreview(b, selectedQty)}
+                      Gold: {r.sell_price * selectedQty}
                     </div>
                   )}
                 </div>
@@ -424,9 +389,7 @@ function getSellTotal() {
             disabled={loading || Object.values(sellSelections).every((v) => v <= 0)}
             className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
           >
-            {loading
-              ? 'Selling...'
-              : `Sell Selected Items for ${getSellTotal()} gold`}
+            {loading ? 'Selling...' : `Sell Selected Items for ${getSellTotal()} gold`}
           </button>
         </div>
       )}

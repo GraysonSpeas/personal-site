@@ -36,34 +36,36 @@ export async function getMerchantInventory(c: Context<{ Bindings: any }>) {
      WHERE bait.user_id = ? AND bait.quantity > 0`
   ).bind(userId).all();
 
+const resourcesRes = await db.prepare(
+  `SELECT resources.id, resources.name, resources.quantity, resourceTypes.sell_price, resourceTypes.rarity
+   FROM resources
+   JOIN resourceTypes ON resources.name = resourceTypes.name
+   WHERE resources.user_id = ? AND resources.quantity > 0`
+).bind(userId).all();
+
   const goldRes = await db.prepare('SELECT gold FROM currencies WHERE user_id = ?').bind(userId).first<{ gold: number }>();
   const gold = goldRes?.gold ?? 0;
 
-  // Get all fish types for COTD
   const allFishTypes = await db.prepare('SELECT species, rarity FROM fishTypes').all<{ species: string; rarity: string }>();
   const cotd = getCatchOfTheDay(allFishTypes.results);
 
-  // Fetch current user sales limits and amounts for catch of the day species
   const speciesList = cotd.fishes.map(f => f.species);
   let salesRows: { species: string; sell_limit: number; sell_amount: number }[] = [];
-  if (speciesList.length) {
-    const placeholders = speciesList.map(() => '?').join(',');
-    const salesRes = await db.prepare(
-      `SELECT species, sell_limit, sell_amount FROM user_fish_sales WHERE user_id = ? AND species IN (${placeholders})`
-    ).bind(userId, ...speciesList).all<{ species: string; sell_limit: number; sell_amount: number }>();
-    salesRows = salesRes.results || [];
-  }
+if (speciesList.length) {
+  const placeholders = speciesList.map(() => '?').join(',');
+  const salesRes = await db.prepare(
+    `SELECT species, sell_limit, sell_amount FROM user_fish_sales WHERE user_id = ? AND species IN (${placeholders})`
+  ).bind(userId, ...speciesList).all<{ species: string; sell_limit: number; sell_amount: number }>();
+  salesRows = salesRes.results || [];
+}
 
-  // Map species to their sales data for quick lookup
   const salesMap = new Map(salesRows.map(row => [row.species, row]));
 
-  // Combine catchOfTheDay fish info with sales data to compute remaining limits and add rarity
   const catchOfTheDayData = cotd.fishes.map(fish => {
     const sales = salesMap.get(fish.species);
     const sellLimit = sales?.sell_limit ?? fish.sellLimit ?? 5;
     const sellAmount = sales?.sell_amount ?? 0;
     const remaining = sellLimit - sellAmount;
-    // Find rarity from allFishTypes for this species
     const fishType = allFishTypes.results.find(ft => ft.species === fish.species);
     return {
       species: fish.species,
@@ -79,6 +81,7 @@ export async function getMerchantInventory(c: Context<{ Bindings: any }>) {
   return c.json({
     fish: fishRes.results || [],
     bait: baitRes.results || [],
+    resources: resourcesRes.results || [],
     gold,
     catchOfTheDay: catchOfTheDayData,
   });
@@ -114,7 +117,7 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
 
   const { itemType, itemId, quantity } = await c.req.json();
 
-  if (!['fish', 'bait'].includes(itemType)) {
+  if (!['fish', 'bait', 'resource'].includes(itemType)) {
     return c.json({ error: 'Invalid itemType' }, 400);
   }
   if (typeof quantity !== 'number' || quantity <= 0) {
@@ -122,6 +125,34 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
   }
 
   try {
+    if (itemType === 'resource') {
+      const resource = await db.prepare(
+  `SELECT resources.quantity, resourceTypes.sell_price
+   FROM resources
+   JOIN resourceTypes ON resources.name = resourceTypes.name
+   WHERE resources.id = ? AND resources.user_id = ?`
+).bind(itemId, userId).first<{ quantity: number; sell_price: number }>();
+
+      if (!resource) return c.json({ error: 'Resource not found' }, 404);
+      if (resource.quantity < quantity) return c.json({ error: 'Not enough resource quantity' }, 400);
+
+      const totalSellPrice = (resource.sell_price ?? 0) * quantity;
+
+      if (resource.quantity === quantity) {
+        await db.prepare('DELETE FROM resources WHERE id = ?').bind(itemId).run();
+      } else {
+        await db.prepare('UPDATE resources SET quantity = quantity - ? WHERE id = ?')
+          .bind(quantity, itemId).run();
+      }
+
+      await db.prepare(
+        `INSERT INTO currencies (user_id, gold) VALUES (?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET gold = gold + excluded.gold`
+      ).bind(userId, totalSellPrice).run();
+
+      return c.json({ success: true, goldAdded: totalSellPrice });
+    }
+
     if (itemType === 'fish') {
       const fish = await db.prepare(
         'SELECT quantity, species FROM fish WHERE id = ? AND user_id = ?'
@@ -134,22 +165,17 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
       ).bind(fish.species).first<{ sell_price: number; rarity: string }>();
       if (!fishType) return c.json({ error: 'Fish type data missing' }, 500);
 
-      // Get Catch of the Day fish species list
       const allFishTypes = await db.prepare('SELECT species, rarity FROM fishTypes').all<{ species: string; rarity: string }>();
       const cotd = getCatchOfTheDay(allFishTypes.results);
-      const cotdSpeciesList = cotd.fishes.map(f => f.species);
+      const cotdFish = cotd.fishes.find(f => f.species === fish.species);
 
-      // Check sell limits from user_fish_sales
       const salesRow = await db.prepare(
         'SELECT sell_limit, sell_amount FROM user_fish_sales WHERE user_id = ? AND species = ?'
       ).bind(userId, fish.species).first<{ sell_limit: number; sell_amount: number }>();
 
-      // Get sell limit for this fish from Catch of the Day or default
-      const cotdFish = cotd.fishes.find(f => f.species === fish.species);
       const sellLimit = salesRow?.sell_limit ?? cotdFish?.sellLimit ?? 5;
       const soldAmount = salesRow?.sell_amount ?? 0;
 
-      // Allow selling quantity beyond sellLimit but only bonus for allowed portion
       const quantityToBonus = Math.max(0, sellLimit - soldAmount);
       const bonusQty = Math.min(quantity, quantityToBonus);
       const normalQty = quantity - bonusQty;
@@ -157,7 +183,6 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
       const basePrice = fishType.sell_price;
       const totalSellPrice = bonusQty * basePrice * 1.25 + normalQty * basePrice;
 
-      // Update or insert into user_fish_sales only for bonusQty
       if (salesRow) {
         await db.prepare(
           'UPDATE user_fish_sales SET sell_amount = sell_amount + ? WHERE user_id = ? AND species = ?'
@@ -168,7 +193,6 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
         ).bind(userId, fish.species, sellLimit, bonusQty).run();
       }
 
-      // Update fish quantity or delete fish if sold all
       if (fish.quantity === quantity) {
         await db.prepare('DELETE FROM fish WHERE id = ?').bind(itemId).run();
       } else {
@@ -176,7 +200,6 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
           .bind(quantity, itemId).run();
       }
 
-      // Update user's gold
       await db.prepare(
         `INSERT INTO currencies (user_id, gold) VALUES (?, ?)
          ON CONFLICT(user_id) DO UPDATE SET gold = gold + excluded.gold`
@@ -185,7 +208,6 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
       return c.json({ success: true, goldAdded: Math.floor(totalSellPrice) });
     }
 
-    // Existing bait selling logic unchanged
     const bait = await db.prepare(
       `SELECT bait.quantity, bait.sell_price, baitTypes.name
        FROM bait
@@ -218,7 +240,6 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
     return c.json({ error: 'Database error', details: (error as Error).message }, 500);
   }
 }
-
 
 export async function buyBrokenBait(c: Context<{ Bindings: any }>) {
   const session = getCookie(c, 'session');
