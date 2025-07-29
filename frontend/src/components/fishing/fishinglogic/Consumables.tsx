@@ -1,27 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../../../config';
 
-export function Consumables({
-  owned,
-  refetch,
-}: {
-  owned: {
-    consumable_id: number;
-    type_id: number;
-    name: string;
-    quantity: number;
-    consumable_type?: string;
-  }[];
-  refetch: () => void;
-}) {
+export function Consumables({ refetch }: { refetch: () => void }) {
   const [active, setActive] = useState<
     { typeId: number; name: string; effect: string; timeRemaining: number }[]
   >([]);
+  const [owned, setOwned] = useState<{ typeId: number; name: string; quantity: number }[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Normalize active consumables to camelCase keys
   const fetchActive = async () => {
     const res = await fetch(`${API_BASE}/consumables/active`, {
       credentials: 'include',
@@ -37,16 +25,35 @@ export function Consumables({
     );
   };
 
-  // Normalize owned consumables to camelCase for select options
-  const ownedCamel = owned.map((c) => ({
-    typeId: c.type_id,
-    name: c.name,
-    quantity: c.quantity,
-  }));
+  const fetchOwned = async () => {
+    const res = await fetch(`${API_BASE}/consumables/owned`, {
+      credentials: 'include',
+    });
+    const data = await res.json();
+    setOwned(
+      (data.consumables || []).map((c: any) => ({
+        typeId: c.type_id,
+        name: c.name,
+        quantity: c.quantity,
+      }))
+    );
+  };
 
-  useEffect(() => {
-    fetchActive();
-  }, []);
+useEffect(() => {
+  fetchActive();
+  fetchOwned();
+}, []);
+
+useEffect(() => {
+  const timer = setInterval(() => {
+    setActive((curr) =>
+      curr
+        .map((c) => ({ ...c, timeRemaining: Math.max(c.timeRemaining - 1, 0) }))
+        .filter((c) => c.timeRemaining > 0)
+    );
+  }, 1000);
+  return () => clearInterval(timer);
+}, []);
 
   const handleUse = async () => {
     if (selected == null) return;
@@ -62,6 +69,7 @@ export function Consumables({
     if (data.success) {
       setMessage('Consumable used!');
       await fetchActive();
+      await fetchOwned();
       refetch();
     } else {
       setMessage(data.error || 'Failed to use consumable.');
@@ -81,6 +89,7 @@ export function Consumables({
     if (data.success) {
       setMessage('Effect cancelled.');
       await fetchActive();
+      await fetchOwned();
       refetch();
     } else {
       setMessage(data.error || 'Failed to cancel effect.');
@@ -119,7 +128,7 @@ export function Consumables({
         onChange={(e) => setSelected(e.target.value === '' ? null : Number(e.target.value))}
       >
         <option value="">Select consumable</option>
-        {ownedCamel
+        {owned
           .filter((c) => c.quantity > 0)
           .map((c) => (
             <option key={c.typeId} value={c.typeId} className="text-black">

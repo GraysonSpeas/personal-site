@@ -124,3 +124,29 @@ export async function getActiveConsumablesService(c: Context<{ Bindings: any }>)
     })),
   };
 }
+
+export async function getOwnedConsumablesService(c: Context<{ Bindings: any }>) {
+  const session = getCookie(c, 'session');
+  if (!session) return { error: 'Unauthorized' };
+
+  let email: string;
+  try {
+    email = atob(session);
+  } catch {
+    return { error: 'Invalid session' };
+  }
+
+  const db = c.env.DB as D1Database;
+  const user = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<{ id: number }>();
+  if (!user) return { error: 'User not found' };
+  const userId = user.id;
+
+  const owned = await db.prepare(`
+    SELECT c.type_id, c.quantity, t.name, t.description, t.effect
+    FROM consumables c
+    JOIN consumableTypes t ON c.type_id = t.id
+    WHERE c.user_id = ?
+  `).bind(userId).all();
+
+  return { consumables: owned.results || [] };
+}
