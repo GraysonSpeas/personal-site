@@ -1,7 +1,8 @@
+import type { Context } from 'hono';
+import type { D1Database } from '@cloudflare/workers-types';
 import { generateFish } from './generateFishService';
 import { saveCaughtFish } from './putFish';
 import { getUserEmail } from './authHelperService';
-import type { Context } from 'hono';
 import { updateQuestProgress, getAllQuests, getQuestKeys } from './questService';
 import { getWorldState } from './timeContentService';
 
@@ -31,15 +32,6 @@ async function getUserZone(db: D1Database, email: string): Promise<number | null
   return result?.current_zone_id ?? null;
 }
 
-/*
-async function getUserWeatherId(db: D1Database, email: string): Promise<number | null> {
-  const result = await db
-    .prepare('SELECT current_weather_id FROM users WHERE email = ?')
-    .bind(email)
-    .first<{ current_weather_id: number | null }>();
-  return result?.current_weather_id ?? null;
-}
-*/
 async function getZoneNameFromId(db: D1Database, zoneId: number): Promise<string> {
   const result = await db
     .prepare('SELECT name FROM zoneTypes WHERE id = ?')
@@ -100,11 +92,65 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
   const fishTypes = await getFishTypesForZone(db, zoneId);
   const resourceTypes = await getResourceTypesForZone(db, zoneId);
 
-  const weatherId = getWeatherId();
-  const fish = await generateFish(c, fishTypes, resourceTypes, weatherId, zoneName);
+  // Fetch active consumables and weather for buffs
+  const now = Date.now();
+  const worldState = getWorldState(now);
+
+  const userId = await getUserIdByEmail(db, email);
+  if (!userId) throw new Error('User not found');
+
+// Remove stale active consumables first
+await db.prepare(`
+  DELETE FROM activeConsumables
+  WHERE user_id = ?
+    AND datetime(started_at, '+' || duration || ' seconds') <= datetime('now')
+`).bind(userId).run();
+
+const activeConsumables = await db.prepare(`
+  SELECT t.effect FROM activeConsumables a
+  JOIN consumableTypes t ON a.type_id = t.id
+  WHERE a.user_id = ?
+`).bind(userId).all();
+
+
+  let baitPreserveFromConsumables = 0;
+  let luckFromConsumables = 0;
+  let focusFromConsumables = 0;
+  let lineTensionFromConsumables = 0;
+
+  for (const row of activeConsumables.results ?? []) {
+    if (typeof row.effect === 'string') {
+      const effect = row.effect.toLowerCase();
+      const baitMatch = effect.match(/bait\s*\+(\d+)%/);
+      if (baitMatch) baitPreserveFromConsumables += parseInt(baitMatch[1], 10);
+      const luckMatch = effect.match(/luck\s*\+(\d+)%/);
+      if (luckMatch) luckFromConsumables += parseInt(luckMatch[1], 10);
+      const focusMatch = effect.match(/focus\s*\+(\d+)%/);
+      if (focusMatch) focusFromConsumables += parseInt(focusMatch[1], 10);
+      const tensionMatch = effect.match(/tension\s*\+(\d+)%/);
+      if (tensionMatch) lineTensionFromConsumables += parseInt(tensionMatch[1], 10);
+    }
+  }
+
+  // Base buffs from weather
+  const baitPreserveFromWeather = worldState.isRaining ? 20 : 0;
+  const luckFromWeather = worldState.isRaining ? 15 : 0;
+
+  // Summed totals for buffs
+  const totalBaitPreserve = baitPreserveFromConsumables + baitPreserveFromWeather;
+  const totalLuck = luckFromConsumables + luckFromWeather;
+  const totalFocus = focusFromConsumables;
+  const totalLineTension = lineTensionFromConsumables;
+
+  const fish = await generateFish(c, fishTypes, resourceTypes, getWeatherId(now), zoneName, {
+    luck: totalLuck,
+    focus: totalFocus,
+    lineTension: totalLineTension,
+    baitPreserve: totalBaitPreserve,
+  });
 
   const biteDelay = 4000 + Math.random() * 4000;
-  const biteTime = Date.now() + biteDelay;
+  const biteTime = now + biteDelay;
 
   await db.prepare(`
     INSERT OR REPLACE INTO fishingSessions (email, fish_json, bite_time)
@@ -137,10 +183,11 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
   const userId = await getUserIdByEmail(db, email);
   if (!userId) throw new Error('User not found');
 
-  const sessionRow = await db.prepare(`SELECT fish_json, bite_time FROM fishingSessions WHERE email = ?`).bind(email).first<{ fish_json: string; bite_time: number }>();
+  const sessionRow = await db.prepare(`SELECT fish_json, bite_time FROM fishingSessions WHERE email = ?`)
+    .bind(email).first<{ fish_json: string; bite_time: number }>();
   if (!sessionRow) throw new Error('No fishing session found');
 
-  const session: FishCatchSession = {
+  const session = {
     fish: JSON.parse(sessionRow.fish_json),
     biteTime: sessionRow.bite_time,
   };
@@ -152,65 +199,126 @@ export async function catchFish(c: Context<{ Bindings: any }>) {
     throw new Error('Catch window expired');
   }
 
-  // Fetch equipped bait
-  const equipped = await db.prepare(`SELECT equipped_bait_id FROM equipped WHERE user_id = ?`).bind(userId).first<{ equipped_bait_id: number | null }>();
-  let baitStats = { focus: 0, lineTension: 0, luck: 0 };
+  const worldState = getWorldState(now);
+
+// Remove stale active consumables first
+await db.prepare(`
+  DELETE FROM activeConsumables
+  WHERE user_id = ?
+    AND datetime(started_at, '+' || duration || ' seconds') <= datetime('now')
+`).bind(userId).run();
+
+const activeConsumables = await db.prepare(`
+  SELECT t.effect FROM activeConsumables a
+  JOIN consumableTypes t ON a.type_id = t.id
+  WHERE a.user_id = ?
+`).bind(userId).all();
+
+
+  let baitPreserveFromConsumables = 0;
+  let luckFromConsumables = 0;
+  let focusFromConsumables = 0;
+  let lineTensionFromConsumables = 0;
+
+  for (const row of activeConsumables.results ?? []) {
+    if (typeof row.effect === 'string') {
+      const effect = row.effect.toLowerCase();
+      const baitMatch = effect.match(/bait\s*\+(\d+)%/);
+      if (baitMatch) baitPreserveFromConsumables += parseInt(baitMatch[1], 10);
+      const luckMatch = effect.match(/luck\s*\+(\d+)%/);
+      if (luckMatch) luckFromConsumables += parseInt(luckMatch[1], 10);
+      const focusMatch = effect.match(/focus\s*\+(\d+)%/);
+      if (focusMatch) focusFromConsumables += parseInt(focusMatch[1], 10);
+      const tensionMatch = effect.match(/tension\s*\+(\d+)%/);
+      if (tensionMatch) lineTensionFromConsumables += parseInt(tensionMatch[1], 10);
+    }
+  }
+
+  const baitPreserveFromWeather = worldState.isRaining ? 20 : 0;
+  const luckFromWeather = worldState.isRaining ? 15 : 0;
+
+  const totalBaitPreserve = baitPreserveFromConsumables + baitPreserveFromWeather;
+  const totalLuck = luckFromConsumables + luckFromWeather;
+  const totalFocus = focusFromConsumables;
+  const totalLineTension = lineTensionFromConsumables;
+
+  // Fetch equipped bait info
+  const equipped = await db.prepare(`SELECT equipped_bait_id FROM equipped WHERE user_id = ?`)
+    .bind(userId).first<{ equipped_bait_id: number | null }>();
+
+  let baitStats = { focus: 0, lineTension: 0, luck: 0, baitPreserve: 0 };
 
   if (equipped?.equipped_bait_id) {
-    const bait = await db.prepare(`SELECT quantity, stats FROM bait WHERE id = ? AND user_id = ?`).bind(equipped.equipped_bait_id, userId).first<{ quantity: number; stats: string }>();
-    if (bait && bait.quantity > 0) {
-      if (bait.quantity > 1) {
-        await db.prepare(`UPDATE bait SET quantity = quantity - 1 WHERE id = ?`).bind(equipped.equipped_bait_id).run();
-      } else {
-        await db.prepare(`UPDATE equipped SET equipped_bait_id = NULL WHERE user_id = ?`).bind(userId).run();
-        await db.prepare(`DELETE FROM bait WHERE id = ?`).bind(equipped.equipped_bait_id).run();
-      }
+    const bait = await db.prepare(`
+      SELECT quantity, stats FROM bait WHERE id = ? AND user_id = ?
+    `).bind(equipped.equipped_bait_id, userId).first<{ quantity: number; stats: string }>();
 
+    if (bait && bait.quantity > 0) {
       try {
         const parsedStats = JSON.parse(bait.stats);
         baitStats = {
           focus: parsedStats.focus ?? 0,
           lineTension: parsedStats.lineTension ?? 0,
           luck: parsedStats.luck ?? 0,
+          baitPreserve: parsedStats.baitPreserve ?? 0,
         };
       } catch {
-        baitStats = { focus: 0, lineTension: 0, luck: 0 };
+        baitStats = { focus: 0, lineTension: 0, luck: 0, baitPreserve: 0 };
+      }
+
+      const combinedBaitPreserve = baitStats.baitPreserve + totalBaitPreserve;
+console.log('baitStats.baitPreserve:', baitStats.baitPreserve, 'totalBaitPreserve:', totalBaitPreserve, 'combinedBaitPreserve:', combinedBaitPreserve);
+
+      const preserveRoll = Math.random() * 100;
+      const preserved = preserveRoll < combinedBaitPreserve;
+
+
+      if (!preserved) {
+        if (bait.quantity > 1) {
+          await db.prepare(`UPDATE bait SET quantity = quantity - 1 WHERE id = ?`)
+            .bind(equipped.equipped_bait_id).run();
+        } else {
+          await db.prepare(`UPDATE equipped SET equipped_bait_id = NULL WHERE user_id = ?`)
+            .bind(userId).run();
+          await db.prepare(`DELETE FROM bait WHERE id = ?`)
+            .bind(equipped.equipped_bait_id).run();
+        }
       }
     }
   }
 
-  // Attach baitStats to fish data before saving
-  const fishDataWithBaitStats = {
+  const totalLuckFinal = (session.fish.gearStats?.luck ?? 0) + baitStats.luck + totalLuck;
+
+  const fishDataWithStats = {
     ...session.fish.data,
     baitStats,
+    luck: totalLuckFinal,
+    focus: totalFocus,
+    lineTension: totalLineTension,
+    baitPreserve: baitStats.baitPreserve + totalBaitPreserve,
     isResource: session.fish.isResource,
   };
 
-  await saveCaughtFish(userId, fishDataWithBaitStats, db);
+  await saveCaughtFish(userId, fishDataWithStats, db);
 
-  // QUEST PROGRESS UPDATE START
+  // Quest update
   const quests = await getAllQuests(db);
   const questKeys = getQuestKeys();
+  const equippedRow = await db.prepare(`SELECT equipped_rod_id, equipped_hook_id, equipped_bait_id FROM equipped WHERE user_id = ?`)
+    .bind(userId).first();
 
-  const worldState = getWorldState();
+  const playerContext = {
+    timeOfDay: worldState.phase,
+    zone: await getZoneNameFromId(db, (await getUserZone(db, email)) ?? 1),
+    weather: worldState.isRaining ? 'rainy' : 'sunny',
+    hasBait: !!equippedRow?.equipped_bait_id,
+    hasRod: !!equippedRow?.equipped_rod_id,
+    hasHook: !!equippedRow?.equipped_hook_id,
+  };
 
-const equippedRow = await db.prepare(
-  `SELECT equipped_rod_id, equipped_hook_id, equipped_bait_id FROM equipped WHERE user_id = ?`
-).bind(userId).first();
-
-const playerContext = {
-  timeOfDay: worldState.phase,
-  zone: await getZoneNameFromId(db, (await getUserZone(db, email)) ?? 1),
-  weather: worldState.isRaining ? 'rainy' : 'sunny',
-  hasBait: !!equippedRow?.equipped_bait_id,
-  hasRod: !!equippedRow?.equipped_rod_id,
-  hasHook: !!equippedRow?.equipped_hook_id,
-};
-
-  await updateQuestProgress(db, userId, [fishDataWithBaitStats], quests, questKeys, playerContext);
-  // QUEST PROGRESS UPDATE END
+  await updateQuestProgress(db, userId, [fishDataWithStats], quests, questKeys, playerContext);
 
   await db.prepare('DELETE FROM fishingSessions WHERE email = ?').bind(email).run();
 
-  return { caught: true, fish: fishDataWithBaitStats };
+  return { caught: true, fish: fishDataWithStats };
 }

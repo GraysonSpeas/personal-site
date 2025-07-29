@@ -18,10 +18,17 @@ export async function useConsumableService(c: Context<{ Bindings: any }>) {
   if (!user) return { error: 'User not found' };
   const userId = user.id;
 
+  // Remove stale active consumables
+  await db.prepare(
+    `DELETE FROM activeConsumables
+     WHERE user_id = ?
+       AND datetime(started_at, '+' || duration || ' seconds') <= datetime('now')`
+  ).bind(userId).run();
+
   const { typeId } = await c.req.json();
   if (typeof typeId !== 'number') return { error: 'Invalid typeId' };
 
-  // Check existing active
+  // Check existing active after cleanup
   const active = await db.prepare(
     'SELECT COUNT(*) as count FROM activeConsumables WHERE user_id = ?'
   ).bind(userId).first<{ count: number }>();

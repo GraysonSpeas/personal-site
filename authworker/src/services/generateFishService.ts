@@ -213,10 +213,20 @@ export async function generateFish(
   fishTypes: FishType[],
   resourceTypes: ResourceType[],
   weatherId: number,
-  zoneName: string
+  zoneName: string,
+  options: {
+    luck: number;
+    focus: number;
+    lineTension: number;
+    baitPreserve: number;
+  }
 ) {
-  const gearStats = await getPlayerGearStats(c);
-  const luck = gearStats.luck || 0;
+const gearStats = await getPlayerGearStats(c);
+
+const combinedLuck = (gearStats.luck || 0) + (options.luck || 0);
+const combinedFocus = (gearStats.focus || 0) + (options.focus || 0);
+const combinedLineTension = (gearStats.lineTension || 0) + (options.lineTension || 0);
+
 
   const isResource = Math.random() < 0.2; // 20% chance resource
 
@@ -226,7 +236,7 @@ export async function generateFish(
     );
     if (!resourcesInZone.length) throw new Error('No resources in this zone');
 
-    const rarity = pickRarity(weatherId, luck);
+    const rarity = pickRarity(weatherId, combinedLuck);
     const possibleResources = resourcesInZone.filter(r => r.rarity === rarity);
     const chosenResourcePool = possibleResources.length ? possibleResources : resourcesInZone.filter(r => r.rarity === 'common');
     const resource = chosenResourcePool[Math.floor(Math.random() * chosenResourcePool.length)];
@@ -234,7 +244,11 @@ export async function generateFish(
     return {
       type: 'resource',
       isResource: true,
-      gearStats,
+      gearStats: {
+  luck: combinedLuck,
+  focus: combinedFocus,
+  lineTension: combinedLineTension,
+},
       data: {
         species: resource.name,
         rarity: resource.rarity,
@@ -252,7 +266,7 @@ export async function generateFish(
     );
     if (!fishInZone.length) throw new Error('No fish in this zone');
 
-    const rarity = pickRarity(weatherId, luck);
+    const rarity = pickRarity(weatherId, combinedLuck);
     const possibleFish = fishInZone.filter(f => f.rarity === rarity);
     const chosenFishPool = possibleFish.length ? possibleFish : fishInZone.filter(f => f.rarity === 'common');
     const fish = chosenFishPool[Math.floor(Math.random() * chosenFishPool.length)];
@@ -273,7 +287,11 @@ export async function generateFish(
     return {
       type: 'fish',
       isResource: false,
-      gearStats,
+      gearStats: {
+  luck: combinedLuck,
+  focus: combinedFocus,
+  lineTension: combinedLineTension,
+},
       data: {
         species: fish.species,
         rarity,
