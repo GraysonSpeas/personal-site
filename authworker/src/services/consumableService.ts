@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
+import { getWorldState } from '../services/timeContentService';
 
 export async function useConsumableService(c: Context<{ Bindings: any }>) {
   const session = getCookie(c, 'session');
@@ -114,15 +115,27 @@ export async function getActiveConsumablesService(c: Context<{ Bindings: any }>)
     WHERE a.user_id = ?
   `).bind(userId).all();
 
-  return {
-    consumables: (active.results || []).map(c => ({
-      type_id: c.type_id,
-      name: c.name,
-      quantity: c.quantity,
-      effect: c.effect,
-      timeRemaining: Math.max(Number(c.time_remaining), 0), // in seconds
-    })),
-  };
+  const result = (active.results || []).map(c => ({
+    type_id: c.type_id,
+    name: c.name,
+    quantity: c.quantity,
+    effect: c.effect,
+    timeRemaining: Math.max(Number(c.time_remaining), 0),
+  }));
+
+  // 🔥 Add "Raining" effect if active
+  const { isRaining } = getWorldState();
+  if (isRaining) {
+    result.push({
+  type_id: -1,
+  name: 'Raining',
+  quantity: 0,
+  effect: 'luck +20%, bait +5%',
+  timeRemaining: 0,
+});
+  }
+
+  return { consumables: result };
 }
 
 export async function getOwnedConsumablesService(c: Context<{ Bindings: any }>) {

@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { requireUser } from '../services/authHelperService';
-import { getWorldState, getCatchOfTheDay, assignCatchOfTheDayToUser, getCycleStartTimestamp } from '../services/timeContentService';
+import {
+  getWorldState,
+  getCatchOfTheDay,
+  assignCatchOfTheDayToUser,
+  getCycleStartTimestamp,
+} from '../services/timeContentService';
 import type { D1Database } from '@cloudflare/workers-types';
 import { updateQuestProgress, getAllQuests, getQuestKeys } from '../services/questService';
 
@@ -27,14 +32,18 @@ timeContentRouter.get('/', async (c) => {
 
   const questKeys = getQuestKeys();
   const allQuests = await getAllQuests(db);
+  const world = getWorldState();
+  const cycleStartTimestamp = getCycleStartTimestamp();
+
   const playerContext = {
-    timeOfDay: getWorldState().phase,
+    timeOfDay: world.phase,
     zone: 'unknown',
-    weather: getWorldState().isRaining ? 'Rainy' : 'Sunny',
+    weather: world.isRaining ? 'Rainy' : 'Sunny',
     hasBait: true,
     hasRod: true,
     hasHook: true,
   };
+
   await updateQuestProgress(db, user.id, [], allQuests, questKeys, playerContext);
 
   const questsQuery = `
@@ -72,9 +81,9 @@ timeContentRouter.get('/', async (c) => {
 
   const questRows = await db.prepare(questsQuery).bind(user.id).all();
 
-  const world = getWorldState();
-  const cycleStartTimestamp = getCycleStartTimestamp();
   const weather = world.isRaining ? 'Rainy' : 'Sunny';
+  const rainTimeRemaining =
+    world.rainStartMin !== null ? Math.max(0, world.rainStartMin + 45 - world.cycleMin) : 0;
 
   const fishTypes = await db
     .prepare('SELECT species, rarity FROM fishTypes')
@@ -82,7 +91,6 @@ timeContentRouter.get('/', async (c) => {
   const rawFishTypes = fishTypes?.results ?? [];
   const catchOfTheDay = getCatchOfTheDay(rawFishTypes);
 
-  // Get user's current sell amounts for catch of the day fish
   const userFishSales = await db
     .prepare('SELECT species, sell_amount FROM user_fish_sales WHERE user_id = ?')
     .bind(user.id)
@@ -105,9 +113,10 @@ timeContentRouter.get('/', async (c) => {
       reward_gold: quest.reward_gold || 0,
     })),
     weather,
+    rainTimeRemaining,
     catchOfTheDay: catchOfTheDayWithSell,
     worldState: world,
-    cycleStartTimestamp
+    cycleStartTimestamp,
   });
 });
 

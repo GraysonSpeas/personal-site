@@ -7,6 +7,7 @@ export interface WorldState {
   cycleMin: number;
   isRaining: boolean;
   rainStartMin: number | null;
+  rainTimeRemaining?: number;
 }
 
 export interface CatchOfTheDayFish {
@@ -76,7 +77,7 @@ export function getWorldState(now = Date.now()): WorldState {
 
   let isRaining = false;
   let rainStartMin: number | null = null;
-
+// toggle this block off for testing
   if (cycleNum % 3 === 2) {
     const rainSchedule = [15, 90, 105];
     const rainIndex = Math.floor((cycleNum / 3) % rainSchedule.length);
@@ -87,7 +88,17 @@ export function getWorldState(now = Date.now()): WorldState {
     }
   }
 
-  return { phase, cycleNum, cycleMin, isRaining, rainStartMin };
+/* Toggle rain on for testing
+isRaining = true;
+rainStartMin = 0;
+*/
+let rainTimeRemaining: number | undefined = undefined;
+if (isRaining && rainStartMin !== null) {
+  const rainEndMin = rainStartMin + 45;
+  rainTimeRemaining = Math.max(0, rainEndMin - cycleMin);
+}
+
+  return { phase, cycleNum, cycleMin, isRaining, rainStartMin, rainTimeRemaining };
 }
 
 // -- Catch of the Day --

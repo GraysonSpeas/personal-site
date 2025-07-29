@@ -10,20 +10,32 @@ export function Consumables({ refetch }: { refetch: () => void }) {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const fetchActive = async () => {
-    const res = await fetch(`${API_BASE}/consumables/active`, {
-      credentials: 'include',
-    });
-    const data = await res.json();
-    setActive(
-      (data.consumables || []).map((c: any) => ({
-        typeId: c.type_id,
-        name: c.name,
-        effect: c.effect,
-        timeRemaining: c.timeRemaining ?? c.time_remaining ?? 0,
-      }))
-    );
-  };
+  // New states for rain
+  const [isRaining, setIsRaining] = useState(false);
+  const [rainTimeRemaining, setRainTimeRemaining] = useState(0);
+
+const fetchActive = async () => {
+  const res = await fetch(`${API_BASE}/consumables/active`, {
+    credentials: 'include',
+  });
+  const data = await res.json();
+
+  const consumables = (data.consumables || []).map((c: {
+    type_id: number;
+    name: string;
+    effect: string;
+    timeRemaining?: number;
+    time_remaining?: number;
+  }) => ({
+    typeId: c.type_id,
+    name: c.name,
+    effect: c.effect,
+    timeRemaining: c.timeRemaining ?? c.time_remaining ?? 0,
+  }));
+
+  setActive(consumables.filter((c: { timeRemaining: number }) => c.timeRemaining > 0));
+};
+
 
   const fetchOwned = async () => {
     const res = await fetch(`${API_BASE}/consumables/owned`, {
@@ -39,21 +51,43 @@ export function Consumables({ refetch }: { refetch: () => void }) {
     );
   };
 
-useEffect(() => {
-  fetchActive();
-  fetchOwned();
-}, []);
+  // New fetch for weather/rain info
+const fetchWeather = async () => {
+  const res = await fetch(`${API_BASE}/timecontent`, {
+    credentials: 'include',
+  });
+  const data = await res.json();
+  console.log('Weather data from API:', data);  // <-- add this line
+  setIsRaining(data.worldState?.isRaining || false);
+  setRainTimeRemaining(data.worldState?.rainTimeRemaining ?? 0);
+};
 
-useEffect(() => {
-  const timer = setInterval(() => {
-    setActive((curr) =>
-      curr
-        .map((c) => ({ ...c, timeRemaining: Math.max(c.timeRemaining - 1, 0) }))
-        .filter((c) => c.timeRemaining > 0)
-    );
-  }, 1000);
-  return () => clearInterval(timer);
-}, []);
+  useEffect(() => {
+    fetchActive();
+    fetchOwned();
+    fetchWeather();
+  }, []);
+
+  // Tick countdown for active consumables
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActive((curr) =>
+        curr
+          .map((c) => ({ ...c, timeRemaining: Math.max(c.timeRemaining - 1, 0) }))
+          .filter((c) => c.timeRemaining > 0)
+      );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Tick countdown for rain
+  useEffect(() => {
+    if (!isRaining) return;
+    const rainTimer = setInterval(() => {
+      setRainTimeRemaining((time) => Math.max(time - 1, 0));
+    }, 1000);
+    return () => clearInterval(rainTimer);
+  }, [isRaining]);
 
   const handleUse = async () => {
     if (selected == null) return;
@@ -120,6 +154,15 @@ useEffect(() => {
           </button>
         </div>
       ))}
+
+      {/* Rain Display */}
+      {isRaining && (
+        <div className="mt-4 p-3 bg-blue-200 rounded text-blue-900 font-semibold">
+          Raining — Luck +20%, Bait +5%<br />
+          Time remaining: {Math.floor(rainTimeRemaining / 60)}:
+          {(rainTimeRemaining % 60).toString().padStart(2, '0')}
+        </div>
+      )}
 
       <h3 className="text-lg font-medium mt-6 mb-2 text-black">Use New Consumable</h3>
       <select
