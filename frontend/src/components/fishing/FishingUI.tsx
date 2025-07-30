@@ -19,6 +19,9 @@ export function FishingUI() {
   const [merchantRefetchTrigger, setMerchantRefetchTrigger] = useState(0);
   const [craftingRefetchTrigger, setCraftingRefetchTrigger] = useState(0);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('quest'); // quest | merchant | crafting
+
   const refetchInventoryAndMerchant = async () => {
     await refetchInventory();
     setMerchantRefetchTrigger((prev) => prev + 1);
@@ -49,50 +52,171 @@ export function FishingUI() {
     <TimeContentProvider
       render={({ weather, catchOfTheDay, quests, worldState, refresh }) => (
         <>
-          <div style={{ position: 'fixed', top: '60px', right: '16px', zIndex: 1000 }}>
-            <WeatherUI weather={weather} worldState={worldState} />
-          </div>
-
-          <div style={{ position: 'fixed', top: '356px', right: '16px', width: '400px' }}>
-            <Merchant
-              refetch={refetchInventoryAndMerchant}
-              refetchTrigger={merchantRefetchTrigger}
-              refreshOther={refreshCrafting}
-            />
-            <div style={{ marginTop: '16px' }}>
-              <Crafting
-                refetch={refetchInventoryAndCrafting}
-                refetchTrigger={craftingRefetchTrigger}
-                refreshOther={refreshMerchant}
-              />
-            </div>
-          </div>
-
-          <div style={{ position: 'fixed', top: '80px', left: '16px', width: '400px' }}>
-            {combinedData && (
-              <>
-                <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
-                <div style={{ marginTop: '16px' }}>
-                  <Consumables
-                    refetch={refetchInventory}
-                    refreshTrigger={craftingRefetchTrigger}
-                  />
-                </div>
-              </>
-            )}
-            <div style={{ marginTop: '16px' }}>
-              <QuestUI quests={quests} />
-            </div>
-          </div>
-
+          {/* Top Right: Weather + ZoneSelector */}
           <div
             style={{
-              maxWidth: '650px',
-              margin: '0 auto',
-              paddingTop: '80px',
+              position: 'fixed',
+              top: 60,
+              right: 16,
+              width: 250,
+              zIndex: 1000,
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
+              gap: 12,
+            }}
+          >
+            <WeatherUI weather={weather} worldState={worldState} />
+            <ZoneSelector
+              refetch={refetchInventory}
+              currentZoneId={data?.current_zone_id ?? null}
+            />
+          </div>
+
+          {/* Top Center: Hamburger Toggle (full width overlay, single tab) */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 60,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 1100,
+              width: '100vw',
+              maxWidth: '100%',
+            }}
+          >
+            <button
+              onClick={() => setMenuOpen((open) => !open)}
+              style={{
+                padding: '8px 12px',
+                fontSize: 16,
+                cursor: 'pointer',
+                borderRadius: 4,
+                border: '1px solid #ccc',
+                backgroundColor: menuOpen ? '#eee' : 'white',
+                color: 'black', // black font color
+                margin: '0 auto',
+                display: 'block',
+                maxWidth: 200,
+              }}
+              aria-expanded={menuOpen}
+              aria-label="Toggle menu"
+            >
+              ☰ Menu
+            </button>
+
+            {menuOpen && (
+              <div
+                style={{
+                  marginTop: 12,
+                  backgroundColor: 'white',
+                  borderTop: '1px solid #ccc',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
+                  padding: 16,
+                  height: '60vh',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {/* Tabs */}
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                  <button
+                    onClick={() => setActiveTab('quest')}
+                    disabled={activeTab === 'quest'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'quest' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'quest' ? '#cce4ff' : 'white', // light blue bg
+                      color: activeTab === 'quest' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Quest
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('merchant')}
+                    disabled={activeTab === 'merchant'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'merchant' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'merchant' ? '#cce4ff' : 'white', // light blue bg
+                      color: activeTab === 'merchant' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Merchant
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('crafting')}
+                    disabled={activeTab === 'crafting'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'crafting' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'crafting' ? '#cce4ff' : 'white', // light blue bg
+                      color: activeTab === 'crafting' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Crafting
+                  </button>
+                </div>
+
+                {/* Active Tab Content */}
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {activeTab === 'quest' && <QuestUI quests={quests} />}
+                  {activeTab === 'merchant' && (
+                    <Merchant
+                      refetch={refetchInventoryAndMerchant}
+                      refetchTrigger={merchantRefetchTrigger}
+                      refreshOther={refreshCrafting}
+                    />
+                  )}
+                  {activeTab === 'crafting' && (
+                    <Crafting
+                      refetch={refetchInventoryAndCrafting}
+                      refetchTrigger={craftingRefetchTrigger}
+                      refreshOther={refreshMerchant}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Left Side: Inventory */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 80,
+              left: 16,
+              width: 350,
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              paddingRight: 8,
+              zIndex: 500,
+            }}
+          >
+            {combinedData && (
+              <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
+            )}
+          </div>
+
+          {/* Center Column: Fishing Minigame + Consumables */}
+          <div
+            style={{
+              margin: '0 auto',
+              paddingTop: 80,
+              maxWidth: 700,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
               zIndex: 500,
             }}
           >
@@ -102,14 +226,10 @@ export function FishingUI() {
               refetchMerchant={refreshMerchant}
               refetchCrafting={refreshCrafting}
             />
-            {combinedData && (
-              <GearSelector
-                gear={combinedData.gear ?? []}
-                bait={combinedData.bait ?? []}
-                refetch={refetchInventory}
-              />
-            )}
-            <ZoneSelector refetch={refetchInventory} currentZoneId={data?.current_zone_id ?? null} />
+            <Consumables
+              refetch={refetchInventory}
+              refreshTrigger={craftingRefetchTrigger}
+            />
           </div>
         </>
       )}
