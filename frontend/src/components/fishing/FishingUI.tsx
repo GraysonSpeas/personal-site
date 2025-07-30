@@ -56,7 +56,7 @@ export function FishingUI() {
           <div
             style={{
               position: 'fixed',
-              top: 60,
+              top: 80,
               right: 16,
               width: 250,
               zIndex: 1000,
@@ -76,7 +76,7 @@ export function FishingUI() {
           <div
             style={{
               position: 'fixed',
-              top: 60,
+              top: 100,
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 1100,

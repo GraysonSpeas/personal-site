@@ -161,30 +161,45 @@ export async function assignNewQuests(
   quests: Quest[],
   questKeys: QuestKeys
 ) {
-  await cleanOldQuests(db, userId, questKeys);
+  // Helper to check if user already has quests for a period
+  async function hasCurrentQuests(type: 'daily' | 'weekly' | 'monthly', periodKey: string) {
+    const existing = await db
+      .prepare('SELECT 1 FROM user_quests WHERE user_id = ? AND quest_key LIKE ?')
+      .bind(userId, `%_${periodKey}`)
+      .first();
+    return !!existing;
+  }
 
   for (const type of ['daily', 'weekly', 'monthly'] as const) {
+    const periodKey = questKeys[type];
+
+    // Skip assigning if user already has quests for this period
+    if (await hasCurrentQuests(type, periodKey)) {
+      continue;
+    }
+
+    // Clean old quests of this type before assigning new ones
+    await db.prepare(`
+      DELETE FROM user_quests
+      WHERE user_id = ? AND quest_key LIKE ?
+    `).bind(userId, `${type}_%`).run();
+
     const filtered = quests.filter(q => q.type === type);
     const selected = filtered.sort(() => 0.5 - Math.random()).slice(0, 3);
+
     for (const quest of selected) {
-      const periodKey = questKeys[type];
       const questUniqueKey = `${quest.key}_${periodKey}`;
-      const exists = await db
-        .prepare('SELECT 1 FROM user_quests WHERE user_id = ? AND quest_key = ?')
-        .bind(userId, questUniqueKey)
-        .first();
-      if (!exists) {
-        const tpl = await db
-          .prepare('SELECT id FROM questTemplates WHERE key = ?')
-          .bind(quest.key)
-          .first<{ id: number }>();
-        if (tpl?.id) {
-          await db.prepare(`
-            INSERT INTO user_quests
-              (user_id, quest_template_id, quest_key, progress, completed, updated_at)
-            VALUES (?, ?, ?, 0, 0, datetime('now'))
-          `).bind(userId, tpl.id, questUniqueKey).run();
-        }
+      const tpl = await db
+        .prepare('SELECT id FROM questTemplates WHERE key = ?')
+        .bind(quest.key)
+        .first<{ id: number }>();
+
+      if (tpl?.id) {
+        await db.prepare(`
+          INSERT INTO user_quests
+            (user_id, quest_template_id, quest_key, progress, completed, updated_at)
+          VALUES (?, ?, ?, 0, 0, datetime('now'))
+        `).bind(userId, tpl.id, questUniqueKey).run();
       }
     }
   }
