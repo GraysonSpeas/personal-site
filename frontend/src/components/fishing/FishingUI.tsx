@@ -190,23 +190,33 @@ export function FishingUI() {
             )}
           </div>
 
-          {/* Left Side: Inventory */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 80,
-              left: 16,
-              width: 350,
-              maxHeight: '80vh',
-              overflowY: 'auto',
-              paddingRight: 8,
-              zIndex: 500,
-            }}
-          >
-            {combinedData && (
-              <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
-            )}
-          </div>
+{/* Left Side: Inventory + GearSelector */}
+<div
+style={{
+  position: 'fixed',
+  top: 80,
+  bottom: 16,     // added to stretch container down
+  left: 16,
+  width: 350,
+  overflowY: 'auto',
+  paddingRight: 8,
+  zIndex: 500,
+}}
+>
+  {combinedData && (
+    <>
+      <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
+      <div style={{ marginTop: 16 }}>
+        <GearSelector
+          gear={combinedData.gear ?? []}
+          bait={combinedData.bait ?? []}
+          refetch={refetchInventory}
+        />
+      </div>
+    </>
+  )}
+</div>
+
 
           {/* Center Column: Fishing Minigame + Consumables */}
           <div
