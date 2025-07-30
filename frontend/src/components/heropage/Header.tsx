@@ -139,7 +139,7 @@ const changeLanguage = (langCode: string) => {
 
   return (
     <header
-      className="fixed top-0 left-0 w-full z-50"
+      className="fixed top-0 left-0 w-full z-[2000]"
       style={{
         background: scrolled
           ? "linear-gradient(to bottom, rgba(0,0,0,.95), rgba(0,0,0,.7))"
