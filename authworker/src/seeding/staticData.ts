@@ -8,33 +8,114 @@ export const zoneTypes = [
   { name: 'Ocean', xp_multiplier: 1.1 },
   { name: 'River', xp_multiplier: 1.2 },
   { name: 'Lava', xp_multiplier: 1.3 },
+  { name: 'Tidal', xp_multiplier: 1.0 }
 ];
 
 export const resourceTypes = [
-  { species: 'Shells', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle' },
-  { species: 'Rare herbs', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle', 'River'], rarity: 'common', barType: 'middle' },
-  { species: 'Berries', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Ocean'], rarity: 'common', barType: 'low' },
-  { species: 'Algae', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Lava'], rarity: 'common', barType: 'dynamicLarge' }
+  // tidal resource
+  { species: 'tidal_common_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Tidal'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  // Jungle zone (day/night/rain)
+  { species: 'jungle_common_day_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_common_night_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_common_rain_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle', time_of_day: null, weather: 'rain' },
+
+  { species: 'jungle_uncommon_day_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Jungle'], rarity: 'uncommon', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_uncommon_night_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Jungle'], rarity: 'uncommon', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_uncommon_rain_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Jungle'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: 'rain' },
+
+  { species: 'jungle_rare_day_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Jungle'], rarity: 'rare', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_rare_night_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Jungle'], rarity: 'rare', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_rare_rain_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Jungle'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: 'rain' },
+
+  { species: 'jungle_epic_day_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Jungle'], rarity: 'epic', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_epic_night_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Jungle'], rarity: 'epic', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_epic_rain_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Jungle'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: 'rain' },
+
+  { species: 'jungle_legendary_day_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Jungle'], rarity: 'legendary', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_legendary_night_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Jungle'], rarity: 'legendary', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_legendary_rain_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Jungle'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: 'rain' },
+
+  { species: 'jungle_mythic_day_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Jungle'], rarity: 'mythic', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_mythic_night_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Jungle'], rarity: 'mythic', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_mythic_rain_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Jungle'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: 'rain' },
+
+  // Ocean zone
+  { species: 'ocean_common_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Ocean'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_uncommon_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Ocean'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_rare_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Ocean'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_epic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Ocean'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_legendary_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Ocean'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_mythic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Ocean'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: null },
+
+  // River zone
+  { species: 'river_common_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['River'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_uncommon_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['River'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_rare_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['River'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_epic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['River'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_legendary_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['River'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_mythic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['River'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: null },
+
+  // Lava zone
+  { species: 'lava_common_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Lava'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_uncommon_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Lava'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_rare_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Lava'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_epic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Lava'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_legendary_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Lava'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_mythic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Lava'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: null },
 ];
 
 export const fishTypes = [
-  // common (existing)
-  { species: 'Clownfish', base_weight: 1.2, base_length: 10.5, stamina: 150, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle' },
-  { species: 'Bass', base_weight: 4.5, base_length: 20.3, stamina: 150, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Jungle', 'River'], rarity: 'common', barType: 'middle' },
-  { species: 'Catfish', base_weight: 5.0, base_length: 25.0, stamina: 150, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Ocean'], rarity: 'common', barType: 'high' },
-  { species: 'Lavafish', base_weight: 3.0, base_length: 15.0, stamina: 150, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Lava'], rarity: 'common', barType: 'dynamicLarge' },
-
+  //tidal fish
+  { species: 'tidal_common_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Tidal'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  // Jungle zone
+  // common
+  { species: 'jungle_common_day_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_common_night_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_common_rain_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Jungle'], rarity: 'common', barType: 'middle', time_of_day: null, weather: 'rain' },
   // uncommon
-  { species: 'Bluegill', base_weight: 2.0, base_length: 12.0, stamina: 170, tug_strength: 110, direction_change_rate: 120, change_strength: 115, sell_price: 150, zones: ['River'], rarity: 'uncommon', barType: 'middle' },
-  { species: 'Rainbow Trout', base_weight: 3.5, base_length: 18.0, stamina: 160, tug_strength: 130, direction_change_rate: 105, change_strength: 120, sell_price: 180, zones: ['River', 'Lake'], rarity: 'uncommon', barType: 'high' },
-
+  { species: 'jungle_uncommon_day_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Jungle'], rarity: 'uncommon', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_uncommon_night_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Jungle'], rarity: 'uncommon', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_uncommon_rain_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Jungle'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: 'rain' },
   // rare
-  { species: 'Golden Carp', base_weight: 6.0, base_length: 28.0, stamina: 200, tug_strength: 150, direction_change_rate: 90, change_strength: 130, sell_price: 500, zones: ['Lake'], rarity: 'rare', barType: 'dynamicSmall' },
-  { species: 'Electric Eel', base_weight: 7.5, base_length: 30.0, stamina: 210, tug_strength: 160, direction_change_rate: 80, change_strength: 140, sell_price: 600, zones: ['River'], rarity: 'rare', barType: 'dynamicLarge' },
-
+  { species: 'jungle_rare_day_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Jungle'], rarity: 'rare', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_rare_night_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Jungle'], rarity: 'rare', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_rare_rain_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Jungle'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: 'rain' },
   // epic
-  { species: 'Dragonfish', base_weight: 10.0, base_length: 40.0, stamina: 250, tug_strength: 200, direction_change_rate: 70, change_strength: 160, sell_price: 1000, zones: ['Lava'], rarity: 'epic', barType: 'high' },
-  { species: 'Leviathan', base_weight: 15.0, base_length: 55.0, stamina: 300, tug_strength: 250, direction_change_rate: 60, change_strength: 180, sell_price: 1500, zones: ['Ocean'], rarity: 'epic', barType: 'dynamicLarge' },
+  { species: 'jungle_epic_day_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Jungle'], rarity: 'epic', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_epic_night_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Jungle'], rarity: 'epic', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_epic_rain_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Jungle'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: 'rain' },
+  // legendary
+  { species: 'jungle_legendary_day_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Jungle'], rarity: 'legendary', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_legendary_night_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Jungle'], rarity: 'legendary', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_legendary_rain_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Jungle'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: 'rain' },
+  // mythic
+  { species: 'jungle_mythic_day_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Jungle'], rarity: 'mythic', barType: 'middle', time_of_day: 'day', weather: null },
+  { species: 'jungle_mythic_night_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Jungle'], rarity: 'mythic', barType: 'middle', time_of_day: 'night', weather: null },
+  { species: 'jungle_mythic_rain_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Jungle'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: 'rain' },
+
+  // Ocean zone (rarities no time/weather)
+  { species: 'ocean_common_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Ocean'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_uncommon_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Ocean'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_rare_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Ocean'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_epic_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Ocean'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_legendary_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Ocean'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'ocean_mythic_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Ocean'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: null },
+
+  // River zone
+  { species: 'river_common_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['River'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_uncommon_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['River'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_rare_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['River'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_epic_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['River'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_legendary_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['River'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'river_mythic_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['River'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: null },
+
+  // Lava zone
+  { species: 'lava_common_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Lava'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_uncommon_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 150, zones: ['Lava'], rarity: 'uncommon', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_rare_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 200, zones: ['Lava'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_epic_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Lava'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_legendary_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Lava'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: null },
+  { species: 'lava_mythic_fish', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Lava'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: null },
 ];
 
 export const consumableTypes = [

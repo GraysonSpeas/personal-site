@@ -88,6 +88,33 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
   const zoneId = await getUserZone(db, email);
   if (zoneId === null) throw new Error('User zone not found');
 
+  // --- Time gate check start ---
+  const zoneTimeWindows: Record<number, { start: string; end: string }> = {
+    5: { start: '10:00', end: '12:30' },
+  };
+
+  function isWithinTimeWindow(start: string, end: string, now: Date) {
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const startTime = new Date(now);
+    startTime.setHours(sh, sm, 0, 0);
+    const endTime = new Date(now);
+    endTime.setHours(eh, em, 0, 0);
+    return now >= startTime && now <= endTime;
+  }
+
+  const nowDate = new Date();
+  const timeWindow = zoneTimeWindows[zoneId];
+if (timeWindow && !isWithinTimeWindow(timeWindow.start, timeWindow.end, nowDate)) {
+  await db.prepare('UPDATE users SET current_zone_id = 1 WHERE email = ?').bind(email).run();
+
+  return {
+    success: false,
+    movedToZone: 1,
+    message: `Zone ${zoneId} is only available from ${timeWindow.start} to ${timeWindow.end}. You have been moved to zone 1.`,
+  };
+}
+
   const zoneName = await getZoneNameFromId(db, zoneId);
   const fishTypes = await getFishTypesForZone(db, zoneId);
   const resourceTypes = await getResourceTypesForZone(db, zoneId);

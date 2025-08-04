@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { getWorldState } from './timeContentService'; // Adjust path as needed
 
 interface FishType {
   species: string;
@@ -20,6 +21,8 @@ interface FishType {
     | 'dynamicSmall'
     | 'dynamicMedium'
     | 'dynamicLarge';
+  time_of_day?: 'day' | 'night' | null;
+  weather?: string | null;
 }
 
 interface ResourceType {
@@ -32,6 +35,8 @@ interface ResourceType {
   changeStrength?: number;
   sell_price?: number;
   barType?: FishType['barType'];
+  time_of_day?: 'day' | 'night' | null;
+  weather?: string | null;
 }
 
 interface GearStats {
@@ -112,6 +117,7 @@ return {
 };
 }
 
+// Modifier chances
 const modifierChances = [
   { name: 'Albino', weight: 25 },
   { name: 'Buff', weight: 30 },
@@ -120,6 +126,7 @@ const modifierChances = [
   { name: 'Glowing', weight: 10 },
 ];
 
+// Base rarity weights
 const baseRarityWeights = {
   mythic: 0.001,
   legendary: 0.01,
@@ -129,9 +136,10 @@ const baseRarityWeights = {
   common: 0.639,
 };
 
+// Weather multipliers (weatherId keyed, adjust as you use)
 const weatherRarityMultipliers: Record<number, Partial<Record<string, number>>> = {
-  1: {},
-  2: {
+  1: {}, // normal weather
+  2: { // example: rain or storm
     mythic: 1.25,
     legendary: 1.25,
     epic: 1.25,
@@ -149,6 +157,7 @@ function getAdjustedWeights(weatherId: number) {
     adjustedWeights[rarity] = baseWeight * multiplier;
     total += adjustedWeights[rarity];
   }
+  // Normalize
   for (const rarity in adjustedWeights) {
     adjustedWeights[rarity] /= total;
   }
@@ -168,6 +177,7 @@ function getAdjustedWeightsWithLuck(weatherId: number, luck: number) {
     }
     total += adjusted[rarity];
   }
+  // Normalize again
   for (const r in adjusted) {
     adjusted[r] /= total;
   }
@@ -221,20 +231,24 @@ export async function generateFish(
     baitPreserve: number;
   }
 ) {
-const gearStats = await getPlayerGearStats(c);
+  const gearStats = await getPlayerGearStats(c);
+  const combinedLuck = (gearStats.luck || 0) + (options.luck || 0);
+  const combinedFocus = (gearStats.focus || 0) + (options.focus || 0);
+  const combinedLineTension = (gearStats.lineTension || 0) + (options.lineTension || 0);
 
-const combinedLuck = (gearStats.luck || 0) + (options.luck || 0);
-const combinedFocus = (gearStats.focus || 0) + (options.focus || 0);
-const combinedLineTension = (gearStats.lineTension || 0) + (options.lineTension || 0);
-
+  const worldState = getWorldState();
+  const weatherCondition = worldState.isRaining ? 'rain' : null;
 
   const isResource = Math.random() < 0.2; // 20% chance resource
 
   if (isResource) {
     const resourcesInZone = resourceTypes.filter(r =>
-      Array.isArray(r.zones) && r.zones.some(z => z.trim().toLowerCase() === zoneName.trim().toLowerCase())
+      Array.isArray(r.zones) &&
+      r.zones.some(z => z.trim().toLowerCase() === zoneName.trim().toLowerCase()) &&
+      (!r.time_of_day || r.time_of_day === worldState.phase) &&
+      (!r.weather || r.weather === weatherCondition)
     );
-    if (!resourcesInZone.length) throw new Error('No resources in this zone');
+    if (!resourcesInZone.length) throw new Error('No resources in this zone matching time/weather');
 
     const rarity = pickRarity(weatherId, combinedLuck);
     const possibleResources = resourcesInZone.filter(r => r.rarity === rarity);
@@ -245,10 +259,10 @@ const combinedLineTension = (gearStats.lineTension || 0) + (options.lineTension 
       type: 'resource',
       isResource: true,
       gearStats: {
-  luck: combinedLuck,
-  focus: combinedFocus,
-  lineTension: combinedLineTension,
-},
+        luck: combinedLuck,
+        focus: combinedFocus,
+        lineTension: combinedLineTension,
+      },
       data: {
         species: resource.name,
         rarity: resource.rarity,
@@ -262,9 +276,12 @@ const combinedLineTension = (gearStats.lineTension || 0) + (options.lineTension 
     };
   } else {
     const fishInZone = fishTypes.filter(f =>
-      Array.isArray(f.zones) && f.zones.some(z => z.trim().toLowerCase() === zoneName.trim().toLowerCase())
+      Array.isArray(f.zones) &&
+      f.zones.some(z => z.trim().toLowerCase() === zoneName.trim().toLowerCase()) &&
+      (!f.time_of_day || f.time_of_day === worldState.phase) &&
+      (!f.weather || f.weather === weatherCondition)
     );
-    if (!fishInZone.length) throw new Error('No fish in this zone');
+    if (!fishInZone.length) throw new Error('No fish in this zone matching time/weather');
 
     const rarity = pickRarity(weatherId, combinedLuck);
     const possibleFish = fishInZone.filter(f => f.rarity === rarity);
@@ -288,10 +305,10 @@ const combinedLineTension = (gearStats.lineTension || 0) + (options.lineTension 
       type: 'fish',
       isResource: false,
       gearStats: {
-  luck: combinedLuck,
-  focus: combinedFocus,
-  lineTension: combinedLineTension,
-},
+        luck: combinedLuck,
+        focus: combinedFocus,
+        lineTension: combinedLineTension,
+      },
       data: {
         species: fish.species,
         rarity,

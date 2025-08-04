@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
 import { FishingInventoryUI } from './fishingui/FishingInventoryUI';
@@ -21,6 +21,16 @@ export function FishingUI() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('quest'); // quest | merchant | crafting
+
+  // New state: current zone id & setter
+  const [currentZoneId, setCurrentZoneId] = useState<number | null>(data?.current_zone_id ?? null);
+
+  // Sync currentZoneId when backend data changes
+  useEffect(() => {
+    if (data?.current_zone_id && data.current_zone_id !== currentZoneId) {
+      setCurrentZoneId(data.current_zone_id);
+    }
+  }, [data?.current_zone_id]);
 
   const refetchInventoryAndMerchant = async () => {
     await refetchInventory();
@@ -68,7 +78,7 @@ export function FishingUI() {
             <WeatherUI weather={weather} worldState={worldState} />
             <ZoneSelector
               refetch={refetchInventory}
-              currentZoneId={data?.current_zone_id ?? null}
+              currentZoneId={currentZoneId} // pass current zone
             />
           </div>
 
@@ -190,33 +200,28 @@ export function FishingUI() {
             )}
           </div>
 
-{/* Left Side: Inventory + GearSelector */}
-<div
-style={{
-  position: 'fixed',
-  top: 80,
-  bottom: 16,     // added to stretch container down
-  left: 16,
-  width: 350,
-  overflowY: 'auto',
-  paddingRight: 8,
-  zIndex: 500,
-}}
->
-  {combinedData && (
-    <>
-      <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
-      <div style={{ marginTop: 16 }}>
-        <GearSelector
-          gear={combinedData.gear ?? []}
-          bait={combinedData.bait ?? []}
-          refetch={refetchInventory}
-        />
-      </div>
-    </>
-  )}
-</div>
-
+          {/* Left Side: Inventory + GearSelector */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 80,
+              bottom: 16,
+              left: 16,
+              width: 450,
+              overflowY: 'auto',
+              paddingRight: 8,
+              zIndex: 500,
+            }}
+          >
+            {combinedData && (
+              <>
+                <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
+                <div style={{ marginTop: 16 }}>
+                  <GearSelector gear={combinedData.gear ?? []} bait={combinedData.bait ?? []} refetch={refetchInventory} />
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Center Column: Fishing Minigame + Consumables */}
           <div
@@ -235,11 +240,10 @@ style={{
               refetchInventory={refetchInventory}
               refetchMerchant={refreshMerchant}
               refetchCrafting={refreshCrafting}
+              currentZoneId={currentZoneId}       // pass current zone
+              setCurrentZoneId={setCurrentZoneId} // pass setter
             />
-            <Consumables
-              refetch={refetchInventory}
-              refreshTrigger={craftingRefetchTrigger}
-            />
+            <Consumables refetch={refetchInventory} refreshTrigger={craftingRefetchTrigger} />
           </div>
         </>
       )}

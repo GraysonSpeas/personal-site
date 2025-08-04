@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS weatherTypes (
 CREATE TABLE IF NOT EXISTS zoneTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
-  xp_multiplier REAL NOT NULL DEFAULT 1.0
+  xp_multiplier REAL NOT NULL DEFAULT 1.0,
 );
 
 CREATE TABLE IF NOT EXISTS resourceTypes (
@@ -57,7 +57,9 @@ CREATE TABLE IF NOT EXISTS resourceTypes (
   changeStrength INTEGER,
   sell_price INTEGER,
   rarity TEXT,
-  barType TEXT
+  barType TEXT,
+  time_of_day TEXT CHECK(time_of_day IN ('day', 'night')) DEFAULT NULL,
+  weather TEXT DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS fishTypes (
@@ -71,7 +73,9 @@ CREATE TABLE IF NOT EXISTS fishTypes (
   changeStrength INTEGER NOT NULL DEFAULT 100,
   sell_price INTEGER NOT NULL,
   rarity TEXT NOT NULL DEFAULT 'common',
-  barType TEXT NOT NULL DEFAULT 'middle'
+  barType TEXT NOT NULL DEFAULT 'middle',
+  time_of_day TEXT CHECK(time_of_day IN ('day', 'night')) DEFAULT NULL,
+  weather TEXT DEFAULT NULL
 );
 
 -- New static gear type tables

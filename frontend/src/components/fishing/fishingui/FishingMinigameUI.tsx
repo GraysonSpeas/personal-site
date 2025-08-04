@@ -6,28 +6,32 @@ export function FishingMinigameUI({
   refetchInventory,
   refetchTime,
   refetchMerchant,
-  refetchCrafting,   // add this
+  refetchCrafting,
+  currentZoneId,
+  setCurrentZoneId,
 }: {
   refetchInventory: () => void;
   refetchTime: () => void;
   refetchMerchant: () => void;
   refetchCrafting: () => void;
-})
- {
+  currentZoneId: number | null;
+  setCurrentZoneId: (zoneId: number) => void;
+}) {
   type Phase = 'idle' | 'casting' | 'waiting' | 'ready' | 'in-minigame' | 'success' | 'failed'
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [fishPreview, setFishPreview] = useState<any>(null)
   useEffect(() => {
-  console.log('Updated fishPreview:', fishPreview);
-}, [fishPreview]);
+    console.log('Updated fishPreview:', fishPreview)
+  }, [fishPreview])
   const [caughtFish, setCaughtFish] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [zoneChangeMessage, setZoneChangeMessage] = useState<string | null>(null)
 
   const [castPower, setCastPower] = useState(0)
   const castPowerRef = useRef(0)
   const castDirRef = useRef(1)
-  const [feedback, setFeedback] = useState<'Perfect' | 'Good' | 'Ok' | 'Late'>('Ok');
+  const [feedback, setFeedback] = useState<'Perfect' | 'Good' | 'Ok' | 'Late'>('Ok')
   const [castBonus, setCastBonus] = useState(0)
   const caughtCalledRef = useRef(false)
   const [biteTime, setBiteTime] = useState<number | null>(null)
@@ -61,63 +65,80 @@ export function FishingMinigameUI({
     return () => clearInterval(id)
   }, [phase])
 
-  const startFishing = async () => {
-    setPhase('casting')
-    castPowerRef.current = 0
-    setCastPower(0)
-    castDirRef.current = 1
-    setFeedback('Ok')
-    setCaughtFish(null)
-    setError(null)
-    caughtCalledRef.current = false
-    setBiteTime(null)
-    setReactionBonus(0)
-    backendBiteDelayRef.current = 0
+const startFishing = async () => {
+  setPhase('casting')
+  castPowerRef.current = 0
+  setCastPower(0)
+  castDirRef.current = 1
+  setFeedback('Ok')
+  setCaughtFish(null)
+  setError(null)
+  setZoneChangeMessage(null)
+  caughtCalledRef.current = false
+  setBiteTime(null)
+  setReactionBonus(0)
+  backendBiteDelayRef.current = 0
 
+  try {
+    const res = await fetch(`${API_BASE}/minigame/start`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+
+    const text = await res.text()
+    console.log('Raw response text:', text)
+
+    let json: any = {}
     try {
-      const res = await fetch(`${API_BASE}/minigame/start`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      if (!res.ok) {
-        const errText = await res.text()
-        console.log('Start fishing error response:', errText)
-        throw new Error('Failed to start')
-      }
-      const json = await res.json()
-      console.log(json)
-      setFishPreview(json.fishPreview)
-      backendBiteDelayRef.current = json.biteDelay || 4000
-    } catch (e: any) {
-      console.log('Start fishing error:', e.message)
-      setPhase('idle')
-      setError(e.message)
+      json = JSON.parse(text)
+    } catch {
+      console.error('Failed to parse JSON from response')
     }
+
+    console.log('Response status:', res.status, 'json:', json)
+
+if (!res.ok) {
+  if (json.movedToZone) {
+    setZoneChangeMessage(`You were moved to zone ${json.movedToZone} due to time restrictions.`);
+    setCurrentZoneId(json.movedToZone);  // Update zone selector here
+  } else {
+    setError(json.message || 'Failed to start');
   }
+  setPhase('idle');
+  return;
+}
 
-const handleCast = () => {
-  let bonus = 0;
-  let txt: 'Perfect' | 'Good' | 'Ok' | 'Late' = 'Late';
-
-  const power = castPowerRef.current;
-
-  if (power >= 95) {
-    bonus = 20;
-    txt = 'Perfect';
-  } else if (power >= 85) {
-    bonus = 10;
-    txt = 'Good';
-  } else if (power >= 60) {
-    bonus = 5;
-    txt = 'Ok';
+    setFishPreview(json.fishPreview)
+    backendBiteDelayRef.current = json.biteDelay || 4000
+  } catch (e: any) {
+    setPhase('idle')
+    setError(e.message)
   }
+}
 
-  setFeedback(txt);
-  setCastBonus(bonus);
-  setPhase('waiting');
-  setBiteTime(Date.now() + backendBiteDelayRef.current);
-};
 
+  const handleCast = () => {
+    let bonus = 0
+    let txt: 'Perfect' | 'Good' | 'Ok' | 'Late' = 'Late'
+
+    const power = castPowerRef.current
+
+    if (power >= 95) {
+      bonus = 20
+      txt = 'Perfect'
+    } else if (power >= 85) {
+      bonus = 10
+      txt = 'Good'
+    } else if (power >= 60) {
+      bonus = 5
+      txt = 'Ok'
+    }
+
+    setFeedback(txt)
+    setCastBonus(bonus)
+    setPhase('waiting')
+    setBiteTime(Date.now() + backendBiteDelayRef.current)
+  }
 
   const catchFish = () => {
     if (reactionTimeoutRef.current) {
@@ -127,47 +148,44 @@ const handleCast = () => {
     setPhase('in-minigame')
   }
 
-const onResult = useCallback(
-  async (result: 'caught' | 'escaped') => {
-    if (caughtCalledRef.current) return;
-    caughtCalledRef.current = true;
-    if (!fishPreview) {
-      setPhase('idle');
-      caughtCalledRef.current = false;
-      return;
-    }
-    if (result === 'caught') {
-      try {
-        const res = await fetch(`${API_BASE}/minigame/catch`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Failed to catch');
-        setCaughtFish(json.fish);
-        setPhase('success');
-        
-        // Trigger the refetch to update quests and other data after catching fish
-        await refetchTime();
-await refetchInventory();
-await refetchMerchant();
-await refetchCrafting();
- // Ensure this triggers the latest quest data and time-sensitive content
-      } catch (e: any) {
-        setError(e.message);
-        setPhase('failed');
+  const onResult = useCallback(
+    async (result: 'caught' | 'escaped') => {
+      if (caughtCalledRef.current) return
+      caughtCalledRef.current = true
+      if (!fishPreview) {
+        setPhase('idle')
+        caughtCalledRef.current = false
+        return
       }
-    } else {
-      setPhase('failed');
-    }
-    setFishPreview(null);
-    setCastBonus(0);
-    setReactionBonus(0);
-  },
-  [fishPreview, refetchInventory, refetchTime, refetchMerchant, refetchCrafting] // refetch will be called here after catching the fish
-)
+      if (result === 'caught') {
+        try {
+          const res = await fetch(`${API_BASE}/minigame/catch`, {
+            method: 'POST',
+            credentials: 'include',
+          })
+          const json = await res.json()
+          if (!res.ok) throw new Error(json.error || 'Failed to catch')
+          setCaughtFish(json.fish)
+          setPhase('success')
 
-  // Manage bite and reaction timing phases
+          await refetchTime()
+          await refetchInventory()
+          await refetchMerchant()
+          await refetchCrafting()
+        } catch (e: any) {
+          setError(e.message)
+          setPhase('failed')
+        }
+      } else {
+        setPhase('failed')
+      }
+      setFishPreview(null)
+      setCastBonus(0)
+      setReactionBonus(0)
+    },
+    [fishPreview, refetchInventory, refetchTime, refetchMerchant, refetchCrafting],
+  )
+
   useEffect(() => {
     if (phase !== 'waiting' || !biteTime) return
     const now = Date.now()
@@ -182,12 +200,10 @@ await refetchCrafting();
     }
   }, [biteTime, phase])
 
-  // Reaction window: 4 seconds to react after ready
   useEffect(() => {
     if (phase !== 'ready' || !biteTime) return
 
     reactionTimeoutRef.current = setTimeout(() => {
-      // Over 4 seconds: fish escapes
       onResult('escaped')
     }, 4000)
 
@@ -199,33 +215,31 @@ await refetchCrafting();
     }
   }, [phase, biteTime, onResult])
 
-  // Space key controls
   useEffect(() => {
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key !== ' ') return
-    e.preventDefault()
-    if (phase === 'idle') startFishing()
-    else if (phase === 'casting') handleCast()
-    else if (phase === 'ready') {
-      if (!biteTime) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== ' ') return
+      e.preventDefault()
+      if (phase === 'idle') startFishing()
+      else if (phase === 'casting') handleCast()
+      else if (phase === 'ready') {
+        if (!biteTime) return
 
-      const reactionTime = Date.now() - biteTime
+        const reactionTime = Date.now() - biteTime
 
-      if (reactionTime <= 1500) setReactionBonus(10)
-      else if (reactionTime <= 4000) setReactionBonus(0)
-      else {
-        onResult('escaped')
-        return
+        if (reactionTime <= 1500) setReactionBonus(10)
+        else if (reactionTime <= 4000) setReactionBonus(0)
+        else {
+          onResult('escaped')
+          return
+        }
+        catchFish()
+      } else if (phase === 'success' || phase === 'failed') {
+        setPhase('idle')
       }
-      catchFish()
     }
-    else if (phase === 'success' || phase === 'failed') {
-      setPhase('idle')
-    }
-  }
-  window.addEventListener('keydown', onKey)
-  return () => window.removeEventListener('keydown', onKey)
-}, [phase, biteTime, onResult])
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [phase, biteTime, onResult])
 
   const feedbackColorClass = {
     Perfect: 'text-green-400',
@@ -236,6 +250,18 @@ await refetchCrafting();
 
   return (
     <div className="space-y-4">
+      {zoneChangeMessage && (
+        <div className="bg-yellow-300 text-yellow-900 p-2 rounded mb-2 flex justify-between items-center">
+          <span>{zoneChangeMessage}</span>
+          <button
+            onClick={() => setZoneChangeMessage(null)}
+            className="ml-4 text-sm underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {phase === 'idle' && (
         <button
           onClick={startFishing}
@@ -285,23 +311,21 @@ await refetchCrafting();
           </p>
 
           <p>
-  {phase === 'waiting' 
-    ? 'Waiting for a bite…' 
-    : <>Fish is biting! <strong>Press space quickly!</strong></>}
-</p>
+            {phase === 'waiting' ? 'Waiting for a bite…' : <>Fish is biting! <strong>Press space quickly!</strong></>}
+          </p>
         </div>
       )}
 
       {phase === 'in-minigame' && fishPreview && (
         <FishingMinigame
-  fish={fishPreview.data}
-  onResult={onResult}
-  castBonus={castBonus}        // pass separately
-  reactionBonus={reactionBonus}            // pass separately
-  playerFocus={fishPreview?.gearStats?.focus ?? 50}
-  playerLineTension={fishPreview?.gearStats?.lineTension ?? 50}
-  isResource={fishPreview.isResource}
-/>
+          fish={fishPreview.data}
+          onResult={onResult}
+          castBonus={castBonus}
+          reactionBonus={reactionBonus}
+          playerFocus={fishPreview?.gearStats?.focus ?? 50}
+          playerLineTension={fishPreview?.gearStats?.lineTension ?? 50}
+          isResource={fishPreview.isResource}
+        />
       )}
 
       {phase === 'success' && caughtFish && (
