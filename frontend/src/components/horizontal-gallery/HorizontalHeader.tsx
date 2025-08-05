@@ -49,9 +49,9 @@ const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
           </a>
         ))}
 
-        <button onClick={() => setIsMenuOpen(false)} className="btn-primary">
+        {/*<button onClick={() => setIsMenuOpen(false)} className="btn-primary">
           CONNECT
-        </button>
+        </button>*/}
       </nav>
 
       {/* Hamburger */}

@@ -11,6 +11,8 @@ import { WeatherUI } from './fishingui/WeatherUI';
 import { QuestUI } from './fishingui/QuestUI';
 import { Crafting } from './fishinglogic/Crafting';
 import { Consumables } from './fishinglogic/Consumables';
+import XPBar from './fishingui/XPBar';
+import { totalXpToLevel } from './fishinglogic/fishingInventoryLogic';
 
 export function FishingUI() {
   const { user, loading: authLoading } = useAuth();
@@ -245,6 +247,7 @@ export function FishingUI() {
             />
             <Consumables refetch={refetchInventory} refreshTrigger={craftingRefetchTrigger} />
           </div>
+  <XPBar/>
         </>
       )}
     />
