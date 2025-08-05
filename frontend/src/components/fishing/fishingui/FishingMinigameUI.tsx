@@ -249,7 +249,17 @@ if (!res.ok) {
   }[feedback]
 
   return (
-    <div className="space-y-4">
+<div
+  className="border-2 border-black rounded p-4"
+  style={{ 
+    width: 400, 
+    height: 300, 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: 16,
+    alignItems: 'center', 
+  }}
+>
       {zoneChangeMessage && (
         <div className="bg-yellow-300 text-yellow-900 p-2 rounded mb-2 flex justify-between items-center">
           <span>{zoneChangeMessage}</span>
@@ -263,46 +273,118 @@ if (!res.ok) {
       )}
 
       {phase === 'idle' && (
-        <button
-          onClick={startFishing}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
-        >
-          Fish
-        </button>
-      )}
+<button
+  onClick={startFishing}
+  className="mx-auto block"
+  style={{
+    display: 'inline-flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '12px 24px',
+    fontSize: 18,
+    fontWeight: 'bold',
+    background: 'linear-gradient(45deg, #3b82f6, #2563eb)',
+    color: 'white',
+    border: 'none',
+    borderRadius: 12,
+    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.6)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    width: 140,
+  }}
+  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.95)')}
+  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+>
+  <div>🎣Fish</div>
+  <div
+    style={{
+      fontSize: 14,
+      fontWeight: 'normal',
+      marginTop: 6,
+      background: 'rgba(255 255 255 / 0.3)',
+      padding: '2px 6px',
+      borderRadius: 8,
+      userSelect: 'none',
+      width: 'fit-content',
+    }}
+  >
+    (Spacebar)
+  </div>
+</button>
+)}
 
-      {phase === 'casting' && (
-        <div className="w-16 mx-auto flex flex-col items-center">
-          <p className="mb-2 text-center">Press space to cast!</p>
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: 200,
-              border: '2px solid #333',
-              backgroundColor: '#e5e7eb',
-              borderRadius: 6,
-              boxSizing: 'border-box',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                borderRadius: 2,
-                transition:
-                  phase === 'casting'
-                    ? 'none'
-                    : 'height 0.1s linear, background-color 0.1s linear',
-                ...getBarStyle(),
-              }}
-            />
-          </div>
-        </div>
-      )}
+{phase === 'casting' && (
+  <div className="w-16 mx-auto flex flex-col items-center">
+    <button
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '12px 24px',
+        fontSize: 18,
+        fontWeight: 'bold',
+        background: 'linear-gradient(45deg, #3b82f6, #2563eb)',
+        color: 'white',
+        border: 'none',
+        borderRadius: 12,
+        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.6)',
+        cursor: 'pointer',
+        userSelect: 'none',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        width: 140,
+      }}
+      disabled
+    >
+      <div>Cast Line</div>
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 'normal',
+          marginTop: 6,
+          background: 'rgba(255 255 255 / 0.3)',
+          padding: '2px 6px',
+          borderRadius: 8,
+          userSelect: 'none',
+          width: 'fit-content',
+        }}
+      >
+        (Spacebar)
+      </div>
+    </button>
+
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: 200,
+        border: '2px solid #333',
+        backgroundColor: '#e5e7eb',
+        borderRadius: 6,
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          borderRadius: 2,
+          transition:
+            phase === 'casting'
+              ? 'none'
+              : 'height 0.1s linear, background-color 0.1s linear',
+          ...getBarStyle(),
+        }}
+      />
+    </div>
+  </div>
+)}
 
       {(phase === 'waiting' || phase === 'ready') && (
         <div className="text-center space-y-1">
@@ -310,9 +392,34 @@ if (!res.ok) {
             {feedback} ({castPower.toFixed(1)}%)
           </p>
 
-          <p>
-            {phase === 'waiting' ? 'Waiting for a bite…' : <>Fish is biting! <strong>Press space quickly!</strong></>}
-          </p>
+          <>
+  <style>{`
+    @keyframes pulse {
+      0% { transform: scale(1); background-color: #fef3c7; }
+      50% { transform: scale(1.05); background-color: #fde68a; }
+      100% { transform: scale(1); background-color: #fef3c7; }
+    }
+  `}</style>
+
+  <p
+    style={{
+      background: '#fef3c7',
+      color: '#b45309',
+      padding: '8px 12px',
+      borderRadius: 6,
+      fontWeight: 'bold',
+      fontSize: 16,
+      textAlign: 'center',
+      border: '2px solid #f59e0b',
+      animation: phase !== 'waiting' ? 'pulse 0.6s infinite' : undefined,
+    }}
+  >
+    {phase === 'waiting'
+      ? '🎣 Waiting for a bite…'
+      : '🐟 Fish is biting! Press SPACEBAR quickly!'}
+  </p>
+</>
+
         </div>
       )}
 
@@ -328,32 +435,116 @@ if (!res.ok) {
         />
       )}
 
-      {phase === 'success' && caughtFish && (
-        <div className="text-center space-y-2">
-          <p>
-            🎉 You caught a {caughtFish.species} ({caughtFish.rarity})!
-          </p>
-          <button
-            onClick={() => setPhase('idle')}
-            className="px-4 py-2 bg-green-600 text-white rounded"
-          >
-            Catch Again
-          </button>
-        </div>
-      )}
+{phase === 'success' && caughtFish && (
+  <div className="text-center space-y-3">
+    <p
+      style={{
+        fontWeight: 'bold',
+        fontSize: 18,
+        margin: 0,
+      }}
+    >
+      🎉 You caught a {caughtFish.species} ({caughtFish.rarity})!
+    </p>
+    <button
+      onClick={() => setPhase('idle')}
+      className="mx-auto block"
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '8px 16px',
+        fontSize: 14,
+        fontWeight: 'bold',
+        background: 'linear-gradient(45deg, #16a34a, #15803d)', // green gradient
+        color: 'white',
+        border: 'none',
+        borderRadius: 10,
+        boxShadow: '0 3px 8px rgba(22, 163, 74, 0.6)',
+        cursor: 'pointer',
+        userSelect: 'none',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        width: 110,
+      }}
+      onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.95)')}
+      onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+    >
+      <div>Catch Again</div>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 'normal',
+          marginTop: 4,
+          background: 'rgba(255 255 255 / 0.3)',
+          padding: '1px 4px',
+          borderRadius: 6,
+          userSelect: 'none',
+          width: 'fit-content',
+        }}
+      >
+        (Spacebar)
+      </div>
+    </button>
+  </div>
+)}
 
-      {phase === 'failed' && (
-        <div className="text-center space-y-2">
-          <p>😢 The fish got away.</p>
-          <button
-            onClick={() => setPhase('idle')}
-            className="px-4 py-2 bg-yellow-500 text-white rounded"
-          >
-            Try Again
-          </button>
-        </div>
-      )}
 
+{phase === 'failed' && (
+  <div className="text-center space-y-3">
+    <p
+      style={{
+        color: '#dc2626',
+        fontWeight: 'bold',
+        fontSize: 18,
+        textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+        margin: 0,
+      }}
+    >
+      😢 The fish got away.
+    </p>
+    <button
+      onClick={() => setPhase('idle')}
+      className="mx-auto block"
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '8px 16px',
+        fontSize: 14,
+        fontWeight: 'bold',
+        background: 'linear-gradient(45deg, #f59e0b, #d97706)',
+        color: 'white',
+        border: 'none',
+        borderRadius: 10,
+        boxShadow: '0 3px 8px rgba(245, 158, 11, 0.6)',
+        cursor: 'pointer',
+        userSelect: 'none',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        width: 140,
+      }}
+      onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.95)')}
+      onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+    >
+      <div>Try Again</div>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 'normal',
+          marginTop: 4,
+          background: 'rgba(255 255 255 / 0.3)',
+          padding: '1px 4px',
+          borderRadius: 6,
+          userSelect: 'none',
+          width: 'fit-content',
+        }}
+      >
+        (Spacebar)
+      </div>
+    </button>
+  </div>
+)}
       {error && <p className="text-red-600">Error: {error}</p>}
     </div>
   )

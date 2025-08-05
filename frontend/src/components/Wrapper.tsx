@@ -70,11 +70,11 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
         <PlayerButton />
       </div>
 
-      {page === "horizontalgallery" ? (
-        <HorizontalHeader onLogoClick={() => setPage("home")} onNavigate={handleNavigate} />
-      ) : (
-        <Header onNavigate={handleNavigate} />
-      )}
+      {page === "horizontalgallery" || page === "fishing" ? (
+  <HorizontalHeader onLogoClick={() => setPage("home")} onNavigate={handleNavigate} />
+) : (
+  <Header onNavigate={handleNavigate} />
+)}
 
       {page === "fishing" && <FishingPage />}
 

@@ -5,6 +5,7 @@ import { API_BASE } from '../../config.tsx'; // adjust path as needed
 type AuthModalProps = {
   onClose: () => void;
   inline?: boolean;
+  centered?: boolean; // new prop
 };
 
 type AuthResponse = {
@@ -12,22 +13,21 @@ type AuthResponse = {
   success?: boolean;
 };
 
-// Define the User type
 interface User {
   email: string;
 }
 
-export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
+export default function AuthModal({ onClose, inline = false, centered = false }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "signup" | "forgotPassword" | "verifyEmail">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState(""); // New state for confirm password
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track login state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const { user, refetch, logout } = useAuth();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -51,76 +51,76 @@ export default function AuthModal({ onClose, inline = false }: AuthModalProps) {
     }
   }, [inline, onClose]);
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
-  setInfoMessage(null);
-  setShowResendVerification(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setInfoMessage(null);
+    setShowResendVerification(false);
 
-  if (mode === "signup" && password !== confirmPassword) {
-    setError("Passwords do not match");
-    setLoading(false);
-    return;
-  }
-
-  try {
-    let endpoint = "";
-    const body: any = { email, password };
-
-    if (mode === "login" || mode === "signup") {
-      endpoint = mode;
-    } else if (mode === "forgotPassword") {
-      if (cooldown > 0) {
-        setError(`Please wait ${cooldown}s before trying again.`);
-        setLoading(false);
-        return;
-      }
-      endpoint = "request-password-reset";
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
     }
 
-    const res = await fetch(`${API_BASE}/auth/${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body),
-    });
+    try {
+      let endpoint = "";
+      const body: any = { email, password };
 
-    const data = (await res.json()) as AuthResponse;
+      if (mode === "login" || mode === "signup") {
+        endpoint = mode;
+      } else if (mode === "forgotPassword") {
+        if (cooldown > 0) {
+          setError(`Please wait ${cooldown}s before trying again.`);
+          setLoading(false);
+          return;
+        }
+        endpoint = "request-password-reset";
+      }
 
-    if (!res.ok || data.success === false) {
-      if (mode === "login") {
-        if (data.message === "Please verify your email before logging in") {
-          setError("Verify email to login");
-          setShowResendVerification(true);
+      const res = await fetch(`${API_BASE}/auth/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+
+      const data = (await res.json()) as AuthResponse;
+
+      if (!res.ok || data.success === false) {
+        if (mode === "login") {
+          if (data.message === "Please verify your email before logging in") {
+            setError("Verify email to login");
+            setShowResendVerification(true);
+          } else {
+            setError("Wrong credentials");
+            setShowResendVerification(false);
+          }
         } else {
-          setError("Wrong credentials");
-          setShowResendVerification(false);
+          setError(data.message || "Something went wrong");
         }
       } else {
-        setError(data.message || "Something went wrong");
+        if (mode === "login") {
+          setIsLoggedIn(true);
+          await refetch();
+        } else if (mode === "signup") {
+          setMode("verifyEmail");
+          setInfoMessage(`Signup successful! Please verify your email: ${email}`);
+          setPassword("");
+          setConfirmPassword("");
+          setCooldown(30);
+        } else if (mode === "forgotPassword") {
+          setInfoMessage(data.message || "Password reset email sent.");
+          setCooldown(30);
+        }
       }
-    } else {
-      if (mode === "login") {
-        setIsLoggedIn(true);
-        await refetch();
-      } else if (mode === "signup") {
-        setMode("verifyEmail");
-        setInfoMessage(`Signup successful! Please verify your email: ${email}`);
-        setPassword("");
-        setConfirmPassword("");
-        setCooldown(30);
-      } else if (mode === "forgotPassword") {
-        setInfoMessage(data.message || "Password reset email sent.");
-        setCooldown(30);
-      }
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
     }
-  } catch {
-    setError("Network error");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleResendVerification = async () => {
     if (!email) {
@@ -151,7 +151,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         setError(data.message || "Failed to resend verification email.");
       } else {
         setInfoMessage(data.message || "Verification email resent.");
-        setCooldown(30); // Set the cooldown for resending
+        setCooldown(30);
       }
     } catch {
       setError("Network error");
@@ -162,7 +162,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const handleLogout = async () => {
     await logout();
-    setIsLoggedIn(false); // Reset login state
+    setIsLoggedIn(false);
     onClose();
   };
 
@@ -267,57 +267,63 @@ const handleSubmit = async (e: React.FormEvent) => {
       break;
   }
 
-if (inline) {
+  if (inline) {
+    return (
+      <div
+        className="w-full max-w-md mx-auto rounded p-4 shadow"
+        style={{
+          background: "linear-gradient(to bottom,rgb(233, 243, 255) 0%, white 50%, white 100%)",
+        }}
+      >
+        {formContent}
+      </div>
+    );
+  }
+
   return (
     <div
-      className="w-full max-w-md mx-auto rounded p-4 shadow"
-      style={{
-         background: 'linear-gradient(to bottom,rgb(233, 243, 255) 0%, white 50%, white 100%)',
-      }}
+      className={`fixed inset-0 bg-black bg-opacity-50 flex z-50 ${
+        centered ? "items-center justify-center" : "items-start justify-end pt-20 pr-6"
+      }`}
     >
-      {formContent}
+      <div
+  ref={modalRef}
+  className="rounded-lg max-w-md w-full p-6 relative border-0"
+style={{
+  background: "linear-gradient(to bottom, rgb(233, 243, 255) 0%, white 70%, white 100%)",
+  boxShadow: "0 0 15px 6px rgba(59, 130, 246, 0.3)",
+  marginRight: centered ? 0 : 12,
+  paddingBottom: "2rem",
+  maxHeight: "90vh",
+  overflowY: "auto",
+  borderRadius: 0,
+}}
+  role="dialog"
+  aria-modal="true"
+>
+
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
+
+        {isLoggedIn ? (
+          <div className="rounded p-4 shadow-md text-lg mb-4" style={{ backgroundColor: "#ffffff" }}>
+            <p className="mb-2">Welcome back, {user?.email}!</p>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full"
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          formContent
+        )}
+      </div>
     </div>
   );
-}
-
-return (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div
-      ref={modalRef}
-      className="rounded-lg max-w-md w-full p-6 relative border-0"
-      style={{
-        height: 300,
-        background: 'linear-gradient(to bottom, #bfdbfe 0%, #bfdbfe 75%, white 75%, white 100%)',
-        boxShadow: '0 0 15px 6px rgba(59, 130, 246, 0.3)',
-        marginRight: 12,
-      }}
-      role="dialog"
-      aria-modal="true"
-    >
-      <button
-        onClick={onClose}
-        className="absolute top-2 right-3 text-gray-500 hover:text-gray-800"
-        aria-label="Close modal"
-      >
-        &times;
-      </button>
-
-      {isLoggedIn ? (
-        <div className= "rounded p-4 shadow-md text-lg mb-4"
-        style={{ backgroundColor: "#ffffff" }}>
-          <p className="mb-2">Welcome back, {user?.email}!</p>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 text-white py-2 rounded hover:bg-red-700 w-full"
-          >
-            Logout
-          </button>
-        </div>
-      ) : (
-        formContent
-      )}
-
-    </div>
-  </div>
-);
 }

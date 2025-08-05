@@ -441,10 +441,13 @@ console.log({
 
   const zones = getZones()
 
-  return (
-    <div style={{ width: 300, padding: 12, background: '#f8fafc', borderRadius: 8, color: 'black' }}>
-      <div>
-        <strong>Stamina</strong>
+return (
+  <div style={{ width: 300, padding: 12, background: '#f8fafc', borderRadius: 8, color: 'black' }}>
+    {/* Top Row: Stamina & Line Tension */}
+    <div style={{ display: 'flex', gap: 12 }}>
+      {/* Stamina */}
+      <div style={{ flex: 1 }}>
+        <strong>🐟 Fish Stamina</strong>
         <div style={{ background: '#ddd', height: 20, borderRadius: 4, overflow: 'hidden' }}>
           <div
             style={{
@@ -455,74 +458,12 @@ console.log({
             }}
           />
         </div>
-        <p style={{ fontSize: 12 }}>
-          {stamina.toFixed(0)} / {fish.stamina}
-        </p>
+        <p style={{ fontSize: 12 }}>{stamina.toFixed(0)} / {fish.stamina}</p>
       </div>
 
-      <div
-        style={{
-          marginTop: 16,
-          position: 'relative',
-          height: 20,
-          borderRadius: 4,
-          background: '#eee',
-          width: '100%',
-          boxSizing: 'border-box',
-        }}
-      >
-        <strong style={{ position: 'absolute', top: -20, left: 0, fontWeight: 'bold', color: 'black' }}>
-          Balance
-        </strong>
-
-        {zones.map((zone, i) => (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: `${zone.left}%`,
-              width: `${zone.width}%`,
-              background: zone.color,
-              transition: fish.barType?.startsWith('dynamic') ? 'left 0.05s linear, width 0.05s linear' : undefined,
-            }}
-          />
-        ))}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            width: 12,
-            left: `calc(${balance}% - 6px)`,
-            background: '#3b82f6',
-            borderRadius: 3,
-            zIndex: 2,
-            transition: 'left 0.1s linear',
-          }}
-        />
-        <p style={{ fontSize: 12, position: 'absolute', bottom: -20, right: 0, margin: 0, color: 'black' }}>
-          Balance: {balance.toFixed(1)}
-        </p>
-      </div>
-
-      <div style={{ marginTop: 8 }}>
-        <strong>Focus</strong>
-        <div style={{ background: '#ddd', height: 12, borderRadius: 4, overflow: 'hidden' }}>
-          <div
-            style={{
-              width: `${(focus / playerFocus) * 100}%`,
-              height: '100%',
-              background: 'orange',
-              transition: 'width 0.2s',
-            }}
-          />
-        </div>
-      </div>
-
-      <div style={{ marginTop: 8 }}>
-        <strong>Line Tension</strong>
+      {/* Line Tension */}
+      <div style={{ flex: 1 }}>
+        <strong>🎣 Line Tension</strong>
         <div style={{ background: '#ddd', height: 12, borderRadius: 4, overflow: 'hidden' }}>
           <div
             style={{
@@ -535,13 +476,72 @@ console.log({
         </div>
         {snapped && <p style={{ color: 'red', margin: 0, fontWeight: 'bold' }}>Line snapped!</p>}
       </div>
+    </div>
 
-      <div style={{ marginTop: 16 }}>
-        <p>
-          <strong>Fish is tugging</strong>: {tugDirectionRef.current < 0 ? '←' : '→'}
-        </p>
-        <p>Hold A/D to adjust!</p>
+    {/* Balance Bar */}
+    <div
+      style={{
+        marginTop: 16,
+        position: 'relative',
+        height: 20,
+        borderRadius: 4,
+        background: '#eee',
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      <strong style={{ position: 'absolute', top: -20, left: 0, fontWeight: 'bold', color: 'black' }}>
+        ⚖️ Balance
+      </strong>
+
+      {zones.map((zone, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${zone.left}%`,
+            width: `${zone.width}%`,
+            background: zone.color,
+            transition: fish.barType?.startsWith('dynamic') ? 'left 0.05s linear, width 0.05s linear' : undefined,
+          }}
+        />
+      ))}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          width: 12,
+          left: `calc(${balance}% - 6px)`,
+          background: '#3b82f6',
+          borderRadius: 3,
+          zIndex: 2,
+          transition: 'left 0.1s linear',
+        }}
+      />
+      {/*
+      <p style={{ fontSize: 12, position: 'absolute', bottom: -20, right: 0, margin: 0, color: 'black' }}>
+         Balance: {balance.toFixed(1)}
+      </p>
+      */}
+    </div>
+
+    {/* Focus */}
+    <div style={{ marginTop: 8 }}>
+      <strong>🎯 Focus</strong>
+      <div style={{ background: '#ddd', height: 12, borderRadius: 4, overflow: 'hidden' }}>
+        <div
+          style={{
+            width: `${(focus / playerFocus) * 100}%`,
+            height: '100%',
+            background: 'orange',
+            transition: 'width 0.2s',
+          }}
+        />
       </div>
     </div>
-  )
+  </div>
+)
 }
