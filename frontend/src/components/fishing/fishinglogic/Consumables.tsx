@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../../../config';
 
-export function Consumables({ refetch, refreshTrigger }: { refetch: () => void; refreshTrigger?: number }) {
+interface WorldState {
+  cycleNum: number;
+  cycleMin: number;
+}
+
+export function Consumables({
+  refetch,
+  refreshTrigger,
+}: {
+  refetch: () => void;
+  refreshTrigger?: number;
+}) {
   const [active, setActive] = useState<
     { typeId: number; name: string; effect: string; timeRemaining: number }[]
   >([]);
@@ -10,32 +21,48 @@ export function Consumables({ refetch, refreshTrigger }: { refetch: () => void; 
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // New states for rain
+  // New states for rain & worldState
   const [isRaining, setIsRaining] = useState(false);
-  const [rainTimeRemaining, setRainTimeRemaining] = useState(0);
+  const [rainTimeRemaining, setRainTimeRemaining] = useState(0); // seconds
+  const [worldState, setWorldState] = useState<WorldState | null>(null);
 
-const fetchActive = async () => {
-  const res = await fetch(`${API_BASE}/consumables/active`, {
-    credentials: 'include',
-  });
-  const data = await res.json();
+  // Helpers to calculate rain from cycleNum & cycleMin (copied from WeatherUI logic)
+  const rainDurationMinutes = 45;
 
-  const consumables = (data.consumables || []).map((c: {
-    type_id: number;
-    name: string;
-    effect: string;
-    timeRemaining?: number;
-    time_remaining?: number;
-  }) => ({
-    typeId: c.type_id,
-    name: c.name,
-    effect: c.effect,
-    timeRemaining: c.timeRemaining ?? c.time_remaining ?? 0,
-  }));
+  const calcRain = (cycleNum: number, cycleMin: number) => {
+    if (cycleNum % 3 === 2) {
+      const rainSchedule = [15, 90, 105];
+      const rainIndex = Math.floor(cycleNum / 3) % rainSchedule.length;
+      const rainStartMin = rainSchedule[rainIndex];
+      const rainEndMin = rainStartMin + rainDurationMinutes;
+      const isRaining = cycleMin >= rainStartMin && cycleMin < rainEndMin;
+      const minutesLeft = rainEndMin - cycleMin;
+      return { isRaining, minutesLeft: isRaining ? minutesLeft : 0 };
+    }
+    return { isRaining: false, minutesLeft: 0 };
+  };
 
-  setActive(consumables.filter((c: { timeRemaining: number }) => c.timeRemaining > 0));
-};
+  const fetchActive = async () => {
+    const res = await fetch(`${API_BASE}/consumables/active`, {
+      credentials: 'include',
+    });
+    const data = await res.json();
 
+    const consumables = (data.consumables || []).map((c: {
+      type_id: number;
+      name: string;
+      effect: string;
+      timeRemaining?: number;
+      time_remaining?: number;
+    }) => ({
+      typeId: c.type_id,
+      name: c.name,
+      effect: c.effect,
+      timeRemaining: c.timeRemaining ?? c.time_remaining ?? 0,
+    }));
+
+    setActive(consumables.filter((c: { timeRemaining: number }) => c.timeRemaining > 0));
+  };
 
   const fetchOwned = async () => {
     const res = await fetch(`${API_BASE}/consumables/owned`, {
@@ -51,29 +78,43 @@ const fetchActive = async () => {
     );
   };
 
-  // New fetch for weather/rain info
-const fetchWeather = async () => {
-  const res = await fetch(`${API_BASE}/timecontent`, {
-    credentials: 'include',
-  });
-  const data = await res.json();
-  console.log('Weather data from API:', data);  // <-- add this line
-  setIsRaining(data.worldState?.isRaining || false);
-  setRainTimeRemaining(data.worldState?.rainTimeRemaining ?? 0);
-};
+  // Fetch worldState instead of relying on backend rainTimeRemaining
+  const fetchWorldState = async () => {
+    const res = await fetch(`${API_BASE}/timecontent`, {
+      credentials: 'include',
+    });
+    const data = await res.json();
+
+    setWorldState(data.worldState || null);
+  };
 
   useEffect(() => {
     fetchActive();
     fetchOwned();
-    fetchWeather();
+    fetchWorldState();
   }, []);
-useEffect(() => {
-  if (refreshTrigger !== undefined) {
-    fetchActive();
-    fetchOwned();
-    fetchWeather();
-  }
-}, [refreshTrigger]);
+
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      fetchActive();
+      fetchOwned();
+      fetchWorldState();
+    }
+  }, [refreshTrigger]);
+
+  // Update rain state & timer using worldState changes
+  useEffect(() => {
+    if (!worldState) {
+      setIsRaining(false);
+      setRainTimeRemaining(0);
+      return;
+    }
+    const { cycleNum, cycleMin } = worldState;
+    const { isRaining, minutesLeft } = calcRain(cycleNum, cycleMin);
+
+    setIsRaining(isRaining);
+    setRainTimeRemaining(Math.max(0, minutesLeft * 60)); // seconds
+  }, [worldState]);
 
   // Tick countdown for active consumables
   useEffect(() => {
@@ -138,6 +179,16 @@ useEffect(() => {
     setLoading(false);
   };
 
+  // Format rain time as M:SS
+const formatTimeRemaining = (seconds: number) => {
+  const rounded = Math.round(seconds);
+  if (rounded < 60) {
+    return `${rounded} seconds`;
+  }
+  const m = Math.floor(rounded / 60);
+  return `${m} minutes`;
+};
+
   return (
     <div className="max-w-md mx-auto p-4 bg-white shadow-lg rounded-lg">
       <h2 className="text-xl font-semibold mb-4 text-black">Active Consumables</h2>
@@ -166,8 +217,7 @@ useEffect(() => {
       {isRaining && (
         <div className="mt-4 p-3 bg-blue-200 rounded text-blue-900 font-semibold">
           Raining — Luck +20%, Bait +5%<br />
-          Time remaining: {Math.floor(rainTimeRemaining / 60)}:
-          {(rainTimeRemaining % 60).toString().padStart(2, '0')}
+          Time remaining: {formatTimeRemaining(rainTimeRemaining)}
         </div>
       )}
 
