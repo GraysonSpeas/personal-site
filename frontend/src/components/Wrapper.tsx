@@ -106,11 +106,12 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 
 export default function Wrapper({ useLoading = true, children }: WrapperProps) {
   return (
-    <AuthProvider>
-  <MainContent useLoading={useLoading} />
+<AuthProvider>
   <AuthLoadingWrapper>
+    <MainContent useLoading={useLoading} />
     {children}
   </AuthLoadingWrapper>
 </AuthProvider>
+
   );
 }
