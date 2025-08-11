@@ -23,17 +23,31 @@ function AuthLoadingWrapper({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+const SPApages = ["home", "projects", "page2", "page3"];
+
+function getPageFromPathOrQuery(): Page {
+  if (typeof window === "undefined") return "home";
+  const path = window.location.pathname.toLowerCase();
+
+  if (path === "/fishing" || path === "/fishing/") return "fishing";
+  if (path === "/horizontalgallery") return "horizontalgallery";
+
+  // Check ?page= query param
+  const params = new URLSearchParams(window.location.search);
+  const pageParam = params.get("page");
+  if (pageParam && SPApages.includes(pageParam)) return pageParam as Page;
+
+  // Otherwise check path segment
+  const segment = path.split("/")[1];
+  if (SPApages.includes(segment)) return segment as Page;
+
+  return "home";
+}
+
 const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
-  // Removed useAuth here to avoid rerenders on auth state changes
+  const [page, setPage] = useState<Page>(getPageFromPathOrQuery);
 
-  const [page, setPage] = useState<Page>(() => {
-    if (typeof window === "undefined") return "home";
-    const path = window.location.pathname.toLowerCase();
-    if (path === "/fishing/" || path === "/fishing") return "fishing";
-    if (path === "/horizontalgallery") return "horizontalgallery";
-    return "home";
-  });
-
+  // Sync URL with state (only path, no query)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const desiredPath = page === "home" ? "/" : `/${page}`;
@@ -71,10 +85,10 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
       </div>
 
       {page === "horizontalgallery" || page === "fishing" ? (
-  <HorizontalHeader onLogoClick={() => setPage("home")} onNavigate={handleNavigate} />
-) : (
-  <Header onNavigate={handleNavigate} />
-)}
+        <HorizontalHeader onLogoClick={() => setPage("home")} onNavigate={handleNavigate} />
+      ) : (
+        <Header onNavigate={handleNavigate} />
+      )}
 
       {page === "fishing" && <FishingPage />}
 
@@ -89,9 +103,9 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 
       {page === "horizontalgallery" && <HorizontalSections />}
 
-      {page !== "home" && page !== "horizontalgallery" && page !== "fishing" && (
+      {page !== "home" && page !== "horizontalgallery" && page !== "fishing" && SPApages.includes(page) && (
         <div className="flex flex-col items-center justify-center h-screen text-center px-4">
-          <h1 className="text-3xl md:text-4xl font-bold mb-6">🚧 This Page Is Under Construction 🚧</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-6">{`🚧 ${page} Page Is Under Construction 🚧`}</h1>
           <button
             onClick={() => setPage("home")}
             className="bg-white text-black font-semibold px-6 py-3 rounded hover:bg-gray-200 transition"
@@ -106,12 +120,11 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 
 export default function Wrapper({ useLoading = true, children }: WrapperProps) {
   return (
-<AuthProvider>
-  <AuthLoadingWrapper>
-    <MainContent useLoading={useLoading} />
-    {children}
-  </AuthLoadingWrapper>
-</AuthProvider>
-
+    <AuthProvider>
+      <AuthLoadingWrapper>
+        <MainContent useLoading={useLoading} />
+        {children}
+      </AuthLoadingWrapper>
+    </AuthProvider>
   );
 }
