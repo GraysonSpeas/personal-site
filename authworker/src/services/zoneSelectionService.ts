@@ -9,25 +9,37 @@ export async function updateUserZone(
   try {
     console.log(`Preparing to update zone. User Email: ${userEmail}, Zone ID: ${zoneId}`);
 
-    // Time-gated zone check (e.g., Tidal)
-    const zoneTimeWindows: Record<number, { start: string; end: string }> = {
-      5: { start: '10:00', end: '19:30' }, // Zone ID 5 = Tidal
+    // Define multiple time windows for zones that have restrictions
+    const zoneTimeWindows: Record<number, { start: string; end: string }[]> = {
+      5: [
+        { start: '10:00', end: '11:30' },
+        { start: '14:00', end: '14:30' },
+        { start: '19:00', end: '19:30' },
+      ],
     };
 
-    const timeWindow = zoneTimeWindows[zoneId];
-    if (timeWindow) {
-      const now = getCurrentTimeCST();
-      const [startH, startM] = timeWindow.start.split(':').map(Number);
-      const [endH, endM] = timeWindow.end.split(':').map(Number);
+    const now = getCurrentTimeCST();
+    const timeWindows = zoneTimeWindows[zoneId];
 
-      const start = new Date(now);
-      start.setHours(startH, startM, 0, 0);
+    if (timeWindows) {
+      const isInAnyWindow = timeWindows.some(({ start, end }) => {
+        const [startH, startM] = start.split(':').map(Number);
+        const [endH, endM] = end.split(':').map(Number);
 
-      const end = new Date(now);
-      end.setHours(endH, endM, 0, 0);
+        const startTime = new Date(now);
+        startTime.setHours(startH, startM, 0, 0);
 
-      if (now < start || now > end) {
-        throw new Error(`That zone is only available from ${timeWindow.start} to ${timeWindow.end} CST.`);
+        const endTime = new Date(now);
+        endTime.setHours(endH, endM, 0, 0);
+
+        return now >= startTime && now <= endTime;
+      });
+
+      if (!isInAnyWindow) {
+        const timesStr = timeWindows
+          .map(({ start, end }) => `${start} to ${end}`)
+          .join(', ');
+        throw new Error(`That zone is only available during these times (CST): ${timesStr}.`);
       }
     }
 

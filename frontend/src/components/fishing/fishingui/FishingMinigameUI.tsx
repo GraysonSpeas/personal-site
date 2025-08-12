@@ -98,9 +98,9 @@ const startFishing = async () => {
     console.log('Response status:', res.status, 'json:', json)
 
 if (!res.ok) {
-  if (json.movedToZone) {
-    setZoneChangeMessage(`You were moved to zone ${json.movedToZone} due to time restrictions.`);
-    setCurrentZoneId(json.movedToZone);  // Update zone selector here
+  if (json.movedToZone && json.message) {
+    setZoneChangeMessage(json.message);
+    setCurrentZoneId(json.movedToZone);
   } else {
     setError(json.message || 'Failed to start');
   }

@@ -6,23 +6,35 @@ const zoneTypes = [
   { id: 2, name: 'Ocean', className: 'bg-blue-600 bg-opacity-80' },
   { id: 3, name: 'River', className: 'bg-green-600 bg-opacity-80' },
   { id: 4, name: 'Lava', className: 'bg-red-600 bg-opacity-80' },
-  { id: 5, name: 'Tidal', className: 'bg-indigo-600 bg-opacity-80', available_start: '10:00', available_end: '19:30' },
+  {
+    id: 5,
+    name: 'Tidal',
+    className: 'bg-indigo-600 bg-opacity-80',
+    available_times: [
+      { start: '10:00', end: '11:30' },
+      { start: '14:00', end: '14:30' },
+      { start: '19:00', end: '19:30' },
+    ],
+  },
 ];
 
 function isZoneAvailable(zone: typeof zoneTypes[0]): boolean {
-  if (!zone.available_start || !zone.available_end) return true;
+  if (!zone.available_times) return true;
 
   const now = new Date();
-  const [startH, startM] = zone.available_start.split(':').map(Number);
-  const [endH, endM] = zone.available_end.split(':').map(Number);
 
-  const start = new Date(now);
-  start.setHours(startH, startM, 0, 0);
+  return zone.available_times.some(({ start, end }) => {
+    const [startH, startM] = start.split(':').map(Number);
+    const [endH, endM] = end.split(':').map(Number);
 
-  const end = new Date(now);
-  end.setHours(endH, endM, 0, 0);
+    const startTime = new Date(now);
+    startTime.setHours(startH, startM, 0, 0);
 
-  return now >= start && now <= end;
+    const endTime = new Date(now);
+    endTime.setHours(endH, endM, 0, 0);
+
+    return now >= startTime && now <= endTime;
+  });
 }
 
 export function ZoneSelector({
@@ -60,52 +72,80 @@ export function ZoneSelector({
     setLoading(false);
   };
 
-  const currentZone = zoneTypes.find(z => z.id === currentZoneId);
+  const currentZone = zoneTypes.find((z) => z.id === currentZoneId);
+
+  const getBgColor = (name: string) => {
+    switch (name) {
+      case 'Jungle':
+        return 'rgba(120, 53, 15, 0.8)';
+      case 'Ocean':
+        return 'rgba(37, 99, 235, 0.8)';
+      case 'River':
+        return 'rgba(22, 163, 74, 0.8)';
+      case 'Lava':
+        return 'rgba(220, 38, 38, 0.8)';
+      case 'Tidal':
+        return 'rgba(79, 70, 229, 0.8)';
+      default:
+        return 'rgba(100, 100, 100, 0.8)';
+    }
+  };
 
   return (
     <div className="max-w-sm mx-auto p-4 bg-white shadow-lg rounded-lg">
       <h2 className="text-xl font-semibold mb-4 text-black">Select a Zone</h2>
 
       {currentZone && (
-        <div className={`p-2 rounded text-white text-center mb-4 ${currentZone.className}`}>
+        <div
+          className={`p-2 rounded text-white text-center mb-4 ${currentZone.className}`}
+        >
           Current Zone: {currentZone.name}
         </div>
       )}
 
       <select
-        className="w-full p-2 mb-4 border rounded focus:outline-none focus:ring focus:ring-blue-300 text-black"
-        onChange={e => setZoneId(Number(e.target.value))}
+        className="w-full p-2 mb-2 border rounded focus:outline-none focus:ring focus:ring-blue-300 text-black"
+        onChange={(e) => setZoneId(Number(e.target.value))}
         value={zoneId ?? ''}
       >
         <option value="" disabled className="text-black">
           Choose a zone
         </option>
-        {zoneTypes.filter(isZoneAvailable).map(z => {
-          let bgColor = '';
-          switch (z.name) {
-            case 'Jungle':
-              bgColor = 'rgba(120, 53, 15, 0.8)';
-              break;
-            case 'Ocean':
-              bgColor = 'rgba(37, 99, 235, 0.8)';
-              break;
-            case 'River':
-              bgColor = 'rgba(22, 163, 74, 0.8)';
-              break;
-            case 'Lava':
-              bgColor = 'rgba(220, 38, 38, 0.8)';
-              break;
-            case 'Tidal':
-              bgColor = 'rgba(79, 70, 229, 0.8)'; // Indigo-600
-              break;
-          }
+        {zoneTypes.map((z) => {
+          const available = isZoneAvailable(z);
+          const bgColor = getBgColor(z.name);
           return (
-            <option key={z.id} value={z.id} style={{ backgroundColor: bgColor, color: 'white' }}>
+            <option
+              key={z.id}
+              value={z.id}
+              style={{
+                backgroundColor: available ? bgColor : 'gray',
+                color: available ? 'white' : '#aaa',
+                opacity: available ? 1 : 0.5,
+              }}
+              disabled={!available}
+            >
               {z.name}
             </option>
           );
         })}
       </select>
+
+      <div className="mt-4 mb-4 text-sm text-gray-700">
+        <strong>Zone Open Times:</strong>
+        <ul className="list-disc list-inside">
+          {zoneTypes.map((zone) => (
+            <li key={zone.id}>
+              <span className="font-semibold">{zone.name}:</span>{' '}
+              {zone.available_times
+                ? zone.available_times
+                    .map(({ start, end }) => `${start} - ${end}`)
+                    .join(', ')
+                : 'Always open'}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <button
         className={`w-full p-2 bg-blue-500 text-white font-semibold rounded hover:bg-blue-600 transition ${
@@ -118,7 +158,9 @@ export function ZoneSelector({
       </button>
 
       {message && (
-        <p className="mt-4 text-center text-sm font-medium text-black">{message}</p>
+        <p className="mt-4 text-center text-sm font-medium text-black">
+          {message}
+        </p>
       )}
     </div>
   );

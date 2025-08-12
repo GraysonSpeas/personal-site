@@ -89,11 +89,16 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
   if (zoneId === null) throw new Error('User zone not found');
 
   // --- Time gate check start ---
-  const zoneTimeWindows: Record<number, { start: string; end: string }> = {
-    5: { start: '10:00', end: '12:30' },
-  };
+const zoneTimeWindows: Record<number, { start: string; end: string }[]> = {
+  5: [
+    { start: '10:00', end: '10:30' },
+    { start: '14:00', end: '14:30' },
+    { start: '19:00', end: '19:30' },
+  ],
+};
 
-  function isWithinTimeWindow(start: string, end: string, now: Date) {
+function isWithinAnyTimeWindow(windows: { start: string; end: string }[], now: Date) {
+  return windows.some(({ start, end }) => {
     const [sh, sm] = start.split(':').map(Number);
     const [eh, em] = end.split(':').map(Number);
     const startTime = new Date(now);
@@ -101,18 +106,22 @@ export async function startFishing(c: Context<{ Bindings: any }>) {
     const endTime = new Date(now);
     endTime.setHours(eh, em, 0, 0);
     return now >= startTime && now <= endTime;
-  }
+  });
+}
 
   const nowDate = new Date();
-  const timeWindow = zoneTimeWindows[zoneId];
-if (timeWindow && !isWithinTimeWindow(timeWindow.start, timeWindow.end, nowDate)) {
+const timeWindows = zoneTimeWindows[zoneId];
+const fallbackZoneId = 1;
+const fallbackZoneName = await getZoneNameFromId(db, fallbackZoneId);
+const currentZoneName = await getZoneNameFromId(db, zoneId);
+if (timeWindows && !isWithinAnyTimeWindow(timeWindows, nowDate)) {
   await db.prepare('UPDATE users SET current_zone_id = 1 WHERE email = ?').bind(email).run();
 
-  return {
-    success: false,
-    movedToZone: 1,
-    message: `Zone ${zoneId} is only available from ${timeWindow.start} to ${timeWindow.end}. You have been moved to zone 1.`,
-  };
+return {
+  success: false,
+  movedToZone: fallbackZoneId,
+  message: `Zone ${zoneId} (${currentZoneName}) is closed. You have been moved to Zone ${fallbackZoneId} (${fallbackZoneName}).`,
+};
 }
 
   const zoneName = await getZoneNameFromId(db, zoneId);
