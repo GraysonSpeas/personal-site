@@ -508,19 +508,20 @@ return (
           }}
         />
       ))}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          width: 12,
-          left: `calc(${balance}% - 6px)`,
-          background: '#3b82f6',
-          borderRadius: 3,
-          zIndex: 2,
-          transition: 'left 0.1s linear',
-        }}
-      />
+<div
+  style={{
+    position: 'absolute',
+    top: '-13px',
+    left: `calc(${balance}% - 12px)`,
+    fontSize: 26,
+    userSelect: 'none',
+    transform: tugDirectionRef.current > 0 ? 'scaleX(-1)' : 'scaleX(1)',
+    transition: 'left 0.1s linear, transform 0.1s linear',
+    zIndex: 2,
+  }}
+>
+  🐟
+</div>
       {/*
       <p style={{ fontSize: 12, position: 'absolute', bottom: -20, right: 0, margin: 0, color: 'black' }}>
          Balance: {balance.toFixed(1)}

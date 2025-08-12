@@ -52,47 +52,53 @@ export function WeatherUI({ weather, worldState }: WeatherUIProps) {
 
   const { cycleNum, cycleMin } = worldState;
   const phase = calcPhase(cycleMin);
+
   const { isRaining, rainStartMin } = calcRain(cycleNum, cycleMin);
   const rainDuration = 45;
 
-  // Calculate current CST time once
-  const now = new Date();
-  const cstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-
-  const minutesToRealTime = (minOffset: number) => {
-    const time = new Date(cstNow.getTime());
-    time.setMinutes(time.getMinutes() + minOffset);
-    return time.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
+const rainInfo = (() => {
   const rainCycle = cycleNum % 3 === 2;
 
-  let rainInfo = '';
+const minutesToRealTime = (minOffset: number) => {
+  const now = new Date();
+  // Convert to CST date/time first
+  const cstNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+
+  // Add minutes to CST time
+  cstNow.setMinutes(cstNow.getMinutes() + minOffset);
+
+  return cstNow.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
 
   if (!rainCycle || rainStartMin === null) {
     const cyclesUntilRain = (3 - (cycleNum % 3)) % 3 || 3;
     const minutesUntilNextCycle = (150 - cycleMin) + 150 * (cyclesUntilRain - 1);
     const time = minutesToRealTime(minutesUntilNextCycle);
-    rainInfo = `Next Rainstorm: ${time}`;
-  } else if (isRaining) {
+    return `Next Rainstorm: ${time}`;
+  }
+
+  if (isRaining) {
     const minutesLeft = rainStartMin + rainDuration - cycleMin;
     const time = minutesToRealTime(minutesLeft);
-    rainInfo = `Raining now, ends at ${time}`;
-  } else if (cycleMin < rainStartMin) {
+    return `Raining now, ends at ${time}`;
+  }
+
+  if (cycleMin < rainStartMin) {
     const minutesUntil = rainStartMin - cycleMin;
     const time = minutesToRealTime(minutesUntil);
-    rainInfo = `Next rain at ${time}`;
-  } else {
-    // Rain cycle active but past rain end time (rain ended this cycle)
-    const cyclesUntilNextRain = 3;
-    const minutesUntilNextRain = (150 - cycleMin) + 150 * (cyclesUntilNextRain - 1);
-    const nextRainTime = minutesToRealTime(minutesUntilNextRain);
-    rainInfo = `Next rain expected at ${nextRainTime}`;
+    return `Next rain at ${time}`;
   }
+
+const cyclesUntilNextRain = 3;
+const minutesUntilNextRain = (150 - cycleMin) + 150 * (cyclesUntilNextRain - 1);
+const nextRainTime = minutesToRealTime(minutesUntilNextRain);
+return `Next rain expected at ${nextRainTime}`;
+
+})();
 
   return (
     <div className="max-w-sm mx-auto p-4 bg-white shadow-lg rounded-lg text-black mb-4">

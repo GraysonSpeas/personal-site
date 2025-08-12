@@ -355,7 +355,6 @@ if (!res.ok) {
         (Spacebar)
       </div>
     </button>
-
     <div
       style={{
         position: 'relative',
@@ -419,7 +418,6 @@ if (!res.ok) {
       : '🐟 Fish is biting! Press SPACEBAR quickly!'}
   </p>
 </>
-
         </div>
       )}
 
@@ -446,46 +444,46 @@ if (!res.ok) {
     >
       🎉 You caught a {caughtFish.species} ({caughtFish.rarity})!
     </p>
-    <button
-      onClick={() => setPhase('idle')}
-      className="mx-auto block"
-      style={{
-        display: 'inline-flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '8px 16px',
-        fontSize: 14,
-        fontWeight: 'bold',
-        background: 'linear-gradient(45deg, #16a34a, #15803d)', // green gradient
-        color: 'white',
-        border: 'none',
-        borderRadius: 10,
-        boxShadow: '0 3px 8px rgba(22, 163, 74, 0.6)',
-        cursor: 'pointer',
-        userSelect: 'none',
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-        width: 110,
-      }}
-      onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.95)')}
-      onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-    >
-      <div>Catch Again</div>
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 'normal',
-          marginTop: 4,
-          background: 'rgba(255 255 255 / 0.3)',
-          padding: '1px 4px',
-          borderRadius: 6,
-          userSelect: 'none',
-          width: 'fit-content',
-        }}
-      >
-        (Spacebar)
-      </div>
-    </button>
+<button
+  onClick={() => setPhase('idle')}
+  className="mx-auto block"
+  style={{
+    display: 'inline-flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '8px 16px',
+    fontSize: 14,
+    fontWeight: 'bold',
+    background: 'linear-gradient(45deg, #16a34a, #15803d)',
+    color: 'white',
+    border: 'none',
+    borderRadius: 10,
+    boxShadow: '0 3px 8px rgba(22, 163, 74, 0.6)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+    width: 110,
+  }}
+  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.95)')}
+  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+>
+  <div style={{ fontSize: 18, fontWeight: 'bold' }}>Catch Again</div>
+  <div
+    style={{
+      fontSize: 14,
+      fontWeight: 'normal',
+      marginTop: 4,
+      background: 'rgba(255 255 255 / 0.3)',
+      padding: '1px 4px',
+      borderRadius: 6,
+      userSelect: 'none',
+      width: 'fit-content',
+    }}
+  >
+    (Spacebar)
+  </div>
+</button>
   </div>
 )}
 
@@ -503,46 +501,46 @@ if (!res.ok) {
     >
       😢 The fish got away.
     </p>
-    <button
-      onClick={() => setPhase('idle')}
-      className="mx-auto block"
-      style={{
-        display: 'inline-flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '8px 16px',
-        fontSize: 14,
-        fontWeight: 'bold',
-        background: 'linear-gradient(45deg, #f59e0b, #d97706)',
-        color: 'white',
-        border: 'none',
-        borderRadius: 10,
-        boxShadow: '0 3px 8px rgba(245, 158, 11, 0.6)',
-        cursor: 'pointer',
-        userSelect: 'none',
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-        width: 140,
-      }}
-      onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.95)')}
-      onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-    >
-      <div>Try Again</div>
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 'normal',
-          marginTop: 4,
-          background: 'rgba(255 255 255 / 0.3)',
-          padding: '1px 4px',
-          borderRadius: 6,
-          userSelect: 'none',
-          width: 'fit-content',
-        }}
-      >
-        (Spacebar)
-      </div>
-    </button>
+<button
+  onClick={() => setPhase('idle')}
+  className="mx-auto block"
+  style={{
+    display: 'inline-flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '8px 16px',
+    fontSize: 14, // keep for whole button container
+    fontWeight: 'bold',
+    background: 'linear-gradient(45deg, #f59e0b, #d97706)',
+    color: 'white',
+    border: 'none',
+    borderRadius: 10,
+    boxShadow: '0 3px 8px rgba(245, 158, 11, 0.6)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+    width: 140,
+  }}
+  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.95)')}
+  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+>
+  <div style={{ fontSize: 18, fontWeight: 'bold' }}>Try Again</div>
+  <div
+    style={{
+      fontSize: 14,
+      fontWeight: 'normal',
+      marginTop: 4,
+      background: 'rgba(255 255 255 / 0.3)',
+      padding: '1px 4px',
+      borderRadius: 6,
+      userSelect: 'none',
+      width: 'fit-content',
+    }}
+  >
+    (Spacebar)
+  </div>
+</button>
   </div>
 )}
       {error && <p className="text-red-600">Error: {error}</p>}
