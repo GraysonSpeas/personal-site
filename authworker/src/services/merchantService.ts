@@ -1,21 +1,20 @@
-// MerchantService.ts
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { getCatchOfTheDay } from './timeContentService';
 
-const BROKEN_BAIT_NAME = 'Broken Bait';
-const BROKEN_BAIT_BUY_PRICE = 100;
+async function getUserIdFromSession(c: Context<{ Bindings: any }>) {
+  const session = getCookie(c, 'session');
+  if (!session) return null;
+  try {
+    return atob(session);
+  } catch {
+    return null;
+  }
+}
 
 export async function getMerchantInventory(c: Context<{ Bindings: any }>) {
-  const session = getCookie(c, 'session');
-  if (!session) return c.json({ error: 'Unauthorized' }, 401);
-
-  let email: string;
-  try {
-    email = atob(session);
-  } catch {
-    return c.json({ error: 'Invalid session' }, 401);
-  }
+  const email = await getUserIdFromSession(c);
+  if (!email) return c.json({ error: 'Unauthorized' }, 401);
 
   const db = c.env.DB as D1Database;
   const user = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<{ id: number }>();
@@ -36,12 +35,12 @@ export async function getMerchantInventory(c: Context<{ Bindings: any }>) {
      WHERE bait.user_id = ? AND bait.quantity > 0`
   ).bind(userId).all();
 
-const resourcesRes = await db.prepare(
-  `SELECT resources.id, resources.name, resources.quantity, resourceTypes.sell_price, resourceTypes.rarity
-   FROM resources
-   JOIN resourceTypes ON resources.name = resourceTypes.name
-   WHERE resources.user_id = ? AND resources.quantity > 0`
-).bind(userId).all();
+  const resourcesRes = await db.prepare(
+    `SELECT resources.id, resources.name, resources.quantity, resourceTypes.sell_price, resourceTypes.rarity
+     FROM resources
+     JOIN resourceTypes ON resources.name = resourceTypes.name
+     WHERE resources.user_id = ? AND resources.quantity > 0`
+  ).bind(userId).all();
 
   const goldRes = await db.prepare('SELECT gold FROM currencies WHERE user_id = ?').bind(userId).first<{ gold: number }>();
   const gold = goldRes?.gold ?? 0;
@@ -51,13 +50,13 @@ const resourcesRes = await db.prepare(
 
   const speciesList = cotd.fishes.map(f => f.species);
   let salesRows: { species: string; sell_limit: number; sell_amount: number }[] = [];
-if (speciesList.length) {
-  const placeholders = speciesList.map(() => '?').join(',');
-  const salesRes = await db.prepare(
-    `SELECT species, sell_limit, sell_amount FROM user_fish_sales WHERE user_id = ? AND species IN (${placeholders})`
-  ).bind(userId, ...speciesList).all<{ species: string; sell_limit: number; sell_amount: number }>();
-  salesRows = salesRes.results || [];
-}
+  if (speciesList.length) {
+    const placeholders = speciesList.map(() => '?').join(',');
+    const salesRes = await db.prepare(
+      `SELECT species, sell_limit, sell_amount FROM user_fish_sales WHERE user_id = ? AND species IN (${placeholders})`
+    ).bind(userId, ...speciesList).all<{ species: string; sell_limit: number; sell_amount: number }>();
+    salesRows = salesRes.results || [];
+  }
 
   const salesMap = new Map(salesRows.map(row => [row.species, row]));
 
@@ -100,15 +99,8 @@ async function syncEquippedBait(db: D1Database, userId: number, baitIdSold: numb
 }
 
 export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
-  const session = getCookie(c, 'session');
-  if (!session) return c.json({ error: 'Unauthorized' }, 401);
-
-  let email: string;
-  try {
-    email = atob(session);
-  } catch {
-    return c.json({ error: 'Invalid session' }, 401);
-  }
+  const email = await getUserIdFromSession(c);
+  if (!email) return c.json({ error: 'Unauthorized' }, 401);
 
   const db = c.env.DB as D1Database;
   const user = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<{ id: number }>();
@@ -127,11 +119,11 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
   try {
     if (itemType === 'resource') {
       const resource = await db.prepare(
-  `SELECT resources.quantity, resourceTypes.sell_price
-   FROM resources
-   JOIN resourceTypes ON resources.name = resourceTypes.name
-   WHERE resources.id = ? AND resources.user_id = ?`
-).bind(itemId, userId).first<{ quantity: number; sell_price: number }>();
+        `SELECT resources.quantity, resourceTypes.sell_price
+         FROM resources
+         JOIN resourceTypes ON resources.name = resourceTypes.name
+         WHERE resources.id = ? AND resources.user_id = ?`
+      ).bind(itemId, userId).first<{ quantity: number; sell_price: number }>();
 
       if (!resource) return c.json({ error: 'Resource not found' }, 404);
       if (resource.quantity < quantity) return c.json({ error: 'Not enough resource quantity' }, 400);
@@ -241,54 +233,105 @@ export async function sellMerchantItem(c: Context<{ Bindings: any }>) {
   }
 }
 
-export async function buyBrokenBait(c: Context<{ Bindings: any }>) {
-  const session = getCookie(c, 'session');
-  if (!session) return c.json({ error: 'Unauthorized' }, 401);
+// Generic buyItem supporting rods, hooks, bait, resources, consumables (if you add that table)
+// Now supports buying multiple items at once
+export async function buyItem(c: Context<{ Bindings: any }>) {
+  type ItemType = 'rod' | 'hook' | 'bait' | 'resource' | 'consumable';
 
-  let email: string;
-  try {
-    email = atob(session);
-  } catch {
-    return c.json({ error: 'Invalid session' }, 401);
-  }
+  const email = await getUserIdFromSession(c);
+  if (!email) return c.json({ error: 'Unauthorized' }, 401);
 
   const db = c.env.DB as D1Database;
   const user = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<{ id: number }>();
   if (!user) return c.json({ error: 'User not found' }, 404);
   const userId = user.id;
 
-  const { quantity } = await c.req.json();
-  if (typeof quantity !== 'number' || quantity <= 0) {
-    return c.json({ error: 'Invalid quantity' }, 400);
+  const { items } = await c.req.json() as {
+    items: { itemType: string; typeId: number; quantity: number }[];
+  };
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return c.json({ error: 'No items to buy' }, 400);
   }
 
-  const goldRes = await db.prepare('SELECT gold FROM currencies WHERE user_id = ?').bind(userId).first<{ gold: number }>();
-  const gold = goldRes?.gold ?? 0;
-  const totalCost = BROKEN_BAIT_BUY_PRICE * quantity;
-  if (gold < totalCost) {
-    return c.json({ error: 'Not enough gold' }, 400);
+  const typeTableMap: Record<ItemType, string> = {
+    rod: 'rodTypes',
+    hook: 'hookTypes',
+    bait: 'baitTypes',
+    resource: 'resourceTypes',
+    consumable: 'consumableTypes',
+  };
+  const userTableMap: Record<ItemType, string> = {
+    rod: 'gear',
+    hook: 'gear',
+    bait: 'bait',
+    resource: 'resources',
+    consumable: 'consumables',
+  };
+
+  try {
+    const goldRes = await db.prepare('SELECT gold FROM currencies WHERE user_id = ?').bind(userId).first<{ gold: number }>();
+    const gold = goldRes?.gold ?? 0;
+
+    let totalCost = 0;
+    for (const { itemType, typeId, quantity } of items) {
+      if (!['rod', 'hook', 'bait', 'resource', 'consumable'].includes(itemType)) {
+        return c.json({ error: `Invalid itemType: ${itemType}` }, 400);
+      }
+      if (typeof quantity !== 'number' || quantity <= 0) {
+        return c.json({ error: 'Invalid quantity' }, 400);
+      }
+
+      const key = itemType as ItemType;
+
+      const typeTable = typeTableMap[key];
+      const userTable = userTableMap[key];
+
+      if (!typeTable || !userTable) {
+        return c.json({ error: 'Invalid itemType tables' }, 400);
+      }
+
+      const itemData = await db.prepare(`SELECT sell_price FROM ${typeTable} WHERE id = ?`).bind(typeId).first<{ sell_price: number }>();
+      if (!itemData) return c.json({ error: 'Item type not found' }, 404);
+
+      const pricePerItem = itemData.sell_price ?? 0;
+      if (pricePerItem <= 0) return c.json({ error: 'Invalid item price' }, 400);
+
+      totalCost += pricePerItem * quantity;
+    }
+
+    if (gold < totalCost) {
+      return c.json({ error: 'Not enough gold' }, 400);
+    }
+
+    await db.prepare('UPDATE currencies SET gold = gold - ? WHERE user_id = ?').bind(totalCost, userId).run();
+
+    for (const { itemType, typeId, quantity } of items) {
+      const key = itemType as ItemType;
+
+      const typeTable = typeTableMap[key];
+      const userTable = userTableMap[key];
+
+      const itemData = await db.prepare(`SELECT sell_price FROM ${typeTable} WHERE id = ?`).bind(typeId).first<{ sell_price: number }>();
+      if (!itemData) continue;
+
+      const pricePerItem = itemData.sell_price ?? 0;
+
+      const existing = await db.prepare(`SELECT id, quantity FROM ${userTable} WHERE user_id = ? AND type_id = ?`)
+        .bind(userId, typeId).first<{ id: number; quantity: number }>();
+
+      if (existing) {
+        await db.prepare(`UPDATE ${userTable} SET quantity = quantity + ? WHERE id = ?`)
+          .bind(quantity, existing.id).run();
+      } else {
+        await db.prepare(`INSERT INTO ${userTable} (user_id, type_id, quantity, sell_price) VALUES (?, ?, ?, ?)`)
+          .bind(userId, typeId, quantity, pricePerItem).run();
+      }
+    }
+
+    return c.json({ success: true, goldSpent: totalCost });
+  } catch (error) {
+    console.error('buyItem error:', error);
+    return c.json({ error: 'Database error', details: (error as Error).message }, 500);
   }
-
-  const baitType = await db.prepare(
-    'SELECT id, sell_price FROM baitTypes WHERE name = ?'
-  ).bind(BROKEN_BAIT_NAME).first<{ id: number; sell_price: number }>();
-  if (!baitType) return c.json({ error: 'Broken bait type not found' }, 500);
-
-  const existingBait = await db.prepare(
-    'SELECT id, quantity FROM bait WHERE user_id = ? AND type_id = ?'
-  ).bind(userId, baitType.id).first<{ id: number; quantity: number }>();
-
-  if (existingBait) {
-    await db.prepare('UPDATE bait SET quantity = quantity + ? WHERE id = ?')
-      .bind(quantity, existingBait.id).run();
-  } else {
-    await db.prepare(
-      'INSERT INTO bait (user_id, type_id, quantity, sell_price) VALUES (?, ?, ?, ?)'
-    ).bind(userId, baitType.id, quantity, baitType.sell_price).run();
-  }
-
-  await db.prepare('UPDATE currencies SET gold = gold - ? WHERE user_id = ?')
-    .bind(totalCost, userId).run();
-
-  return c.json({ success: true, goldSpent: totalCost });
 }

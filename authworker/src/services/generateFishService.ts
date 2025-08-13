@@ -86,13 +86,20 @@ if (gearIdsToFetch.length > 0) {
   ).bind(...gearIdsToFetch).all();
 
   for (const gear of gearRows.results || gearRows) {
-    let stats = { focus: 0, lineTension: 0, luck: 0 };
-    try {
-      stats = gear.stats ? JSON.parse(gear.stats) : stats;
-    } catch {}
-    if (gear.id === rodId) rodStats = stats;
-    else if (gear.id === hookId) hookStats = stats;
-  }
+  let stats = { focus: 0, lineTension: 0, luck: 0, cold_resistant: false, heat_resistant: false };
+  try {
+    if (gear.stats) {
+      const parsed = JSON.parse(gear.stats);
+      stats.focus = parsed.focus || 0;
+      stats.lineTension = parsed.lineTension || 0;
+      stats.luck = parsed.luck || 0;
+      stats.cold_resistant = parsed.cold_resistant || false;
+      stats.heat_resistant = parsed.heat_resistant || false;
+    }
+  } catch {}
+  if (gear.id === rodId) rodStats = stats;
+  else if (gear.id === hookId) hookStats = stats;
+}
 }
 
 if (baitId) {
@@ -232,9 +239,19 @@ export async function generateFish(
   }
 ) {
   const gearStats = await getPlayerGearStats(c);
-  const combinedLuck = (gearStats.luck || 0) + (options.luck || 0);
-  const combinedFocus = (gearStats.focus || 0) + (options.focus || 0);
-  const combinedLineTension = (gearStats.lineTension || 0) + (options.lineTension || 0);
+  
+const inArctic = zoneName.toLowerCase() === 'arctic';
+const inLava = zoneName.toLowerCase() === 'lava';
+
+const hasColdResist = (gearStats as any).cold_resistant === true;
+const hasHeatResist = (gearStats as any).heat_resistant === true;
+
+const statMultiplier =
+  (inArctic && !hasColdResist) || (inLava && !hasHeatResist) ? 0.1 : 1;
+
+const combinedLuck = ((gearStats.luck || 0) + (options.luck || 0)) * statMultiplier;
+const combinedFocus = ((gearStats.focus || 0) + (options.focus || 0)) * statMultiplier;
+const combinedLineTension = ((gearStats.lineTension || 0) + (options.lineTension || 0)) * statMultiplier;
 
   const worldState = getWorldState();
   const weatherCondition = worldState.isRaining ? 'rain' : null;

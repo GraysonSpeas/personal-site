@@ -1,6 +1,6 @@
 // src/routes/merchantRouter.ts
 import { Hono } from 'hono';
-import { getMerchantInventory, sellMerchantItem, buyBrokenBait } from '../services/merchantService';
+import { getMerchantInventory, sellMerchantItem, buyItem } from '../services/merchantService';
 
 interface Bindings {
   DB: D1Database;
@@ -17,7 +17,7 @@ merchantRouter.post('/sell', async (c) => {
 });
 
 merchantRouter.post('/buy', async (c) => {
-  return buyBrokenBait(c);
+  return buyItem(c);
 });
 
 export default merchantRouter;
