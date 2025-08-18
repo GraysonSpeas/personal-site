@@ -99,12 +99,22 @@ export async function craftItem(c: Context<{ Bindings: any }>) {
   }
 
   // Add crafted item
-  if (recipe.outputType === 'rod' || recipe.outputType === 'hook') {
+if (recipe.outputType === 'rod' || recipe.outputType === 'hook') {
+  // Prevent crafting if already owned
+  const owned = await db
+    .prepare('SELECT id FROM gear WHERE user_id = ? AND gear_type = ? AND type_id = ?')
+    .bind(userId, recipe.outputType, recipe.outputTypeId)
+    .first<{ id: number }>();
+
+  if (owned) {
+    return c.json({ error: `You already own this ${recipe.outputType}` }, 400);
+  }
+
   // Fetch stats from rodTypes table
   const rodStats = await db
-  .prepare('SELECT base_stats FROM rodTypes WHERE id = ?')
-  .bind(recipe.outputTypeId)
-  .first<{ base_stats: string }>();
+    .prepare('SELECT base_stats FROM rodTypes WHERE id = ?')
+    .bind(recipe.outputTypeId)
+    .first<{ base_stats: string }>();
 
   if (rodStats && rodStats.base_stats) {
     await db
