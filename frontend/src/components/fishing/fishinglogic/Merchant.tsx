@@ -45,12 +45,12 @@ type MerchantProps = {
 
 // List of buyable items (hardcoded)
 const BUYABLE_ITEMS = [
-  { id: 'broken-bait', name: 'Broken Bait', price: 1 },
-  { id: 'heat-resistant-rod', name: 'Heat Resistant Rod', price: 1 },
-  { id: 'heat-resistant-hook', name: 'Heat Resistant Hook', price: 1 },
-  { id: 'heat-resistant-bait', name: 'Heat Resistant Bait', price: 1 },
-  { id: 'blue-bull', name: 'Blue Bull Consumable', price: 1 },
-  { id: 'ocean-common-resource', name: 'Ocean Common Resource', price: 1 },
+  { id: 'broken-bait', name: 'Broken Bait', price: 50 },
+  { id: 'heat-resistant-rod', name: 'Heat Resistant Rod', price: 50 },
+  { id: 'heat-resistant-hook', name: 'Heat Resistant Hook', price: 50 },
+  { id: 'heat-resistant-bait', name: 'Heat Resistant Bait', price: 50 },
+  { id: 'blue-bull', name: 'Blue Bull Consumable', price: 150 },
+  { id: 'merchant-resource', name: 'Merchant Resource', price: 50 },
 ];
 
 export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProps) {
@@ -114,13 +114,13 @@ export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProp
 
   // BUY helpers
   function adjustBuyQty(key: string, delta: number) {
-    setBuySelections((prev) => {
-      const cur = prev[key] ?? 0;
-      let next = cur + delta;
-      if (next < 1) next = 1;
-      return { ...prev, [key]: next };
-    });
-  }
+  setBuySelections((prev) => {
+    const cur = prev[key] ?? 0;
+    let next = cur + delta;
+    if (next < 0) next = 0; // allow 0
+    return { ...prev, [key]: next };
+  });
+}
 
   // Calculate total buy cost
   function getBuyTotal() {
@@ -149,7 +149,7 @@ const ITEM_MAPPING: Record<string, { itemType: string; typeId: number }> = {
   'heat-resistant-hook': { itemType: 'hook', typeId: 4 },
   'heat-resistant-bait': { itemType: 'bait', typeId: 4 },
   'blue-bull': { itemType: 'consumable', typeId: 1 },
-  'ocean-common-resource': { itemType: 'resource', typeId: 6 },
+  'merchant-resource': { itemType: 'resource', typeId: 38 },
 };
 
 const itemsToBuy = Object.entries(buySelections)

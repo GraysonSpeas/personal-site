@@ -8,8 +8,8 @@ import {
   rodTypes,
   hookTypes,
   baitTypes,
-  consumableTypes,      // new import
-  craftingRecipes,      // new import
+  consumableTypes,
+  craftingRecipes,
   quests,
 } from './staticData';
 import type { D1Database } from '@cloudflare/workers-types';
@@ -52,8 +52,8 @@ for (const resource of resourceTypes) {
   const resourceResult = await db
     .prepare(`
       INSERT OR IGNORE INTO resourceTypes
-        (name, base_weight, base_length, stamina, tugStrength, changeRate, changeStrength, sell_price, rarity, barType, time_of_day, weather)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, base_weight, base_length, stamina, tugStrength, changeRate, changeStrength, sell_price, buy_price, rarity, barType, time_of_day, weather)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .bind(
       resource.species,
@@ -64,6 +64,7 @@ for (const resource of resourceTypes) {
       resource.direction_change_rate,
       resource.change_strength,
       resource.sell_price,
+      resource.buy_price ?? 0,  // optional, defaults to 0
       resource.rarity,
       resource.barType,
       resource.time_of_day ?? null,
@@ -133,54 +134,55 @@ console.log('Fish types seeded successfully.');
     // Seed rod types
     for (const rod of rodTypes) {
       await db
-        .prepare(`
-          INSERT OR IGNORE INTO rodTypes (name, base_stats)
-          VALUES (?, ?)
-        `)
-        .bind(rod.name, JSON.stringify(rod.stats))
-        .run();
+  .prepare(`
+    INSERT OR IGNORE INTO rodTypes (name, base_stats, buy_price)
+    VALUES (?, ?, ?)
+  `)
+  .bind(rod.name, JSON.stringify(rod.stats), rod.buy_price ?? 0)
+  .run();
     }
     console.log('Rod types seeded successfully.');
 
     // Seed hook types
     for (const hook of hookTypes) {
       await db
-        .prepare(`
-          INSERT OR IGNORE INTO hookTypes (name, base_stats)
-          VALUES (?, ?)
-        `)
-        .bind(hook.name, JSON.stringify(hook.stats))
-        .run();
+  .prepare(`
+    INSERT OR IGNORE INTO hookTypes (name, base_stats, buy_price)
+    VALUES (?, ?, ?)
+  `)
+  .bind(hook.name, JSON.stringify(hook.stats), hook.buy_price ?? 0)
+  .run();
     }
     console.log('Hook types seeded successfully.');
 
     // Seed bait types
     for (const bait of baitTypes) {
-      await db
-        .prepare(`
-          INSERT OR IGNORE INTO baitTypes (name, base_stats, sell_price)
-          VALUES (?, ?, ?)
-        `)
-        .bind(bait.name, JSON.stringify(bait.stats), bait.sell_price)
-        .run();
+     await db
+  .prepare(`
+    INSERT OR IGNORE INTO baitTypes (name, base_stats, sell_price, buy_price)
+    VALUES (?, ?, ?, ?)
+  `)
+  .bind(bait.name, JSON.stringify(bait.stats), bait.sell_price, bait.buy_price ?? 0)
+  .run();
     }
     console.log('Bait types seeded successfully.');
 
     // Seed consumable types (new)
 for (const consumable of consumableTypes) {
   await db
-    .prepare(`
-      INSERT OR IGNORE INTO consumableTypes (name, description, effect, duration, sell_price)
-      VALUES (?, ?, ?, ?, ?)
-    `)
-    .bind(
-      consumable.name,
-      consumable.description || null,
-      consumable.effect || null,
-      consumable.duration || null,
-      consumable.sell_price
-    )
-    .run();
+  .prepare(`
+    INSERT OR IGNORE INTO consumableTypes (name, description, effect, duration, sell_price, buy_price)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `)
+  .bind(
+    consumable.name,
+    consumable.description || null,
+    consumable.effect || null,
+    consumable.duration || null,
+    consumable.sell_price,
+    consumable.buy_price ?? 0
+  )
+  .run();
 }
 console.log('Consumable types seeded successfully.');
 

@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS resourceTypes (
   rarity TEXT,
   barType TEXT,
   time_of_day TEXT CHECK(time_of_day IN ('day', 'night')) DEFAULT NULL,
-  weather TEXT DEFAULT NULL
+  weather TEXT DEFAULT NULL,
+  buy_price INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS fishTypes (
@@ -82,20 +83,23 @@ CREATE TABLE IF NOT EXISTS fishTypes (
 CREATE TABLE IF NOT EXISTS rodTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
-  base_stats TEXT NOT NULL
+  base_stats TEXT NOT NULL,
+  buy_price INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS hookTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
-  base_stats TEXT NOT NULL
+  base_stats TEXT NOT NULL,
+  buy_price INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS baitTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
   base_stats TEXT NOT NULL,
-  sell_price INTEGER DEFAULT 0
+  sell_price INTEGER DEFAULT 0,
+  buy_price INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS consumableTypes (
@@ -104,7 +108,8 @@ CREATE TABLE IF NOT EXISTS consumableTypes (
   description TEXT,
   effect TEXT,          -- add this
   duration INTEGER,     -- add this if needed
-  sell_price INTEGER DEFAULT 0
+  sell_price INTEGER DEFAULT 0,
+  buy_price INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS craftingRecipes (

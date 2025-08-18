@@ -247,9 +247,8 @@ export async function buyItem(c: Context<{ Bindings: any }>) {
   const userId = user.id;
 
   const { items } = await c.req.json() as {
-    items: { itemType: string; typeId: number; quantity: number }[];
+    items: { itemType: ItemType; typeId: number; quantity: number }[];
   };
-
   if (!items || !Array.isArray(items) || items.length === 0) {
     return c.json({ error: 'No items to buy' }, 400);
   }
@@ -271,61 +270,80 @@ export async function buyItem(c: Context<{ Bindings: any }>) {
 
   try {
     const goldRes = await db.prepare('SELECT gold FROM currencies WHERE user_id = ?').bind(userId).first<{ gold: number }>();
-    const gold = goldRes?.gold ?? 0;
+    let gold = goldRes?.gold ?? 0;
 
     let totalCost = 0;
+
+    // First pass: check constraints and calculate total cost
     for (const { itemType, typeId, quantity } of items) {
       if (!['rod', 'hook', 'bait', 'resource', 'consumable'].includes(itemType)) {
         return c.json({ error: `Invalid itemType: ${itemType}` }, 400);
       }
-      if (typeof quantity !== 'number' || quantity <= 0) {
+      if (typeof quantity !== 'number' || quantity < 0) {
         return c.json({ error: 'Invalid quantity' }, 400);
       }
+      if (quantity === 0) continue; // allow 0 quantity
 
-      const key = itemType as ItemType;
+      const typeTable = typeTableMap[itemType];
+      const userTable = userTableMap[itemType];
 
-      const typeTable = typeTableMap[key];
-      const userTable = userTableMap[key];
-
-      if (!typeTable || !userTable) {
-        return c.json({ error: 'Invalid itemType tables' }, 400);
+      if (itemType === 'rod' || itemType === 'hook') {
+        const owned = await db.prepare('SELECT id FROM gear WHERE user_id = ? AND gear_type = ? AND type_id = ?')
+          .bind(userId, itemType, typeId).first<{ id: number }>();
+        if (owned) return c.json({ error: `Already owns this ${itemType}` }, 400);
       }
 
-      const itemData = await db.prepare(`SELECT sell_price FROM ${typeTable} WHERE id = ?`).bind(typeId).first<{ sell_price: number }>();
+      const itemData = await db.prepare(`SELECT buy_price FROM ${typeTable} WHERE id = ?`).bind(typeId).first<{ buy_price: number }>();
       if (!itemData) return c.json({ error: 'Item type not found' }, 404);
 
-      const pricePerItem = itemData.sell_price ?? 0;
+      const pricePerItem = itemData.buy_price ?? 0;
       if (pricePerItem <= 0) return c.json({ error: 'Invalid item price' }, 400);
 
       totalCost += pricePerItem * quantity;
     }
 
-    if (gold < totalCost) {
-      return c.json({ error: 'Not enough gold' }, 400);
-    }
+    if (gold < totalCost) return c.json({ error: 'Not enough gold' }, 400);
 
+    // Deduct gold
     await db.prepare('UPDATE currencies SET gold = gold - ? WHERE user_id = ?').bind(totalCost, userId).run();
 
+    // Second pass: insert/update items
     for (const { itemType, typeId, quantity } of items) {
-      const key = itemType as ItemType;
+      if (quantity <= 0) continue;
 
-      const typeTable = typeTableMap[key];
-      const userTable = userTableMap[key];
+      const typeTable = typeTableMap[itemType];
+      const userTable = userTableMap[itemType];
 
-      const itemData = await db.prepare(`SELECT sell_price FROM ${typeTable} WHERE id = ?`).bind(typeId).first<{ sell_price: number }>();
+      if (itemType === 'rod' || itemType === 'hook') {
+        await db.prepare('INSERT INTO gear (user_id, gear_type, type_id) VALUES (?, ?, ?)').bind(userId, itemType, typeId).run();
+        continue;
+      }
+
+      if (itemType === 'resource') {
+        const type = await db.prepare('SELECT name, rarity FROM resourceTypes WHERE id = ?').bind(typeId).first<{ name: string; rarity: string }>();
+        if (!type) throw new Error('Invalid resource type');
+
+        const existing = await db.prepare('SELECT id, quantity FROM resources WHERE user_id = ? AND name = ?').bind(userId, type.name).first<{ id: number; quantity: number }>();
+        if (existing) {
+          await db.prepare('UPDATE resources SET quantity = quantity + ? WHERE id = ?').bind(quantity, existing.id).run();
+        } else {
+          await db.prepare(
+            `INSERT INTO resources (user_id, name, rarity, quantity, caught_at) VALUES (?, ?, ?, ?, datetime('now'))`
+          ).bind(userId, type.name, type.rarity, quantity).run();
+        }
+        continue;
+      }
+
+      // Bait or consumable
+      const itemData = await db.prepare(`SELECT buy_price FROM ${typeTable} WHERE id = ?`).bind(typeId).first<{ buy_price: number }>();
       if (!itemData) continue;
+      const pricePerItem = itemData.buy_price ?? 0;
 
-      const pricePerItem = itemData.sell_price ?? 0;
-
-      const existing = await db.prepare(`SELECT id, quantity FROM ${userTable} WHERE user_id = ? AND type_id = ?`)
-        .bind(userId, typeId).first<{ id: number; quantity: number }>();
-
+      const existing = await db.prepare(`SELECT id, quantity FROM ${userTable} WHERE user_id = ? AND type_id = ?`).bind(userId, typeId).first<{ id: number; quantity: number }>();
       if (existing) {
-        await db.prepare(`UPDATE ${userTable} SET quantity = quantity + ? WHERE id = ?`)
-          .bind(quantity, existing.id).run();
+        await db.prepare(`UPDATE ${userTable} SET quantity = quantity + ? WHERE id = ?`).bind(quantity, existing.id).run();
       } else {
-        await db.prepare(`INSERT INTO ${userTable} (user_id, type_id, quantity, sell_price) VALUES (?, ?, ?, ?)`)
-          .bind(userId, typeId, quantity, pricePerItem).run();
+        await db.prepare(`INSERT INTO ${userTable} (user_id, type_id, quantity, sell_price) VALUES (?, ?, ?, ?)`).bind(userId, typeId, quantity, pricePerItem).run();
       }
     }
 

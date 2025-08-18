@@ -10,8 +10,24 @@ export const zoneTypes = [
   { name: 'Lava', xp_multiplier: 1.3 },
   { name: 'Tidal', xp_multiplier: 1.0 }
 ];
+export type ResourceType = {
+  species: string;
+  base_weight: number;
+  base_length: number;
+  stamina: number;
+  tug_strength: number;
+  direction_change_rate: number;
+  change_strength: number;
+  sell_price: number;
+  buy_price?: number; // optional
+  zones: string[];
+  rarity: string;
+  barType: string;
+  time_of_day: 'day' | 'night' | null;
+  weather: string | null;
+};
 
-export const resourceTypes = [
+export const resourceTypes: ResourceType[] = [
   // tidal resource
   { species: 'tidal_common_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, zones: ['Tidal'], rarity: 'common', barType: 'middle', time_of_day: null, weather: null },
   // Jungle zone (day/night/rain)
@@ -62,6 +78,9 @@ export const resourceTypes = [
   { species: 'lava_epic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 250, zones: ['Lava'], rarity: 'epic', barType: 'middle', time_of_day: null, weather: null },
   { species: 'lava_legendary_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 300, zones: ['Lava'], rarity: 'legendary', barType: 'middle', time_of_day: null, weather: null },
   { species: 'lava_mythic_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 350, zones: ['Lava'], rarity: 'mythic', barType: 'middle', time_of_day: null, weather: null },
+
+  // merchant only
+  { species: 'merchant_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, buy_price: 50, zones: ['Lava'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
 ];
 
 export const fishTypes = [
@@ -126,6 +145,7 @@ export const consumableTypes = [
     effect: 'focus +15%, bait +5%',
     duration: 300,
     sell_price: 100,
+    buy_price: 150,
   },
   {
     id: 2,
@@ -134,6 +154,7 @@ export const consumableTypes = [
     effect: 'bait +100%',
     duration: 300,
     sell_price: 150,
+    buy_price: 200,
   },
   {
     id: 3,
@@ -142,6 +163,7 @@ export const consumableTypes = [
     effect: 'luck +3%',
     duration: 300,
     sell_price: 200,
+    buy_price: 250,
   },
 ];
 
@@ -173,24 +195,24 @@ export const craftingRecipes = [
 
 
 export const rodTypes = [
-  { id: 1, name: 'Rusty Rod', stats: { focus: 25, lineTension: 25, luck: 0 } },
-  { id: 2, name: 'Simple Rod', stats: { focus: 5, lineTension: 5, luck: 5 } },
-  { id: 3, name: 'Cold Resistant Rod', stats: { focus: 20, lineTension: 30, luck: 10, cold_resistant: true } },
-  { id: 4, name: 'Heat Resistant Rod', stats: { focus: 15, lineTension: 35, luck: 5, heat_resistant: true } },
+  { id: 1, name: 'Rusty Rod', stats: { focus: 25, lineTension: 25, luck: 0 }, buy_price: 50 },
+  { id: 2, name: 'Simple Rod', stats: { focus: 5, lineTension: 5, luck: 5 }, buy_price: 50 },
+  { id: 3, name: 'Cold Resistant Rod', stats: { focus: 20, lineTension: 30, luck: 10, cold_resistant: true }, buy_price: 50 },
+  { id: 4, name: 'Heat Resistant Rod', stats: { focus: 15, lineTension: 35, luck: 5, heat_resistant: true }, buy_price: 50 },
 ];
 
 export const hookTypes = [
-  { id: 1, name: 'Rusty Hook', stats: { focus: 25, lineTension: 25, luck: 0 } },
-  { id: 2, name: 'Simple Hook', stats: { focus: 5, lineTension: 5, luck: 5 } },
-  { id: 3, name: 'Cold Resistant Hook', stats: { focus: 20, lineTension: 30, luck: 10, cold_resistant: true } },
-  { id: 4, name: 'Heat Resistant Hook', stats: { focus: 15, lineTension: 35, luck: 5, heat_resistant: true } },
+  { id: 1, name: 'Rusty Hook', stats: { focus: 25, lineTension: 25, luck: 0 }, buy_price: 50 },
+  { id: 2, name: 'Simple Hook', stats: { focus: 5, lineTension: 5, luck: 5 }, buy_price: 50 },
+  { id: 3, name: 'Cold Resistant Hook', stats: { focus: 20, lineTension: 30, luck: 10, cold_resistant: true }, buy_price: 50 },
+  { id: 4, name: 'Heat Resistant Hook', stats: { focus: 15, lineTension: 35, luck: 5, heat_resistant: true }, buy_price: 50 },
 ];
 
 export const baitTypes = [
-  { id: 1, name: 'Broken Bait', stats: { focus: 10, lineTension: 10, luck: 0 } , sell_price: 50},
-  { id: 2, name: 'Simple Bait', stats: { focus: 5, lineTension: 5, luck: 5 }, sell_price: 25 },
-  { id: 3, name: 'Cold Resistant Bait', stats: { focus: 15, lineTension: 15, luck: 5, cold_resistant: true }, sell_price: 40 },
-  { id: 4, name: 'Heat Resistant Bait', stats: { focus: 12, lineTension: 18, luck: 3, heat_resistant: true }, sell_price: 35 },
+  { id: 1, name: 'Broken Bait', stats: { focus: 10, lineTension: 10, luck: 0 } , sell_price: 50, buy_price: 50},
+  { id: 2, name: 'Simple Bait', stats: { focus: 5, lineTension: 5, luck: 5 }, sell_price: 25, buy_price: 50 },
+  { id: 3, name: 'Cold Resistant Bait', stats: { focus: 15, lineTension: 15, luck: 5, cold_resistant: true }, sell_price: 40, buy_price: 50 },
+  { id: 4, name: 'Heat Resistant Bait', stats: { focus: 12, lineTension: 18, luck: 3, heat_resistant: true }, sell_price: 35, buy_price: 50 },
 ];
 
 export interface Quest {
