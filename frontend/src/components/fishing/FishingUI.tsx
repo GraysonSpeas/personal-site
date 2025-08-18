@@ -12,7 +12,7 @@ import { QuestUI } from './fishingui/QuestUI';
 import { Crafting } from './fishinglogic/Crafting';
 import { Consumables } from './fishinglogic/Consumables';
 import XPBar from './fishingui/XPBar';
-import { totalXpToLevel } from './fishinglogic/fishingInventoryLogic';
+import Collections from './fishingui/Collections';
 
 export function FishingUI() {
   const { user, loading: authLoading } = useAuth();
@@ -132,53 +132,68 @@ export function FishingUI() {
                 }}
               >
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                  <button
-                    onClick={() => setActiveTab('quest')}
-                    disabled={activeTab === 'quest'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'quest' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'quest' ? '#cce4ff' : 'white', // light blue bg
-                      color: activeTab === 'quest' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Quest
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('merchant')}
-                    disabled={activeTab === 'merchant'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'merchant' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'merchant' ? '#cce4ff' : 'white', // light blue bg
-                      color: activeTab === 'merchant' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Merchant
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('crafting')}
-                    disabled={activeTab === 'crafting'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'crafting' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'crafting' ? '#cce4ff' : 'white', // light blue bg
-                      color: activeTab === 'crafting' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Crafting
-                  </button>
-                </div>
+<div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+  <button
+    onClick={() => setActiveTab('quest')}
+    disabled={activeTab === 'quest'}
+    style={{
+      flex: 1,
+      padding: '8px 12px',
+      cursor: activeTab === 'quest' ? 'default' : 'pointer',
+      backgroundColor: activeTab === 'quest' ? '#cce4ff' : 'white',
+      color: activeTab === 'quest' ? 'black' : '#333',
+      border: '1px solid #ccc',
+      borderRadius: 4,
+    }}
+  >
+    Quest
+  </button>
+  <button
+    onClick={() => setActiveTab('merchant')}
+    disabled={activeTab === 'merchant'}
+    style={{
+      flex: 1,
+      padding: '8px 12px',
+      cursor: activeTab === 'merchant' ? 'default' : 'pointer',
+      backgroundColor: activeTab === 'merchant' ? '#cce4ff' : 'white',
+      color: activeTab === 'merchant' ? 'black' : '#333',
+      border: '1px solid #ccc',
+      borderRadius: 4,
+    }}
+  >
+    Merchant
+  </button>
+  <button
+    onClick={() => setActiveTab('crafting')}
+    disabled={activeTab === 'crafting'}
+    style={{
+      flex: 1,
+      padding: '8px 12px',
+      cursor: activeTab === 'crafting' ? 'default' : 'pointer',
+      backgroundColor: activeTab === 'crafting' ? '#cce4ff' : 'white',
+      color: activeTab === 'crafting' ? 'black' : '#333',
+      border: '1px solid #ccc',
+      borderRadius: 4,
+    }}
+  >
+    Crafting
+  </button>
+  <button
+    onClick={() => setActiveTab('collections')}
+    disabled={activeTab === 'collections'}
+    style={{
+      flex: 1,
+      padding: '8px 12px',
+      cursor: activeTab === 'collections' ? 'default' : 'pointer',
+      backgroundColor: activeTab === 'collections' ? '#cce4ff' : 'white',
+      color: activeTab === 'collections' ? 'black' : '#333',
+      border: '1px solid #ccc',
+      borderRadius: 4,
+    }}
+  >
+    Collections
+  </button>
+</div>
 
                 {/* Active Tab Content */}
                 <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -197,6 +212,7 @@ export function FishingUI() {
                       refreshOther={refreshMerchant}
                     />
                   )}
+                  {activeTab === 'collections' && <Collections />}
                 </div>
               </div>
             )}

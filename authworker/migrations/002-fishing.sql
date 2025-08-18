@@ -3,7 +3,9 @@ DROP TABLE IF EXISTS equipped;
 DROP TABLE IF EXISTS user_quests;
 DROP TABLE IF EXISTS questTemplates;
 DROP TABLE IF EXISTS achievements;
+DROP TABLE IF EXISTS collection_rewards;
 DROP TABLE IF EXISTS biggest_fish;
+DROP TABLE IF EXISTS user_rarity_progress;
 DROP TABLE IF EXISTS fish;
 DROP TABLE IF EXISTS consumables;
 DROP TABLE IF EXISTS activeConsumables;
@@ -280,6 +282,14 @@ CREATE TABLE IF NOT EXISTS biggest_fish (
   UNIQUE(user_id, species)
 );
 
+CREATE TABLE IF NOT EXISTS user_rarity_progress (
+  user_id INTEGER NOT NULL,
+  rarity TEXT NOT NULL,
+  total_caught INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, rarity),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS achievements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -287,8 +297,21 @@ CREATE TABLE IF NOT EXISTS achievements (
   progress INTEGER DEFAULT 0,
   completed INTEGER DEFAULT 0,
   completed_at DATETIME,
+  claimed_stages TEXT DEFAULT '[]', -- stores claimed thresholds as JSON array
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE(user_id, achievement_key)
+);
+
+CREATE TABLE IF NOT EXISTS collections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  collection_key TEXT NOT NULL,
+  progress INTEGER DEFAULT 0,
+  completed INTEGER DEFAULT 0,
+  completed_at DATETIME,
+  claimed INTEGER DEFAULT 0, -- 0 = not claimed, 1 = claimed
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, collection_key)
 );
 
 -- Equipped gear linking user to gear and bait
