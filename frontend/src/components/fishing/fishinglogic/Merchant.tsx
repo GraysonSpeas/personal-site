@@ -51,6 +51,11 @@ const BUYABLE_ITEMS = [
   { id: 'heat-resistant-bait', name: 'Heat Resistant Bait', price: 50 },
   { id: 'blue-bull', name: 'Blue Bull Consumable', price: 150 },
   { id: 'merchant-resource', name: 'Merchant Resource', price: 50 },
+  { id: 'simple-seed', name: 'Simple Seed', price: 100 },
+  { id: 'cold-seed', name: 'Cold Seed', price: 150 },
+  { id: 'heat-seed', name: 'Heat Seed', price: 200 },
+  { id: 'rare-bait-seed', name: 'Rare Bait Seed', price: 500 },
+  { id: 'mystery-seed', name: 'Mystery Seed', price: 750 },
 ];
 
 export function Merchant({ refetch, refetchTrigger, refreshOther }: MerchantProps) {
@@ -150,6 +155,11 @@ const ITEM_MAPPING: Record<string, { itemType: string; typeId: number }> = {
   'heat-resistant-bait': { itemType: 'bait', typeId: 4 },
   'blue-bull': { itemType: 'consumable', typeId: 1 },
   'merchant-resource': { itemType: 'resource', typeId: 38 },
+  'simple-seed': { itemType: 'seed', typeId: 1 },
+  'cold-seed': { itemType: 'seed', typeId: 2 },
+  'heat-seed': { itemType: 'seed', typeId: 3 },
+  'rare-bait-seed': { itemType: 'seed', typeId: 4 },
+  'mystery-seed': { itemType: 'seed', typeId: 5 },
 };
 
 const itemsToBuy = Object.entries(buySelections)

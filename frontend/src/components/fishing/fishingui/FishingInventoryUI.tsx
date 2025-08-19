@@ -45,13 +45,21 @@ type Bait = {
 }
 
 type Consumable = {
-  consumable_id: number;
-  type_id: number;
-  name: string;
-  quantity: number;
-  consumable_type?: string;
-  stats?: Record<string, any>;
-};
+  consumable_id: number
+  type_id: number
+  name: string
+  quantity: number
+  consumable_type?: string
+  stats?: Record<string, any>
+}
+
+type Seed = {
+  seed_type_id: number
+  name: string
+  quantity: number
+  grow_time?: number
+  description?: string
+}
 
 type Props = {
   data: {
@@ -63,6 +71,7 @@ type Props = {
     gear?: Gear[]
     bait?: Bait[]
     consumables?: Consumable[]
+    seeds?: Seed[]
     current_zone_id: number | null
     xp?: number
     level?: number
@@ -93,6 +102,7 @@ export function FishingInventoryUI({ data, loading, error, xpDisplay }: Props) {
     gear,
     bait,
     consumables = [],
+    seeds = [],
     current_zone_id,
     xp,
     level,
@@ -201,6 +211,23 @@ export function FishingInventoryUI({ data, loading, error, xpDisplay }: Props) {
           </ul>
         ) : (
           <p>No resources</p>
+        )}
+      </section>
+
+      <section>
+        <h3>Seeds:</h3>
+        {seeds.length ? (
+          <ul>
+            {seeds.map((s, i) => (
+              <li key={i}>
+                {s.name} — Qty: {s.quantity}
+                {s.grow_time ? ` — Grow Time: ${s.grow_time}s` : ''}
+                {s.description ? ` — ${s.description}` : ''}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No seeds planted or owned</p>
         )}
       </section>
 

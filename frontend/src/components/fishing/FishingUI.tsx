@@ -13,6 +13,7 @@ import { Crafting } from './fishinglogic/Crafting';
 import { Consumables } from './fishinglogic/Consumables';
 import XPBar from './fishingui/XPBar';
 import Collections from './fishingui/Collections';
+import { Planters } from './fishinglogic/Planters'; // new
 
 export function FishingUI() {
   const { user, loading: authLoading } = useAuth();
@@ -20,14 +21,13 @@ export function FishingUI() {
 
   const [merchantRefetchTrigger, setMerchantRefetchTrigger] = useState(0);
   const [craftingRefetchTrigger, setCraftingRefetchTrigger] = useState(0);
+  const [plantersRefetchTrigger, setPlantersRefetchTrigger] = useState(0); // new
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('quest'); // quest | merchant | crafting
+  const [activeTab, setActiveTab] = useState('quest'); // quest | merchant | crafting | collections | planters
 
-  // New state: current zone id & setter
   const [currentZoneId, setCurrentZoneId] = useState<number | null>(data?.current_zone_id ?? null);
 
-  // Sync currentZoneId when backend data changes
   useEffect(() => {
     if (data?.current_zone_id && data.current_zone_id !== currentZoneId) {
       setCurrentZoneId(data.current_zone_id);
@@ -44,15 +44,16 @@ export function FishingUI() {
     setCraftingRefetchTrigger((prev) => prev + 1);
   };
 
-  // Stable callbacks for refreshing both
   const refreshMerchant = useCallback(() => {
     setMerchantRefetchTrigger((prev) => prev + 1);
     setCraftingRefetchTrigger((prev) => prev + 1);
+    setPlantersRefetchTrigger((prev) => prev + 1); // also refresh planters
   }, []);
 
   const refreshCrafting = useCallback(() => {
     setCraftingRefetchTrigger((prev) => prev + 1);
     setMerchantRefetchTrigger((prev) => prev + 1);
+    setPlantersRefetchTrigger((prev) => prev + 1); // also refresh planters
   }, []);
 
   if (authLoading) return <p>Loading user...</p>;
@@ -80,11 +81,11 @@ export function FishingUI() {
             <WeatherUI weather={weather} worldState={worldState} />
             <ZoneSelector
               refetch={refetchInventory}
-              currentZoneId={currentZoneId} // pass current zone
+              currentZoneId={currentZoneId}
             />
           </div>
 
-          {/* Top Center: Hamburger Toggle (full width overlay, single tab) */}
+          {/* Top Center: Hamburger Toggle */}
           <div
             style={{
               position: 'fixed',
@@ -105,7 +106,7 @@ export function FishingUI() {
                 borderRadius: 4,
                 border: '1px solid #ccc',
                 backgroundColor: menuOpen ? '#eee' : 'white',
-                color: 'black', // black font color
+                color: 'black',
                 margin: '0 auto',
                 display: 'block',
                 maxWidth: 200,
@@ -132,68 +133,83 @@ export function FishingUI() {
                 }}
               >
                 {/* Tabs */}
-<div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-  <button
-    onClick={() => setActiveTab('quest')}
-    disabled={activeTab === 'quest'}
-    style={{
-      flex: 1,
-      padding: '8px 12px',
-      cursor: activeTab === 'quest' ? 'default' : 'pointer',
-      backgroundColor: activeTab === 'quest' ? '#cce4ff' : 'white',
-      color: activeTab === 'quest' ? 'black' : '#333',
-      border: '1px solid #ccc',
-      borderRadius: 4,
-    }}
-  >
-    Quest
-  </button>
-  <button
-    onClick={() => setActiveTab('merchant')}
-    disabled={activeTab === 'merchant'}
-    style={{
-      flex: 1,
-      padding: '8px 12px',
-      cursor: activeTab === 'merchant' ? 'default' : 'pointer',
-      backgroundColor: activeTab === 'merchant' ? '#cce4ff' : 'white',
-      color: activeTab === 'merchant' ? 'black' : '#333',
-      border: '1px solid #ccc',
-      borderRadius: 4,
-    }}
-  >
-    Merchant
-  </button>
-  <button
-    onClick={() => setActiveTab('crafting')}
-    disabled={activeTab === 'crafting'}
-    style={{
-      flex: 1,
-      padding: '8px 12px',
-      cursor: activeTab === 'crafting' ? 'default' : 'pointer',
-      backgroundColor: activeTab === 'crafting' ? '#cce4ff' : 'white',
-      color: activeTab === 'crafting' ? 'black' : '#333',
-      border: '1px solid #ccc',
-      borderRadius: 4,
-    }}
-  >
-    Crafting
-  </button>
-  <button
-    onClick={() => setActiveTab('collections')}
-    disabled={activeTab === 'collections'}
-    style={{
-      flex: 1,
-      padding: '8px 12px',
-      cursor: activeTab === 'collections' ? 'default' : 'pointer',
-      backgroundColor: activeTab === 'collections' ? '#cce4ff' : 'white',
-      color: activeTab === 'collections' ? 'black' : '#333',
-      border: '1px solid #ccc',
-      borderRadius: 4,
-    }}
-  >
-    Collections
-  </button>
-</div>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                  <button
+                    onClick={() => setActiveTab('quest')}
+                    disabled={activeTab === 'quest'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'quest' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'quest' ? '#cce4ff' : 'white',
+                      color: activeTab === 'quest' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Quest
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('merchant')}
+                    disabled={activeTab === 'merchant'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'merchant' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'merchant' ? '#cce4ff' : 'white',
+                      color: activeTab === 'merchant' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Merchant
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('crafting')}
+                    disabled={activeTab === 'crafting'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'crafting' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'crafting' ? '#cce4ff' : 'white',
+                      color: activeTab === 'crafting' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Crafting
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('collections')}
+                    disabled={activeTab === 'collections'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'collections' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'collections' ? '#cce4ff' : 'white',
+                      color: activeTab === 'collections' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Collections
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('planters')}
+                    disabled={activeTab === 'planters'}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      cursor: activeTab === 'planters' ? 'default' : 'pointer',
+                      backgroundColor: activeTab === 'planters' ? '#cce4ff' : 'white',
+                      color: activeTab === 'planters' ? 'black' : '#333',
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Planters
+                  </button>
+                </div>
 
                 {/* Active Tab Content */}
                 <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -213,6 +229,9 @@ export function FishingUI() {
                     />
                   )}
                   {activeTab === 'collections' && <Collections />}
+                  {activeTab === 'planters' && (
+                    <Planters refreshTrigger={plantersRefetchTrigger} />
+                  )}
                 </div>
               </div>
             )}
@@ -235,7 +254,11 @@ export function FishingUI() {
               <>
                 <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
                 <div style={{ marginTop: 16 }}>
-                  <GearSelector gear={combinedData.gear ?? []} bait={combinedData.bait ?? []} refetch={refetchInventory} />
+                  <GearSelector
+                    gear={combinedData.gear ?? []}
+                    bait={combinedData.bait ?? []}
+                    refetch={refetchInventory}
+                  />
                 </div>
               </>
             )}
@@ -258,12 +281,13 @@ export function FishingUI() {
               refetchInventory={refetchInventory}
               refetchMerchant={refreshMerchant}
               refetchCrafting={refreshCrafting}
-              currentZoneId={currentZoneId}       // pass current zone
-              setCurrentZoneId={setCurrentZoneId} // pass setter
+              currentZoneId={currentZoneId}
+              setCurrentZoneId={setCurrentZoneId}
             />
             <Consumables refetch={refetchInventory} refreshTrigger={craftingRefetchTrigger} />
           </div>
-  <XPBar/>
+
+          <XPBar />
         </>
       )}
     />

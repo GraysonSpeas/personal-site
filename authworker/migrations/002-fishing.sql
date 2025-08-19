@@ -1,28 +1,31 @@
--- DROP TABLES respecting foreign keys order
+-- =========================
+-- DROP TABLES (reverse dependency order)
+-- =========================
 DROP TABLE IF EXISTS equipped;
 DROP TABLE IF EXISTS user_quests;
 DROP TABLE IF EXISTS questTemplates;
 DROP TABLE IF EXISTS achievements;
-DROP TABLE IF EXISTS collection_rewards;
+DROP TABLE IF EXISTS collections;
 DROP TABLE IF EXISTS biggest_fish;
 DROP TABLE IF EXISTS user_rarity_progress;
 DROP TABLE IF EXISTS fish;
-DROP TABLE IF EXISTS consumables;
 DROP TABLE IF EXISTS activeConsumables;
+DROP TABLE IF EXISTS consumables;
 DROP TABLE IF EXISTS bait;
 DROP TABLE IF EXISTS gear;
-DROP TABLE IF EXISTS fishingSessions;
+DROP TABLE IF EXISTS resources;
+DROP TABLE IF EXISTS seeds;
+DROP TABLE IF EXISTS plantedSeeds;
+DROP TABLE IF EXISTS userPlanterSlots;
 DROP TABLE IF EXISTS permits;
 DROP TABLE IF EXISTS currencies;
-DROP TABLE IF EXISTS resources;
+DROP TABLE IF EXISTS fishingSessions;
 DROP TABLE IF EXISTS user_fish_sales;
+DROP TABLE IF EXISTS users;
 
--- type links
+-- reference/link tables
 DROP TABLE IF EXISTS fishTypeZones;
 DROP TABLE IF EXISTS resourceTypeZones;
-
--- core user table
-DROP TABLE IF EXISTS users;
 
 -- base types
 DROP TABLE IF EXISTS fishTypes;
@@ -32,11 +35,13 @@ DROP TABLE IF EXISTS hookTypes;
 DROP TABLE IF EXISTS baitTypes;
 DROP TABLE IF EXISTS consumableTypes;
 DROP TABLE IF EXISTS craftingRecipes;
+DROP TABLE IF EXISTS seedTypes;
 DROP TABLE IF EXISTS zoneTypes;
 DROP TABLE IF EXISTS weatherTypes;
 
-
--- CREATE base reference tables first
+-- =========================
+-- CREATE BASE REFERENCE TABLES
+-- =========================
 CREATE TABLE IF NOT EXISTS weatherTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   description TEXT UNIQUE NOT NULL
@@ -81,7 +86,6 @@ CREATE TABLE IF NOT EXISTS fishTypes (
   weather TEXT DEFAULT NULL
 );
 
--- New static gear type tables
 CREATE TABLE IF NOT EXISTS rodTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
@@ -108,8 +112,8 @@ CREATE TABLE IF NOT EXISTS consumableTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
   description TEXT,
-  effect TEXT,          -- add this
-  duration INTEGER,     -- add this if needed
+  effect TEXT,
+  duration INTEGER,
   sell_price INTEGER DEFAULT 0,
   buy_price INTEGER DEFAULT 0
 );
@@ -118,30 +122,28 @@ CREATE TABLE IF NOT EXISTS craftingRecipes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
   description TEXT,
-  requiredMaterials TEXT NOT NULL, -- JSON: [{type, species/name, quantity}]
+  requiredMaterials TEXT NOT NULL,
   outputType TEXT NOT NULL CHECK(outputType IN ('rod', 'hook', 'bait', 'consumable')),
-  outputTypeId INTEGER -- references rodTypes/hookTypes/baitTypes/consumableTypes (nullable)
+  outputTypeId INTEGER
 );
 
--- Linking tables for resourceTypes and zoneTypes
-CREATE TABLE IF NOT EXISTS resourceTypeZones (
-  resource_type_id INTEGER NOT NULL,
-  zone_id INTEGER NOT NULL,
-  FOREIGN KEY (resource_type_id) REFERENCES resourceTypes(id) ON DELETE CASCADE,
-  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
-  PRIMARY KEY (resource_type_id, zone_id)
+CREATE TABLE IF NOT EXISTS seedTypes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  grow_time INTEGER NOT NULL,
+  output_bait_type_id INTEGER,
+  output_resource_type_id INTEGER,
+  output_quantity INTEGER NOT NULL DEFAULT 1,
+  description TEXT,
+  buy_price INTEGER DEFAULT 0,
+  sell_price INTEGER DEFAULT 0,
+  FOREIGN KEY(output_bait_type_id) REFERENCES baitTypes(id),
+  FOREIGN KEY(output_resource_type_id) REFERENCES resourceTypes(id)
 );
 
--- Linking table for fishTypes and zoneTypes
-CREATE TABLE IF NOT EXISTS fishTypeZones (
-  fish_type_id INTEGER NOT NULL,
-  zone_id INTEGER NOT NULL,
-  FOREIGN KEY (fish_type_id) REFERENCES fishTypes(id) ON DELETE CASCADE,
-  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
-  PRIMARY KEY (fish_type_id, zone_id)
-);
-
--- Users table
+-- =========================
+-- USERS TABLE
+-- =========================
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
@@ -161,6 +163,55 @@ CREATE TABLE IF NOT EXISTS users (
   FOREIGN KEY (current_zone_id) REFERENCES zoneTypes(id)
 );
 
+-- =========================
+-- LINK TABLES FOR ZONES
+-- =========================
+CREATE TABLE IF NOT EXISTS resourceTypeZones (
+  resource_type_id INTEGER NOT NULL,
+  zone_id INTEGER NOT NULL,
+  FOREIGN KEY (resource_type_id) REFERENCES resourceTypes(id) ON DELETE CASCADE,
+  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
+  PRIMARY KEY (resource_type_id, zone_id)
+);
+
+CREATE TABLE IF NOT EXISTS fishTypeZones (
+  fish_type_id INTEGER NOT NULL,
+  zone_id INTEGER NOT NULL,
+  FOREIGN KEY (fish_type_id) REFERENCES fishTypes(id) ON DELETE CASCADE,
+  FOREIGN KEY (zone_id) REFERENCES zoneTypes(id) ON DELETE CASCADE,
+  PRIMARY KEY (fish_type_id, zone_id)
+);
+
+-- =========================
+-- PLANTERS
+-- =========================
+CREATE TABLE IF NOT EXISTS userPlanterSlots (
+  user_id INTEGER NOT NULL,
+  slot_index INTEGER NOT NULL,
+  purchased_at DATETIME,
+  level INTEGER NOT NULL DEFAULT 1,            -- current upgrade level
+  upgrade_cost INTEGER DEFAULT 0,             -- cost for next upgrade
+  max_capacity INTEGER DEFAULT 1,             -- max seeds per slot
+  PRIMARY KEY(user_id, slot_index),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS plantedSeeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  seed_type_id INTEGER NOT NULL,
+  slot_index INTEGER NOT NULL,                 
+  planted_at DATETIME NOT NULL DEFAULT (datetime('now')),
+  ready_at DATETIME NOT NULL,
+  harvested INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(seed_type_id) REFERENCES seedTypes(id),
+  FOREIGN KEY(user_id, slot_index) REFERENCES userPlanterSlots(user_id, slot_index) ON DELETE CASCADE
+);
+
+-- =========================
+-- USER-DEPENDENT TABLES
+-- =========================
 CREATE TABLE IF NOT EXISTS user_fish_sales (
   user_id INTEGER NOT NULL,
   species TEXT NOT NULL,
@@ -171,7 +222,6 @@ CREATE TABLE IF NOT EXISTS user_fish_sales (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Persistent fishing sessions (replaces in-memory sessions)
 CREATE TABLE IF NOT EXISTS fishingSessions (
   email TEXT PRIMARY KEY,
   fish_json TEXT NOT NULL,
@@ -179,7 +229,6 @@ CREATE TABLE IF NOT EXISTS fishingSessions (
   FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE
 );
 
--- Dependent tables referencing users
 CREATE TABLE IF NOT EXISTS currencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL UNIQUE,
@@ -210,17 +259,15 @@ CREATE TABLE IF NOT EXISTS resources (
   UNIQUE(user_id, name)
 );
 
--- User gear table linking to static rod and hook types
 CREATE TABLE IF NOT EXISTS gear (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   gear_type TEXT CHECK(gear_type IN ('rod', 'hook')) NOT NULL,
   type_id INTEGER NOT NULL,
-  stats TEXT, -- optional overrides
+  stats TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- User bait table linking to static bait types
 CREATE TABLE IF NOT EXISTS bait (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -236,20 +283,30 @@ CREATE TABLE IF NOT EXISTS bait (
 CREATE TABLE IF NOT EXISTS consumables (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
-  type_id INTEGER NOT NULL,      -- FK to consumableTypes.id
+  type_id INTEGER NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 0,
-  stats TEXT,                    -- optional overrides per item instance
+  stats TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (type_id) REFERENCES consumableTypes(id),
   UNIQUE(user_id, type_id)
 );
+
+CREATE TABLE IF NOT EXISTS seeds (
+  user_id INTEGER NOT NULL,
+  seed_type_id INTEGER NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(user_id, seed_type_id),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(seed_type_id) REFERENCES seedTypes(id)
+);
+
 
 CREATE TABLE IF NOT EXISTS activeConsumables (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   type_id INTEGER NOT NULL,
   started_at DATETIME NOT NULL DEFAULT (datetime('now')),
-  duration INTEGER NOT NULL, -- seconds
+  duration INTEGER NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (type_id) REFERENCES consumableTypes(id),
   UNIQUE(user_id, type_id)
@@ -297,7 +354,7 @@ CREATE TABLE IF NOT EXISTS achievements (
   progress INTEGER DEFAULT 0,
   completed INTEGER DEFAULT 0,
   completed_at DATETIME,
-  claimed_stages TEXT DEFAULT '[]', -- stores claimed thresholds as JSON array
+  claimed_stages TEXT DEFAULT '[]',
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE(user_id, achievement_key)
 );
@@ -309,12 +366,11 @@ CREATE TABLE IF NOT EXISTS collections (
   progress INTEGER DEFAULT 0,
   completed INTEGER DEFAULT 0,
   completed_at DATETIME,
-  claimed INTEGER DEFAULT 0, -- 0 = not claimed, 1 = claimed
+  claimed INTEGER DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE(user_id, collection_key)
 );
 
--- Equipped gear linking user to gear and bait
 CREATE TABLE IF NOT EXISTS equipped (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL UNIQUE,
@@ -327,29 +383,30 @@ CREATE TABLE IF NOT EXISTS equipped (
   FOREIGN KEY (equipped_bait_id) REFERENCES bait(id)
 );
 
--- New quests template table supporting conditions and constraints
+-- =========================
+-- QUESTS
+-- =========================
 CREATE TABLE IF NOT EXISTS questTemplates (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   key TEXT UNIQUE NOT NULL,
   description TEXT NOT NULL,
   type TEXT CHECK(type IN ('daily', 'weekly', 'monthly')) NOT NULL,
   target INTEGER NOT NULL,
-  specific_species TEXT,           -- e.g. 'Trout', or NULL
-  rarity_exact TEXT,               -- e.g. 'rare', or NULL
-  rarity_min TEXT,                 -- e.g. 'epic', or NULL
-  requires_modified INTEGER DEFAULT 0, -- 0 or 1
-  requires_no_bait INTEGER DEFAULT 0,  -- 0 or 1
-  requires_no_rod INTEGER DEFAULT 0,   -- 0 or 1
-  requires_no_hook INTEGER DEFAULT 0,  -- 0 or 1
+  specific_species TEXT,
+  rarity_exact TEXT,
+  rarity_min TEXT,
+  requires_modified INTEGER DEFAULT 0,
+  requires_no_bait INTEGER DEFAULT 0,
+  requires_no_rod INTEGER DEFAULT 0,
+  requires_no_hook INTEGER DEFAULT 0,
   time_of_day TEXT CHECK(time_of_day IN ('day', 'night')) DEFAULT NULL,
   zone_id INTEGER DEFAULT NULL,
-  weather TEXT DEFAULT NULL,       -- e.g. 'rain', 'clear', or NULL
+  weather TEXT DEFAULT NULL,
   reward_xp INTEGER NOT NULL DEFAULT 0,
   reward_gold INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (zone_id) REFERENCES zoneTypes(id)
 );
 
--- User quest progress table
 CREATE TABLE IF NOT EXISTS user_quests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,

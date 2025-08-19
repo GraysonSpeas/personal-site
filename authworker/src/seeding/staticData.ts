@@ -81,6 +81,10 @@ export const resourceTypes: ResourceType[] = [
 
   // merchant only
   { species: 'merchant_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, buy_price: 50, zones: ['Lava'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
+
+  // bait resources
+  // merchant only
+  { species: 'bait_resource', base_weight: 100, base_length: 100, stamina: 100, tug_strength: 100, direction_change_rate: 100, change_strength: 100, sell_price: 100, buy_price: 50, zones: ['Lava'], rarity: 'rare', barType: 'middle', time_of_day: null, weather: null },
 ];
 
 export const fishTypes = [
@@ -167,6 +171,65 @@ export const consumableTypes = [
   },
 ];
 
+export const seedTypes = [
+  {
+    id: 1,
+    name: 'Simple Seed',
+    grow_time: 60,
+    output_bait_type_id: 2, // Simple Bait
+    output_resource_type_id: null,
+    output_quantity: 1,
+    buy_price: 50,
+    sell_price: 25,
+    description: 'Grows into Simple Bait after 1 minutes',
+  },
+  {
+    id: 2,
+    name: 'Cold Seed',
+    grow_time: 60,
+    output_bait_type_id: 3, // Cold Resistant Bait
+    output_resource_type_id: null,
+    output_quantity: 1,
+    buy_price: 75,
+    sell_price: 35,
+    description: 'Grows into Cold Resistant Bait',
+  },
+  {
+    id: 3,
+    name: 'Heat Seed',
+    grow_time: 60,
+    output_bait_type_id: 4, // Heat Resistant Bait
+    output_resource_type_id: null,
+    output_quantity: 1,
+    buy_price: 100,
+    sell_price: 50,
+    description: 'Grows into Heat Resistant Bait',
+  },
+  {
+    id: 4,
+    name: 'Rare Bait Seed',
+    grow_time: 60,
+    output_bait_type_id: 1, // Broken Bait
+    output_resource_type_id: 1, 
+    output_quantity: 1,
+    buy_price: 150,
+    sell_price: 75,
+    description: 'Produces a bait and a special resource',
+  },
+  {
+    id: 5,
+    name: 'Mystery Seed',
+    grow_time: 60,
+    outputs: [
+      { type: 'bait', type_id: 2, min: 1, max: 3, chance: 50 },
+      { type: 'bait', type_id: 3, min: 1, max: 2, chance: 30 },
+      { type: 'resource', type_id: 1, min: 1, max: 1, chance: 20 },
+    ],
+    buy_price: 200,
+    sell_price: 100,
+    description: 'Grows into random bait or resource',
+  },
+];
 
 export const craftingRecipes = [
   {

@@ -130,6 +130,13 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     stats: c.stats ? JSON.parse(c.stats) : undefined,
   }));
 
+const seeds = await db.prepare(`
+  SELECT s.seed_type_id, st.name, s.quantity, st.grow_time, st.description
+  FROM seeds s
+  JOIN seedTypes st ON s.seed_type_id = st.id
+  WHERE s.user_id = ?
+`).bind(userId).all();
+
   return {
     email,
     currency: currency || {},
@@ -142,5 +149,6 @@ export async function getInventoryService(c: Context<{ Bindings: any }>) {
     current_zone_id: currentZoneId || null,
     xp: userXPLevel?.xp ?? 0,
     level: userXPLevel?.level ?? 1,
+    seeds: seeds?.results || seeds || [],
   };
 }

@@ -16,6 +16,7 @@ import merchantRouter from './routes/merchantRouter'
 import craftingRouter from './routes/craftingRouter'
 import consumableRouter from './routes/consumableRouter'
 import collectionsRouter from './routes/collectionsRouter'
+import planterRouter from './routes/planterRouter'
 
 // Bindings interface for environment variables and DB
 interface Bindings {
@@ -53,6 +54,7 @@ app.route('/merchant', merchantRouter)
 app.route('/crafting', craftingRouter)
 app.route('/consumables', consumableRouter)
 app.route('/collections', collectionsRouter)
+app.route('/planters', planterRouter)
 
 // Global error handler
 app.onError((err, c) => {

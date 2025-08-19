@@ -11,6 +11,7 @@ import {
   consumableTypes,
   craftingRecipes,
   quests,
+  seedTypes,           // renamed
 } from './staticData';
 import type { D1Database } from '@cloudflare/workers-types';
 
@@ -29,14 +30,13 @@ export async function seedDatabase(db: D1Database) {
     console.log('Starting database seeding...');
 
     // Seed zone types
-// Seed zone types
-for (const zone of zoneTypes) {
-  await db
-    .prepare(`INSERT OR IGNORE INTO zoneTypes (name, xp_multiplier) VALUES (?, ?)`)
-    .bind(zone.name, zone.xp_multiplier ?? 1.0)
-    .run();
-}
-console.log('Zone types seeded successfully.');
+    for (const zone of zoneTypes) {
+      await db
+        .prepare(`INSERT OR IGNORE INTO zoneTypes (name, xp_multiplier) VALUES (?, ?)`)
+        .bind(zone.name, zone.xp_multiplier ?? 1.0)
+        .run();
+    }
+    console.log('Zone types seeded successfully.');
 
     // Seed weather types
     for (const weather of weatherTypes) {
@@ -48,161 +48,159 @@ console.log('Zone types seeded successfully.');
     console.log('Weather types seeded successfully.');
 
     // Seed resource types and zones
-for (const resource of resourceTypes) {
-  const resourceResult = await db
-    .prepare(`
-      INSERT OR IGNORE INTO resourceTypes
-        (name, base_weight, base_length, stamina, tugStrength, changeRate, changeStrength, sell_price, buy_price, rarity, barType, time_of_day, weather)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      resource.species,
-      resource.base_weight,
-      resource.base_length,
-      resource.stamina,
-      resource.tug_strength,
-      resource.direction_change_rate,
-      resource.change_strength,
-      resource.sell_price,
-      resource.buy_price ?? 0,  // optional, defaults to 0
-      resource.rarity,
-      resource.barType,
-      resource.time_of_day ?? null,
-      resource.weather ?? null
-    )
-    .run();
+    for (const resource of resourceTypes) {
+      const resourceResult = await db
+        .prepare(`
+          INSERT OR IGNORE INTO resourceTypes
+            (name, base_weight, base_length, stamina, tugStrength, changeRate, changeStrength, sell_price, buy_price, rarity, barType, time_of_day, weather)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          resource.species,
+          resource.base_weight,
+          resource.base_length,
+          resource.stamina,
+          resource.tug_strength,
+          resource.direction_change_rate,
+          resource.change_strength,
+          resource.sell_price,
+          resource.buy_price ?? 0,
+          resource.rarity,
+          resource.barType,
+          resource.time_of_day ?? null,
+          resource.weather ?? null
+        )
+        .run();
 
-  if (resourceResult.success) {
-    for (const zoneName of resource.zones) {
-      const zoneId = await getZoneId(db, zoneName);
-      if (zoneId) {
-        await db
-          .prepare(`
-            INSERT OR IGNORE INTO resourceTypeZones (resource_type_id, zone_id)
-            VALUES ((SELECT id FROM resourceTypes WHERE name = ?), ?)
-          `)
-          .bind(resource.species, zoneId)
-          .run();
+      if (resourceResult.success) {
+        for (const zoneName of resource.zones) {
+          const zoneId = await getZoneId(db, zoneName);
+          if (zoneId) {
+            await db
+              .prepare(`
+                INSERT OR IGNORE INTO resourceTypeZones (resource_type_id, zone_id)
+                VALUES ((SELECT id FROM resourceTypes WHERE name = ?), ?)
+              `)
+              .bind(resource.species, zoneId)
+              .run();
+          }
+        }
       }
     }
-  }
-}
-console.log('Resource types seeded successfully.');
+    console.log('Resource types seeded successfully.');
 
+    // Seed fish types and zones
+    for (const fish of fishTypes) {
+      const fishResult = await db
+        .prepare(`
+          INSERT OR IGNORE INTO fishTypes
+            (species, base_weight, base_length, stamina, tugStrength, changeRate, changeStrength, sell_price, rarity, barType, time_of_day, weather)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          fish.species,
+          fish.base_weight,
+          fish.base_length,
+          fish.stamina,
+          fish.tug_strength,
+          fish.direction_change_rate,
+          fish.change_strength ?? 100,
+          fish.sell_price,
+          fish.rarity,
+          fish.barType ?? 'middle',
+          fish.time_of_day ?? null,
+          fish.weather ?? null
+        )
+        .run();
 
- for (const fish of fishTypes) {
-  const fishResult = await db
-    .prepare(`
-      INSERT OR IGNORE INTO fishTypes
-        (species, base_weight, base_length, stamina, tugStrength, changeRate, changeStrength, sell_price, rarity, barType, time_of_day, weather)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    .bind(
-      fish.species,
-      fish.base_weight,
-      fish.base_length,
-      fish.stamina,
-      fish.tug_strength,
-      fish.direction_change_rate,
-      fish.change_strength ?? 100,
-      fish.sell_price,
-      fish.rarity,
-      fish.barType ?? 'middle',
-      fish.time_of_day ?? null,
-      fish.weather ?? null
-    )
-    .run();
-
-  if (fishResult.success) {
-    for (const zoneName of fish.zones) {
-      const zoneId = await getZoneId(db, zoneName);
-      if (zoneId) {
-        await db
-          .prepare(`
-            INSERT OR IGNORE INTO fishTypeZones (fish_type_id, zone_id)
-            VALUES ((SELECT id FROM fishTypes WHERE species = ?), ?)
-          `)
-          .bind(fish.species, zoneId)
-          .run();
+      if (fishResult.success) {
+        for (const zoneName of fish.zones) {
+          const zoneId = await getZoneId(db, zoneName);
+          if (zoneId) {
+            await db
+              .prepare(`
+                INSERT OR IGNORE INTO fishTypeZones (fish_type_id, zone_id)
+                VALUES ((SELECT id FROM fishTypes WHERE species = ?), ?)
+              `)
+              .bind(fish.species, zoneId)
+              .run();
+          }
+        }
       }
     }
-  }
-}
-console.log('Fish types seeded successfully.');
-
+    console.log('Fish types seeded successfully.');
 
     // Seed rod types
     for (const rod of rodTypes) {
       await db
-  .prepare(`
-    INSERT OR IGNORE INTO rodTypes (name, base_stats, buy_price)
-    VALUES (?, ?, ?)
-  `)
-  .bind(rod.name, JSON.stringify(rod.stats), rod.buy_price ?? 0)
-  .run();
+        .prepare(`
+          INSERT OR IGNORE INTO rodTypes (name, base_stats, buy_price)
+          VALUES (?, ?, ?)
+        `)
+        .bind(rod.name, JSON.stringify(rod.stats), rod.buy_price ?? 0)
+        .run();
     }
     console.log('Rod types seeded successfully.');
 
     // Seed hook types
     for (const hook of hookTypes) {
       await db
-  .prepare(`
-    INSERT OR IGNORE INTO hookTypes (name, base_stats, buy_price)
-    VALUES (?, ?, ?)
-  `)
-  .bind(hook.name, JSON.stringify(hook.stats), hook.buy_price ?? 0)
-  .run();
+        .prepare(`
+          INSERT OR IGNORE INTO hookTypes (name, base_stats, buy_price)
+          VALUES (?, ?, ?)
+        `)
+        .bind(hook.name, JSON.stringify(hook.stats), hook.buy_price ?? 0)
+        .run();
     }
     console.log('Hook types seeded successfully.');
 
     // Seed bait types
     for (const bait of baitTypes) {
-     await db
-  .prepare(`
-    INSERT OR IGNORE INTO baitTypes (name, base_stats, sell_price, buy_price)
-    VALUES (?, ?, ?, ?)
-  `)
-  .bind(bait.name, JSON.stringify(bait.stats), bait.sell_price, bait.buy_price ?? 0)
-  .run();
+      await db
+        .prepare(`
+          INSERT OR IGNORE INTO baitTypes (name, base_stats, sell_price, buy_price)
+          VALUES (?, ?, ?, ?)
+        `)
+        .bind(bait.name, JSON.stringify(bait.stats), bait.sell_price, bait.buy_price ?? 0)
+        .run();
     }
     console.log('Bait types seeded successfully.');
 
-    // Seed consumable types (new)
-for (const consumable of consumableTypes) {
-  await db
-  .prepare(`
-    INSERT OR IGNORE INTO consumableTypes (name, description, effect, duration, sell_price, buy_price)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `)
-  .bind(
-    consumable.name,
-    consumable.description || null,
-    consumable.effect || null,
-    consumable.duration || null,
-    consumable.sell_price,
-    consumable.buy_price ?? 0
-  )
-  .run();
-}
-console.log('Consumable types seeded successfully.');
+    // Seed consumable types
+    for (const consumable of consumableTypes) {
+      await db
+        .prepare(`
+          INSERT OR IGNORE INTO consumableTypes (name, description, effect, duration, sell_price, buy_price)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          consumable.name,
+          consumable.description || null,
+          consumable.effect || null,
+          consumable.duration || null,
+          consumable.sell_price,
+          consumable.buy_price ?? 0
+        )
+        .run();
+    }
+    console.log('Consumable types seeded successfully.');
 
-
-// Seed crafting recipes (new)
-for (const recipe of craftingRecipes) {
-  await db
-    .prepare(`
-      INSERT OR IGNORE INTO craftingRecipes (name, requiredMaterials, outputType, outputTypeId)
-      VALUES (?, ?, ?, ?)
-    `)
-    .bind(
-      recipe.name,
-      recipe.requiredMaterials,      // already stringified
-      recipe.outputType,
-      recipe.outputTypeId
-    )
-    .run();
-}
-console.log('Crafting recipes seeded successfully.');
+    // Seed crafting recipes
+    for (const recipe of craftingRecipes) {
+      await db
+        .prepare(`
+          INSERT OR IGNORE INTO craftingRecipes (name, requiredMaterials, outputType, outputTypeId)
+          VALUES (?, ?, ?, ?)
+        `)
+        .bind(
+          recipe.name,
+          recipe.requiredMaterials,
+          recipe.outputType,
+          recipe.outputTypeId
+        )
+        .run();
+    }
+    console.log('Crafting recipes seeded successfully.');
 
     // Seed quests
     for (const quest of quests) {
@@ -234,6 +232,28 @@ console.log('Crafting recipes seeded successfully.');
         .run();
     }
     console.log('Quest templates seeded successfully.');
+
+    // Seed seed types (was planterTypes)
+for (const seed of seedTypes) {
+  await db
+    .prepare(`
+      INSERT OR IGNORE INTO seedTypes
+        (name, grow_time, output_bait_type_id, output_resource_type_id, output_quantity, description, buy_price, sell_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    .bind(
+      seed.name,
+      seed.grow_time,
+      seed.output_bait_type_id ?? null,
+      seed.output_resource_type_id ?? null,
+      seed.output_quantity ?? 1,
+      seed.description ?? null,
+      seed.buy_price ?? 0,
+      seed.sell_price ?? 0
+    )
+    .run();
+}
+    console.log('Seed types seeded successfully.');
 
     console.log('Database seeding completed successfully.');
   } catch (error) {

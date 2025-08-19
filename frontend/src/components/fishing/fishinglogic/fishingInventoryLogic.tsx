@@ -53,6 +53,14 @@ type Consumable = {
   stats?: Record<string, any>;
 };
 
+type Seed = {
+  seed_type_id: number;
+  name: string;
+  quantity: number;
+  grow_time?: number;
+  description?: string;
+};
+
 export type InventoryData = {
   fishStacks: FishStack[];
   biggestFish: BiggestFish[];
@@ -62,6 +70,7 @@ export type InventoryData = {
   gear?: Gear[];
   bait?: Bait[];
   consumables?: Consumable[];
+  seeds?: Seed[];
   current_zone_id: number | null;
   xp?: number;
   level?: number;
@@ -102,6 +111,7 @@ export function useFishingInventory() {
         gear: json.gear,
         bait: json.bait,
         consumables: json.consumables || [],
+        seeds: json.seeds || [],
         current_zone_id: json.current_zone_id ?? json.currentZoneId ?? null,
         xp: json.xp,
         level: json.level,
