@@ -1,19 +1,15 @@
 // src/seeding/seedService.ts
 import { Hono } from 'hono';
-import {
-  weatherTypes,
-  zoneTypes,
-  resourceTypes,
-  fishTypes,
-  rodTypes,
-  hookTypes,
-  baitTypes,
-  consumableTypes,
-  craftingRecipes,
-  quests,
-  seedTypes,           // renamed
-} from './staticData';
 import type { D1Database } from '@cloudflare/workers-types';
+
+import { weatherTypes, zoneTypes } from './data/weatherAndZonesData';
+import { resourceTypes } from './data/resourcesData';
+import { fishTypes } from './data/fishData';
+import { rodTypes, hookTypes, baitTypes } from './data/gearData';
+import { consumableTypes } from './data/consumablesData';
+import { craftingRecipes } from './data/craftingRecipesData';
+import { quests } from './data/questsData';
+import { seedTypes } from './data/seedsData';
 
 const seedRouter = new Hono<{ Bindings: { DB: D1Database } }>();
 
