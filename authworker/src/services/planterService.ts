@@ -1,3 +1,4 @@
+// src/seeding/seedService.ts
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
 import type { D1Database } from '@cloudflare/workers-types';
@@ -60,15 +61,15 @@ export async function getActivePlantersService(c: Context<{ Bindings: any }>) {
       timeRemaining = Math.max(Math.floor((readyAt - Date.now()) / 1000), 0);
     }
     return {
-  slotIndex: s.slot_index,
-  level: s.level,
-  purchasedAt: s.purchased_at,
-  timeRemaining,
-  hasPlantedSeed: !!seed,
-  plantedId: seed?.id,
-  seedTypeId: seed?.seed_type_id, // <-- add this
-  nextUpgradeCost: s.level < upgradePrices.length ? upgradePrices[s.level] : null,
-};
+      slotIndex: s.slot_index,
+      level: s.level,
+      purchasedAt: s.purchased_at,
+      timeRemaining,
+      hasPlantedSeed: !!seed,
+      plantedId: seed?.id,
+      seedTypeId: seed?.seed_type_id,
+      nextUpgradeCost: s.level < upgradePrices.length ? upgradePrices[s.level] : null,
+    };
   });
 
   return { slots: slotData, planted: planted.results || [] };
@@ -140,12 +141,17 @@ export async function plantSeedService(c: Context<{ Bindings: any }>, slotIndex:
   if (occupied) return { error: 'Slot already occupied' };
 
   const seed = await db.prepare(
-    'SELECT grow_time, output_bait_type_id, output_resource_type_id, output_quantity FROM seedTypes WHERE id = ?'
-  ).bind(seedTypeId).first<any>();
-  if (!seed) return { error: 'Invalid seed type' };
+    'SELECT grow_time, quantity FROM seedTypes s JOIN seeds u ON u.seed_type_id = s.id WHERE u.user_id = ? AND s.id = ?'
+  ).bind(userId, seedTypeId).first<any>();
+  if (!seed || seed.quantity < 1) return { error: 'Insufficient seeds' };
 
   const now = new Date();
   const readyAt = new Date(now.getTime() + seed.grow_time * 1000).toISOString();
+
+  // Decrement seed
+  await db.prepare(
+    'UPDATE seeds SET quantity = quantity - 1 WHERE user_id = ? AND seed_type_id = ?'
+  ).bind(userId, seedTypeId).run();
 
   await db.prepare(
     'INSERT INTO plantedSeeds (user_id, seed_type_id, slot_index, planted_at, ready_at, harvested) VALUES (?, ?, ?, ?, ?, 0)'
@@ -162,7 +168,7 @@ export async function harvestSeedService(c: Context<{ Bindings: any }>, plantedI
 
   const planted = await db.prepare(
     `SELECT p.id, p.seed_type_id, p.harvested, p.slot_index, p.ready_at, s.level,
-            t.output_bait_type_id, t.output_resource_type_id, t.output_quantity
+            t.outputs_json AS outputs
      FROM plantedSeeds p
      JOIN seedTypes t ON t.id = p.seed_type_id
      JOIN userPlanterSlots s ON s.user_id = p.user_id AND s.slot_index = p.slot_index
@@ -176,24 +182,62 @@ export async function harvestSeedService(c: Context<{ Bindings: any }>, plantedI
   const levelIndex = Math.max(0, Math.min(planted.level - 1, dropMultipliers.length - 1));
   const multiplier = dropMultipliers[levelIndex];
 
-  const quantityToAdd = Math.floor(planted.output_quantity * multiplier);
-
-  if (planted.output_bait_type_id) {
-    await db.prepare(
-      `INSERT INTO bait (user_id, type_id, quantity)
-       VALUES (?, ?, ?)
-       ON CONFLICT(user_id, type_id) DO UPDATE SET quantity = quantity + ?`
-    ).bind(userId, planted.output_bait_type_id, quantityToAdd, quantityToAdd).run();
+  interface OutputDef {
+    type: 'bait' | 'resource';
+    type_id: number;
+    min: number;
+    max: number;
+    chance: number;
   }
 
-  if (planted.output_resource_type_id) {
-    await db.prepare(
-      `INSERT INTO resources (user_id, name, quantity)
-       SELECT ?, name, ? FROM resourceTypes WHERE id = ?
-       ON CONFLICT(user_id, name) DO UPDATE SET quantity = quantity + ?`
-    ).bind(userId, quantityToAdd, planted.output_resource_type_id, quantityToAdd).run();
+  const outputs: OutputDef[] = JSON.parse(planted.outputs || '[]');
+  const results: { type: string; typeId: number; quantity: number; name: string }[] = [];
+
+  const insertOutput = async (output: OutputDef, qty: number) => {
+    let name: string;
+    if (output.type === 'bait') {
+      const bait = await db.prepare(`SELECT name FROM baitTypes WHERE id = ?`).bind(output.type_id).first<{ name: string }>();
+      name = bait?.name || `Unknown bait #${output.type_id}`;
+      await db.prepare(
+        `INSERT INTO bait (user_id, type_id, quantity)
+         VALUES (?, ?, ?)
+         ON CONFLICT(user_id, type_id) DO UPDATE SET quantity = quantity + ?`
+      ).bind(userId, output.type_id, qty, qty).run();
+    } else {
+      const res = await db.prepare(`SELECT name FROM resourceTypes WHERE id = ?`).bind(output.type_id).first<{ name: string }>();
+      name = res?.name || `Unknown resource #${output.type_id}`;
+      await db.prepare(
+        `INSERT INTO resources (user_id, name, quantity)
+         SELECT ?, name, ? FROM resourceTypes WHERE id = ?
+         ON CONFLICT(user_id, name) DO UPDATE SET quantity = quantity + ?`
+      ).bind(userId, qty, output.type_id, qty).run();
+    }
+    results.push({ type: output.type, typeId: output.type_id, quantity: qty, name });
+  };
+
+  // roll each output
+  for (const output of outputs) {
+    if (Math.random() * 100 <= (output.chance ?? 100)) {
+      const quantity = Math.floor(((output.min + Math.floor(Math.random() * (output.max - output.min + 1))) || 1) * multiplier);
+      if (quantity > 0) await insertOutput(output, quantity);
+    }
+  }
+
+  // fallback: guarantee at least one drop
+  if (results.length === 0 && outputs.length > 0) {
+    const maxChance = Math.max(...outputs.map(o => o.chance ?? 0));
+    const topOutputs = outputs.filter(o => o.chance === maxChance);
+    const chosen = topOutputs[Math.floor(Math.random() * topOutputs.length)];
+    const quantity = Math.floor(((chosen.min + Math.floor(Math.random() * (chosen.max - chosen.min + 1))) || 1) * multiplier);
+    if (quantity > 0) await insertOutput(chosen, quantity);
   }
 
   await db.prepare('UPDATE plantedSeeds SET harvested = 1 WHERE id = ?').bind(plantedId).run();
-  return { success: true, claimed: true, quantity: quantityToAdd };
+
+  return {
+    success: true,
+    claimed: true,
+    outputs: results,
+    message: `Harvested: ${results.map(r => `${r.quantity}x ${r.name} (${r.type})`).join(', ')}`
+  };
 }

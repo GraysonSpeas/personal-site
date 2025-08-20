@@ -49,7 +49,7 @@ router.post('/slots/:slotIndex/plant', (c) =>
 );
 
 // Harvest from a planted seed
-router.post('/slots/:slotIndex/harvest', (c) =>
+router.post('/slots/harvest', async (c) => 
   safeCall(c, async () => {
     const body = await c.req.json();
     return planterService.harvestSeedService(c, body.plantedId);

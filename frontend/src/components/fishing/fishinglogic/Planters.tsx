@@ -14,7 +14,13 @@ interface PlanterSlot {
 interface SeedType {
   id: number;
   name: string;
-  emoji?: string; 
+  emoji?: string;
+}
+
+interface HarvestedItem {
+  type: string;
+  name: string;
+  quantity: number;
 }
 
 const SLOT_PRICES = [0, 5000, 10000, 20000];
@@ -29,6 +35,7 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [gold, setGold] = useState<number>(0);
+  const [harvested, setHarvested] = useState<HarvestedItem[]>([]);
 
   const fetchSlots = async () => {
     const res = await fetch(`${API_BASE}/planters/slots`, { credentials: 'include' });
@@ -123,20 +130,43 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     setLoading(false);
   };
 
-  const handleHarvest = async (slotIndex: number, plantedId: number) => {
-    setLoading(true);
-    const res = await fetch(`${API_BASE}/planters/slots/${slotIndex}/harvest`, {
+const handleHarvest = async (plantedId: number) => {
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE}/planters/slots/harvest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ plantedId }),
     });
-    const data = await res.json();
-    setMessage(data.success ? 'Harvested!' : data.error || 'Failed to harvest.');
+    const data: {
+      success?: boolean;
+      error?: string;
+      outputs?: { type: string; typeId: number; quantity: number }[];
+    } = await res.json();
+
+    if (data.success) {
+      const items: HarvestedItem[] = (data.outputs || []).map((i) => ({
+        type: i.type,
+        typeId: i.typeId,
+        quantity: i.quantity,
+        name: getSeedName(i.typeId),
+      }));
+      const msg = items.map((i) => `${i.quantity}x ${i.name} (${i.type})`).join(', ');
+      setMessage(`Harvested: ${msg}`);
+      setHarvested(items);
+    } else {
+      setMessage(data.error || 'Failed to harvest.');
+    }
+
     await fetchSlots();
     await fetchInventory();
+  } catch (err) {
+    setMessage('Error harvesting.');
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   const getSeedName = (seedTypeId?: number) => {
     const seed = seedTypes.find(s => s.id === seedTypeId);
@@ -166,7 +196,7 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
                     {slot.timeRemaining === 0 && slot.plantedId && (
                       <button
                         className="mt-1 p-1 rounded text-sm bg-green-400"
-                        onClick={() => handleHarvest(slot.slotIndex, slot.plantedId!)}
+                        onClick={() => handleHarvest(slot.plantedId!)}
                         disabled={loading}
                       >
                         Harvest
@@ -228,6 +258,19 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
           }
         })}
       </div>
+
+      {harvested.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold">Harvested Items:</h3>
+          <ul className="text-sm">
+            {harvested.map((item, idx) => (
+              <li key={idx}>
+                {item.quantity}x {item.name} ({item.type})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {message && <p className="mt-4 text-center text-sm text-black">{message}</p>}
     </div>

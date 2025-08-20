@@ -234,22 +234,21 @@ export async function seedDatabase(db: D1Database) {
     console.log('Quest templates seeded successfully.');
 
     // Seed seed types (was planterTypes)
+// Seed seed types (updated for new outputs format)
 for (const seed of seedTypes) {
   await db
     .prepare(`
       INSERT OR IGNORE INTO seedTypes
-        (name, grow_time, output_bait_type_id, output_resource_type_id, output_quantity, description, buy_price, sell_price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (name, grow_time, description, buy_price, sell_price, outputs_json)
+      VALUES (?, ?, ?, ?, ?, ?)
     `)
     .bind(
       seed.name,
       seed.grow_time,
-      seed.output_bait_type_id ?? null,
-      seed.output_resource_type_id ?? null,
-      seed.output_quantity ?? 1,
       seed.description ?? null,
       seed.buy_price ?? 0,
-      seed.sell_price ?? 0
+      seed.sell_price ?? 0,
+      JSON.stringify(seed.outputs ?? [])
     )
     .run();
 }

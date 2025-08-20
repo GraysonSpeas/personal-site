@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { API_BASE } from '../../../config.tsx';
+import { API_BASE } from '../../../config.tsx'
 
 type BiggestFish = {
   species: string
@@ -27,9 +27,10 @@ type Achievement = {
   thresholds: number[]
   progress: number
   completed: number
-  claimable_stages: number[]
-  reward_gold: number
-  reward_xp: number
+  claimable_stages: { stage: number; reward_gold: number; reward_xp: number }[]
+  next_threshold: number
+  next_reward_gold: number
+  next_reward_xp: number
 }
 
 export default function Collections() {
@@ -86,11 +87,9 @@ export default function Collections() {
           {collections.map(col => (
             <div
               key={col.key}
-              className={`p-4 border rounded shadow ${
-                col.caught === 0 ? 'text-gray-500 bg-gray-100' : 'text-black bg-white'
-              }`}
+              className={`p-4 border rounded shadow ${col.caught === 0 ? 'text-gray-500 bg-gray-100' : 'text-black bg-white'}`}
             >
-              <h3 className="font-bold text-lg">{col.key.replace('_', ' ')}</h3>
+              <h3 className="font-bold text-lg">{col.key.replace(/_/g, ' ')}</h3>
               <p>
                 Caught: {col.caught}/{col.total} | Status: {col.completed ? 'Completed' : 'In progress'}
               </p>
@@ -116,24 +115,32 @@ export default function Collections() {
       {/* Achievements Tab */}
       {activeTab === 'achievements' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {achievements.map(ach => (
-            <div
-              key={ach.key}
-              className={`p-4 border rounded shadow ${
-                ach.progress === 0 ? 'text-gray-500 bg-gray-100' : 'text-black bg-white'
-              }`}
-            >
-              <h3 className="font-bold">{ach.key.replace('_', ' ')}</h3>
-              <p>Rarity: {ach.rarity}</p>
-              <p>Progress: {ach.progress}/{ach.thresholds[0]}</p>
-              {ach.claimable_stages.length > 0 && (
-                <p className="text-green-600 font-semibold">
-                  Claimable: {ach.claimable_stages.join(', ')}
-                </p>
-              )}
-              <p>Gold: {ach.reward_gold}, XP: {ach.reward_xp}</p>
-            </div>
-          ))}
+          {achievements.map(ach => {
+            const currentTierIndex = ach.thresholds.findIndex(t => t > ach.progress)
+            const tierMax = ach.thresholds[currentTierIndex] || ach.thresholds[ach.thresholds.length - 1]
+            const tierMin = currentTierIndex > 0 ? ach.thresholds[currentTierIndex - 1] : 0
+            const tierProgress = ach.progress - tierMin
+            const tierTotal = tierMax - tierMin
+            const displayTier = currentTierIndex + 1
+
+            return (
+              <div
+                key={ach.key}
+                className={`p-4 border rounded shadow ${ach.progress === 0 ? 'text-gray-500 bg-gray-100' : 'text-black bg-white'}`}
+              >
+                <h3 className="font-bold">{ach.key.replace(/_/g, ' ')}</h3>
+                <p>Rarity: {ach.rarity}</p>
+                <p>Progress: {tierProgress}/{tierTotal}</p>
+                {ach.next_threshold > 0 ? (
+                  <p className="text-green-600 font-semibold">
+                    Next Reward (tier {displayTier}): Gold {ach.next_reward_gold}, XP {ach.next_reward_xp}
+                  </p>
+                ) : (
+                  <p className="text-gray-500 font-semibold">All rewards claimed</p>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

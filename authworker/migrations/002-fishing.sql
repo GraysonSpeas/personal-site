@@ -131,14 +131,10 @@ CREATE TABLE IF NOT EXISTS seedTypes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
   grow_time INTEGER NOT NULL,
-  output_bait_type_id INTEGER,
-  output_resource_type_id INTEGER,
-  output_quantity INTEGER NOT NULL DEFAULT 1,
+  outputs_json TEXT DEFAULT NULL,
   description TEXT,
   buy_price INTEGER DEFAULT 0,
-  sell_price INTEGER DEFAULT 0,
-  FOREIGN KEY(output_bait_type_id) REFERENCES baitTypes(id),
-  FOREIGN KEY(output_resource_type_id) REFERENCES resourceTypes(id)
+  sell_price INTEGER DEFAULT 0
 );
 
 -- =========================
@@ -200,7 +196,7 @@ CREATE TABLE IF NOT EXISTS plantedSeeds (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   seed_type_id INTEGER NOT NULL,
-  slot_index INTEGER NOT NULL,                 
+  slot_index INTEGER NOT NULL,
   planted_at DATETIME NOT NULL DEFAULT (datetime('now')),
   ready_at DATETIME NOT NULL,
   harvested INTEGER NOT NULL DEFAULT 0,
