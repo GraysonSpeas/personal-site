@@ -8,15 +8,17 @@ interface PlanterSlot {
   level?: number;
   plantedId?: number;
   nextUpgradeCost?: number | null;
+  seedTypeId?: number;
 }
 
 interface SeedType {
   id: number;
   name: string;
+  emoji?: string; 
 }
 
-const SLOT_PRICES = [0, 100, 200, 1000, 10000, 20000, 40000, 60000];
-const MAX_SLOTS = 8;
+const SLOT_PRICES = [0, 5000, 10000, 20000];
+const MAX_SLOTS = 4;
 
 export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
   const [slots, setSlots] = useState<PlanterSlot[]>([]);
@@ -32,19 +34,28 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     const res = await fetch(`${API_BASE}/planters/slots`, { credentials: 'include' });
     const data = await res.json();
     setSlots(Array.isArray(data.slots) ? data.slots : []);
-    setGold(data.gold ?? 0);
   };
 
   const fetchSeedTypes = async () => {
     const res = await fetch(`${API_BASE}/planters/types`, { credentials: 'include' });
     const data = await res.json();
-    setSeedTypes(Array.isArray(data.seedTypes) ? data.seedTypes : []);
+    const typesWithEmoji = (data.seedTypes || []).map((t: any) => ({
+      ...t,
+      emoji: t.name.toLowerCase().includes('cold') ? '🧊' : '🌱',
+    }));
+    setSeedTypes(typesWithEmoji);
   };
 
   const fetchInventory = async () => {
-    const res = await fetch(`${API_BASE}/planters/inventory`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/inventory`, { credentials: 'include' });
     const data = await res.json();
-    setInventory(data.seeds || {});
+    setGold(data.currency?.gold ?? 0);
+
+    const seedsMap: { [key: number]: number } = {};
+    (data.seeds || []).forEach((s: any) => {
+      seedsMap[s.seed_type_id] = s.quantity;
+    });
+    setInventory(seedsMap);
   };
 
   useEffect(() => {
@@ -61,13 +72,13 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     }
   }, [refreshTrigger]);
 
-  // Live countdown for slots
   useEffect(() => {
     const interval = setInterval(() => {
       setSlots(prev =>
         prev.map(s => {
           if (!s.hasPlantedSeed) return s;
-          return { ...s, timeRemaining: Math.max(s.timeRemaining - 1, 0) };
+          const time = Math.max(s.timeRemaining - 1, 0);
+          return { ...s, timeRemaining: time };
         })
       );
     }, 1000);
@@ -78,23 +89,20 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     setLoading(true);
     const res = await fetch(`${API_BASE}/planters/slots/purchase`, { method: 'POST', credentials: 'include' });
     const data = await res.json();
-    if (data.success) setMessage(`Purchased slot ${slotIndex + 1}!`);
-    else setMessage(data.error || 'Failed to purchase slot.');
+    setMessage(data.success ? `Purchased slot ${slotIndex + 1}!` : data.error || 'Failed to purchase slot.');
+    await fetchSlots();
+    await fetchInventory();
     setLoading(false);
-    fetchSlots();
   };
 
   const handleUpgrade = async (slotIndex: number) => {
     setLoading(true);
-    const res = await fetch(`${API_BASE}/planters/slots/${slotIndex}/upgrade`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    const res = await fetch(`${API_BASE}/planters/slots/${slotIndex}/upgrade`, { method: 'POST', credentials: 'include' });
     const data = await res.json();
-    if (data.success) setMessage(`Upgraded slot ${slotIndex + 1} to level ${data.newLevel}!`);
-    else setMessage(data.error || 'Failed to upgrade slot.');
+    setMessage(data.success ? `Upgraded slot ${slotIndex + 1} to level ${data.newLevel}!` : data.error || 'Failed to upgrade slot.');
+    await fetchSlots();
+    await fetchInventory();
     setLoading(false);
-    fetchSlots();
   };
 
   const handlePlant = async () => {
@@ -107,13 +115,12 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
       body: JSON.stringify({ seedTypeId: selectedSeed }),
     });
     const data = await res.json();
-    if (data.success) setMessage(`Planted! Ready at ${new Date(data.readyAt).toLocaleTimeString()}`);
-    else setMessage(data.error || 'Failed to plant.');
-    setLoading(false);
+    setMessage(data.success ? `Planted! Ready at ${new Date(data.readyAt).toLocaleTimeString()}` : data.error || 'Failed to plant.');
     setSelectedSlot(null);
     setSelectedSeed(null);
-    fetchSlots();
-    fetchInventory();
+    await fetchSlots();
+    await fetchInventory();
+    setLoading(false);
   };
 
   const handleHarvest = async (slotIndex: number, plantedId: number) => {
@@ -125,11 +132,15 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
       body: JSON.stringify({ plantedId }),
     });
     const data = await res.json();
-    if (data.success) setMessage('Harvested!');
-    else setMessage(data.error || 'Failed to harvest.');
+    setMessage(data.success ? 'Harvested!' : data.error || 'Failed to harvest.');
+    await fetchSlots();
+    await fetchInventory();
     setLoading(false);
-    fetchSlots();
-    fetchInventory();
+  };
+
+  const getSeedName = (seedTypeId?: number) => {
+    const seed = seedTypes.find(s => s.id === seedTypeId);
+    return seed ? `${seed.name} ${seed.emoji ?? '🌱'}` : '';
   };
 
   return (
@@ -144,33 +155,60 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
             return (
               <div
                 key={i}
-                className={`p-4 border rounded text-center cursor-pointer ${
-                  slot.hasPlantedSeed ? 'bg-green-200' : 'bg-orange-200'
-                }`}
-                onClick={() => !slot.hasPlantedSeed && setSelectedSlot(slot.slotIndex)}
+                className={`p-4 border rounded text-center cursor-pointer ${slot.hasPlantedSeed ? 'bg-green-200' : 'bg-orange-200'}`}
               >
-                Slot {slot.slotIndex + 1}
+                Slot {slot.slotIndex + 1} {slot.level ? `(Lv ${slot.level})` : ''}
+
                 {slot.hasPlantedSeed && (
                   <>
-                    <div>🌱 {slot.timeRemaining}s left</div>
-                    <button
-                      className={`mt-1 p-1 rounded text-sm ${
-                        slot.timeRemaining > 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-400'
-                      }`}
-                      onClick={() => slot.plantedId && handleHarvest(slot.slotIndex, slot.plantedId)}
-                      disabled={loading || slot.timeRemaining > 0}
+                    <div>{slot.timeRemaining > 0 ? `${slot.timeRemaining}s left` : '🌟 Ready!'}</div>
+                    <div>{getSeedName(slot.seedTypeId)}</div>
+                    {slot.timeRemaining === 0 && slot.plantedId && (
+                      <button
+                        className="mt-1 p-1 rounded text-sm bg-green-400"
+                        onClick={() => handleHarvest(slot.slotIndex, slot.plantedId!)}
+                        disabled={loading}
+                      >
+                        Harvest
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {!slot.hasPlantedSeed && (
+                  <>
+                    <select
+                      className="w-full p-1 mt-1 border rounded text-black"
+                      value={selectedSeed && selectedSlot === slot.slotIndex ? selectedSeed : ''}
+                      onChange={e => {
+                        setSelectedSlot(slot.slotIndex);
+                        setSelectedSeed(Number(e.target.value));
+                      }}
                     >
-                      Harvest
-                    </button>
+                      <option value="">Select seed</option>
+                      {seedTypes.filter(t => (inventory[t.id] ?? 0) > 0).map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({inventory[t.id]})
+                        </option>
+                      ))}
+                    </select>
                     <button
-                      className="mt-1 ml-1 p-1 bg-blue-400 rounded text-sm"
-                      onClick={() => handleUpgrade(slot.slotIndex)}
-                      disabled={loading || slot.nextUpgradeCost == null || gold < slot.nextUpgradeCost}
+                      className="w-full p-1 mt-1 bg-green-500 text-white rounded hover:bg-green-600"
+                      disabled={loading || selectedSeed == null || selectedSlot !== slot.slotIndex}
+                      onClick={handlePlant}
                     >
-                      Upgrade ({slot.nextUpgradeCost ?? '-'})
+                      {loading ? 'Planting...' : 'Plant'}
                     </button>
                   </>
                 )}
+
+                <button
+                  className="mt-1 p-1 bg-blue-400 rounded text-sm"
+                  onClick={() => handleUpgrade(slot.slotIndex)}
+                  disabled={loading || slot.nextUpgradeCost == null || gold < slot.nextUpgradeCost}
+                >
+                  Upgrade ({slot.nextUpgradeCost ?? '-'})
+                </button>
               </div>
             );
           } else {
@@ -179,9 +217,7 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
               <div key={i} className="p-4 border rounded text-center bg-gray-200">
                 Slot {i + 1}
                 <button
-                  className={`mt-2 w-full p-2 rounded text-white ${
-                    gold >= price ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500'
-                  }`}
+                  className={`mt-2 w-full p-2 rounded text-white ${gold >= price ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500'}`}
                   onClick={() => handlePurchase(i)}
                   disabled={loading || gold < price}
                 >
@@ -192,33 +228,6 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
           }
         })}
       </div>
-
-      {selectedSlot != null && (
-        <>
-          <h3 className="text-lg font-medium mb-2 text-black">Select Seed to Plant</h3>
-          <select
-            className="w-full p-2 mb-2 border rounded text-black"
-            value={selectedSeed ?? ''}
-            onChange={e => setSelectedSeed(Number(e.target.value))}
-          >
-            <option value="">Select seed</option>
-            {seedTypes
-              .filter(t => (inventory[t.id] ?? 0) > 0) // only show seeds owned
-              .map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({inventory[t.id] ?? 0})
-                </option>
-              ))}
-          </select>
-          <button
-            onClick={handlePlant}
-            disabled={loading || selectedSeed == null}
-            className="w-full p-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            {loading ? 'Planting...' : 'Plant'}
-          </button>
-        </>
-      )}
 
       {message && <p className="mt-4 text-center text-sm text-black">{message}</p>}
     </div>

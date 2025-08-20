@@ -2,63 +2,57 @@ import { Hono } from 'hono';
 import type { D1Database } from '@cloudflare/workers-types';
 import * as planterService from '../services/planterService';
 
-const router = new Hono<{ Bindings: { DB: D1Database } }>();
+interface Bindings {
+  DB: D1Database;
+}
+
+const router = new Hono<{ Bindings: Bindings }>();
 
 async function safeCall<T>(c: any, fn: () => Promise<T>) {
   try {
     const result = await fn();
     return c.json(result);
   } catch (err: any) {
-    return c.json({ error: err.message || 'Unexpected error' }, 400);
+    return c.json({ error: err?.message || 'Unexpected error' }, 400);
   }
 }
 
 // Get all slots for the user
-router.get('/slots', (c) =>
-  safeCall(c, () => planterService.getActivePlantersService(c))
-);
+router.get('/slots', (c) => safeCall(c, () => planterService.getActivePlantersService(c)));
 
 // Get all seed types
-router.get('/types', (c) =>
-  safeCall(c, () => planterService.getSeedTypesService(c))
-);
+router.get('/types', (c) => safeCall(c, () => planterService.getSeedTypesService(c)));
 
 // Purchase a new slot
-router.post('/slots/purchase', (c) =>
-  safeCall(c, () => planterService.purchasePlanterSlotService(c))
-);
+router.post('/slots/purchase', (c) => safeCall(c, () => planterService.purchasePlanterSlotService(c)));
 
-// Upgrade a slot (slotIndex comes from route)
+// Upgrade a slot
 router.post('/slots/:slotIndex/upgrade', (c) =>
   safeCall(c, async () => {
     const slotIndex = Number(c.req.param('slotIndex'));
-    return planterService.upgradePlanterSlotService({
-      ...c,
-      req: { ...c.req, json: async () => ({ slotIndex }) },
-    } as any);
+    if (isNaN(slotIndex)) throw new Error('Invalid slotIndex');
+
+    // Let the service handle JSON body and slotIndex
+    return planterService.upgradePlanterSlotService(c, slotIndex);
   })
 );
 
-// Plant a seed in a slot (slotIndex from route, seedTypeId from body)
+// Plant a seed in a slot
 router.post('/slots/:slotIndex/plant', (c) =>
   safeCall(c, async () => {
-    const body = await c.req.json();
     const slotIndex = Number(c.req.param('slotIndex'));
-    return planterService.plantSeedService({
-      ...c,
-      req: { ...c.req, json: async () => ({ ...body, slotIndex }) },
-    } as any);
+    if (isNaN(slotIndex)) throw new Error('Invalid slotIndex');
+
+    const body = await c.req.json();
+    return planterService.plantSeedService(c, slotIndex, body.seedTypeId);
   })
 );
 
-// Harvest from a planted seed (plantedId from body)
+// Harvest from a planted seed
 router.post('/slots/:slotIndex/harvest', (c) =>
   safeCall(c, async () => {
     const body = await c.req.json();
-    return planterService.harvestSeedService({
-      ...c,
-      req: { ...c.req, json: async () => body },
-    } as any);
+    return planterService.harvestSeedService(c, body.plantedId);
   })
 );
 
