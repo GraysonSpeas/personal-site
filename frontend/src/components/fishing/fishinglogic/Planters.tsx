@@ -19,6 +19,7 @@ interface SeedType {
 
 interface HarvestedItem {
   type: string;
+  typeId?: number;
   name: string;
   quantity: number;
 }
@@ -26,7 +27,12 @@ interface HarvestedItem {
 const SLOT_PRICES = [0, 5000, 10000, 20000];
 const MAX_SLOTS = 4;
 
-export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
+interface PlantersProps {
+  refreshInventory?: () => void;
+  refreshTrigger?: number;
+}
+
+export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
   const [slots, setSlots] = useState<PlanterSlot[]>([]);
   const [seedTypes, setSeedTypes] = useState<SeedType[]>([]);
   const [inventory, setInventory] = useState<{ [key: number]: number }>({});
@@ -37,6 +43,7 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
   const [gold, setGold] = useState<number>(0);
   const [harvested, setHarvested] = useState<HarvestedItem[]>([]);
 
+  // Fetch slots and seed types (local to Planters)
   const fetchSlots = async () => {
     const res = await fetch(`${API_BASE}/planters/slots`, { credentials: 'include' });
     const data = await res.json();
@@ -53,11 +60,11 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     setSeedTypes(typesWithEmoji);
   };
 
-  const fetchInventory = async () => {
+  const fetchInventoryLocal = async () => {
+    if (!refreshInventory) return;
     const res = await fetch(`${API_BASE}/inventory`, { credentials: 'include' });
     const data = await res.json();
     setGold(data.currency?.gold ?? 0);
-
     const seedsMap: { [key: number]: number } = {};
     (data.seeds || []).forEach((s: any) => {
       seedsMap[s.seed_type_id] = s.quantity;
@@ -68,17 +75,18 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
   useEffect(() => {
     fetchSlots();
     fetchSeedTypes();
-    fetchInventory();
+    fetchInventoryLocal();
   }, []);
 
   useEffect(() => {
     if (refreshTrigger !== undefined) {
       fetchSlots();
       fetchSeedTypes();
-      fetchInventory();
+      fetchInventoryLocal();
     }
   }, [refreshTrigger]);
 
+  // Local countdown for planted seeds
   useEffect(() => {
     const interval = setInterval(() => {
       setSlots(prev =>
@@ -92,13 +100,18 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     return () => clearInterval(interval);
   }, []);
 
+  const getSeedName = (seedTypeId?: number) => {
+    const seed = seedTypes.find(s => s.id === seedTypeId);
+    return seed ? `${seed.name} ${seed.emoji ?? '🌱'}` : '';
+  };
+
   const handlePurchase = async (slotIndex: number) => {
     setLoading(true);
     const res = await fetch(`${API_BASE}/planters/slots/purchase`, { method: 'POST', credentials: 'include' });
     const data = await res.json();
     setMessage(data.success ? `Purchased slot ${slotIndex + 1}!` : data.error || 'Failed to purchase slot.');
     await fetchSlots();
-    await fetchInventory();
+    await fetchInventoryLocal();
     setLoading(false);
   };
 
@@ -108,7 +121,6 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     const data = await res.json();
     setMessage(data.success ? `Upgraded slot ${slotIndex + 1} to level ${data.newLevel}!` : data.error || 'Failed to upgrade slot.');
     await fetchSlots();
-    await fetchInventory();
     setLoading(false);
   };
 
@@ -126,51 +138,42 @@ export function Planters({ refreshTrigger }: { refreshTrigger?: number }) {
     setSelectedSlot(null);
     setSelectedSeed(null);
     await fetchSlots();
-    await fetchInventory();
+    if (refreshInventory) await refreshInventory(); // refresh inventory after planting
     setLoading(false);
   };
 
-const handleHarvest = async (plantedId: number) => {
-  setLoading(true);
-  try {
-    const res = await fetch(`${API_BASE}/planters/slots/harvest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ plantedId }),
-    });
-    const data: {
-      success?: boolean;
-      error?: string;
-      outputs?: { type: string; typeId: number; quantity: number }[];
-    } = await res.json();
+  const handleHarvest = async (plantedId: number) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/planters/slots/harvest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ plantedId }),
+      });
+      const data: { success?: boolean; error?: string; outputs?: { type: string; typeId: number; quantity: number }[] } = await res.json();
 
-    if (data.success) {
-      const items: HarvestedItem[] = (data.outputs || []).map((i) => ({
-        type: i.type,
-        typeId: i.typeId,
-        quantity: i.quantity,
-        name: getSeedName(i.typeId),
-      }));
-      const msg = items.map((i) => `${i.quantity}x ${i.name} (${i.type})`).join(', ');
-      setMessage(`Harvested: ${msg}`);
-      setHarvested(items);
-    } else {
-      setMessage(data.error || 'Failed to harvest.');
+      if (data.success) {
+        const items: HarvestedItem[] = (data.outputs || []).map(i => ({
+          type: i.type,
+          typeId: i.typeId,
+          quantity: i.quantity,
+          name: getSeedName(i.typeId),
+        }));
+        const msg = items.map(i => `${i.quantity}x ${i.name} (${i.type})`).join(', ');
+        setMessage(`Harvested: ${msg}`);
+        setHarvested(items);
+      } else {
+        setMessage(data.error || 'Failed to harvest.');
+      }
+
+      await fetchSlots();
+      if (refreshInventory) await refreshInventory(); // refresh inventory after harvesting
+    } catch (err) {
+      setMessage('Error harvesting.');
+    } finally {
+      setLoading(false);
     }
-
-    await fetchSlots();
-    await fetchInventory();
-  } catch (err) {
-    setMessage('Error harvesting.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const getSeedName = (seedTypeId?: number) => {
-    const seed = seedTypes.find(s => s.id === seedTypeId);
-    return seed ? `${seed.name} ${seed.emoji ?? '🌱'}` : '';
   };
 
   return (
@@ -183,10 +186,7 @@ const handleHarvest = async (plantedId: number) => {
           const slot = slots.find(s => s.slotIndex === i);
           if (slot) {
             return (
-              <div
-                key={i}
-                className={`p-4 border rounded text-center cursor-pointer ${slot.hasPlantedSeed ? 'bg-green-200' : 'bg-orange-200'}`}
-              >
+              <div key={i} className={`p-4 border rounded text-center cursor-pointer ${slot.hasPlantedSeed ? 'bg-green-200' : 'bg-orange-200'}`}>
                 Slot {slot.slotIndex + 1} {slot.level ? `(Lv ${slot.level})` : ''}
 
                 {slot.hasPlantedSeed && (

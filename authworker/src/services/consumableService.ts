@@ -58,10 +58,15 @@ export async function useConsumableService(c: Context<{ Bindings: any }>) {
      VALUES (?, ?, datetime('now'), ?)`
   ).bind(userId, typeId, type.duration).run();
 
-  // Decrease quantity
-  await db.prepare(
-    'UPDATE consumables SET quantity = quantity - 1 WHERE user_id = ? AND type_id = ?'
-  ).bind(userId, typeId).run();
+// Decrease quantity
+await db.prepare(
+  'UPDATE consumables SET quantity = quantity - 1 WHERE user_id = ? AND type_id = ?'
+).bind(userId, typeId).run();
+
+// Remove row if quantity is 0 or less
+await db.prepare(
+  'DELETE FROM consumables WHERE user_id = ? AND type_id = ? AND quantity <= 0'
+).bind(userId, typeId).run();
 
   return { success: true };
 }

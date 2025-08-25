@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../auth/AuthProvider';
-import { useFishingInventory } from './fishinglogic/fishingInventoryLogic';
-import { FishingInventoryUI } from './fishingui/FishingInventoryUI';
+import { FishingInventory } from './fishingui/FishingInventory';
 import { FishingMinigameUI } from './fishingui/FishingMinigameUI';
 import { ZoneSelector } from './fishinglogic/ZoneSelector';
 import { GearSelector } from './fishinglogic/GearSelector';
@@ -13,47 +12,77 @@ import { Crafting } from './fishinglogic/Crafting';
 import { Consumables } from './fishinglogic/Consumables';
 import XPBar from './fishingui/XPBar';
 import Collections from './fishingui/Collections';
-import { Planters } from './fishinglogic/Planters'; // new
+import { Planters } from './fishinglogic/Planters';
+
+import { API_BASE } from '../../config';
+
+export type InventoryData = {
+  fishStacks: any[];
+  biggestFish: any[];
+  email?: string;
+  currency?: Record<string, number>;
+  resources?: any[];
+  gear?: any[];
+  bait?: any[];
+  consumables?: any[];
+  seeds?: any[];
+  current_zone_id: number | null;
+  xp?: number;
+  level?: number;
+};
 
 export function FishingUI() {
   const { user, loading: authLoading } = useAuth();
-  const { data, loading: invLoading, error, refetch: refetchInventory } = useFishingInventory();
+  const [data, setData] = useState<InventoryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [merchantRefetchTrigger, setMerchantRefetchTrigger] = useState(0);
-  const [craftingRefetchTrigger, setCraftingRefetchTrigger] = useState(0);
-  const [plantersRefetchTrigger, setPlantersRefetchTrigger] = useState(0); // new
+  const [refetchTrigger, setRefetchTrigger] = useState({ merchant: 0, crafting: 0, planters: 0 });
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('quest'); // quest | merchant | crafting | collections | planters
+  const [activeTab, setActiveTab] = useState<'quest' | 'merchant' | 'crafting' | 'collections' | 'planters'>('quest');
+  const [currentZoneId, setCurrentZoneId] = useState<number | null>(null);
 
-  const [currentZoneId, setCurrentZoneId] = useState<number | null>(data?.current_zone_id ?? null);
-
-  useEffect(() => {
-    if (data?.current_zone_id && data.current_zone_id !== currentZoneId) {
-      setCurrentZoneId(data.current_zone_id);
+  const fetchInventory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/inventory`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const json = await res.json();
+      setData({
+        fishStacks: json.fishStacks || json.fish || [],
+        biggestFish: json.biggestFish || [],
+        email: json.email,
+        currency: json.currency,
+        resources: json.resources,
+        gear: json.gear,
+        bait: json.bait,
+        consumables: json.consumables || [],
+        seeds: json.seeds || [],
+        current_zone_id: json.current_zone_id ?? json.currentZoneId ?? null,
+        xp: json.xp,
+        level: json.level,
+      });
+      setCurrentZoneId(json.current_zone_id ?? null);
+      setError(null);
+    } catch (e: any) {
+      setError(e.message || 'Fetch error');
+    } finally {
+      setLoading(false);
     }
-  }, [data?.current_zone_id]);
-
-  const refetchInventoryAndMerchant = async () => {
-    await refetchInventory();
-    setMerchantRefetchTrigger((prev) => prev + 1);
-  };
-
-  const refetchInventoryAndCrafting = async () => {
-    await refetchInventory();
-    setCraftingRefetchTrigger((prev) => prev + 1);
-  };
-
-  const refreshMerchant = useCallback(() => {
-    setMerchantRefetchTrigger((prev) => prev + 1);
-    setCraftingRefetchTrigger((prev) => prev + 1);
-    setPlantersRefetchTrigger((prev) => prev + 1); // also refresh planters
   }, []);
 
-  const refreshCrafting = useCallback(() => {
-    setCraftingRefetchTrigger((prev) => prev + 1);
-    setMerchantRefetchTrigger((prev) => prev + 1);
-    setPlantersRefetchTrigger((prev) => prev + 1); // also refresh planters
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory]);
+
+  // Unified refetch
+  const triggerRefetch = useCallback((tabs: Array<'merchant' | 'crafting' | 'planters'> = []) => {
+    setRefetchTrigger(prev => {
+      const updated = { ...prev };
+      tabs.forEach(tab => { updated[tab] += 1; });
+      return updated;
+    });
   }, []);
 
   if (authLoading) return <p>Loading user...</p>;
@@ -63,231 +92,61 @@ export function FishingUI() {
 
   return (
     <TimeContentProvider
-      render={({ weather, catchOfTheDay, quests, worldState, refresh }) => (
+      render={({ weather, quests, worldState, refresh }) => (
         <>
-          {/* Top Right: Weather + ZoneSelector */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 80,
-              right: 16,
-              width: 250,
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
+          <div style={{ position: 'fixed', top: 80, right: 16, width: 250, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <WeatherUI weather={weather} worldState={worldState} />
-            <ZoneSelector
-              refetch={refetchInventory}
-              currentZoneId={currentZoneId}
-            />
+            <ZoneSelector refetch={fetchInventory} currentZoneId={currentZoneId} />
           </div>
 
-          {/* Top Center: Hamburger Toggle */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 100,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 1100,
-              width: '100vw',
-              maxWidth: '100%',
-            }}
-          >
-            <button
-              onClick={() => setMenuOpen((open) => !open)}
-              style={{
-                padding: '8px 12px',
-                fontSize: 16,
-                cursor: 'pointer',
-                borderRadius: 4,
-                border: '1px solid #ccc',
-                backgroundColor: menuOpen ? '#eee' : 'white',
-                color: 'black',
-                margin: '0 auto',
-                display: 'block',
-                maxWidth: 200,
-              }}
-              aria-expanded={menuOpen}
-              aria-label="Toggle menu"
-            >
+          <div style={{ position: 'fixed', top: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 1100, width: '100vw', maxWidth: '100%' }}>
+            <button onClick={() => setMenuOpen(open => !open)} style={{ padding: '8px 12px', fontSize: 16, cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc', backgroundColor: menuOpen ? '#eee' : 'white', color: 'black', margin: '0 auto', display: 'block', maxWidth: 200 }}>
               ☰ Menu
             </button>
-
             {menuOpen && (
-              <div
-                style={{
-                  marginTop: 12,
-                  backgroundColor: 'white',
-                  borderTop: '1px solid #ccc',
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
-                  padding: 16,
-                  height: '60vh',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                {/* Tabs */}
+              <div style={{ marginTop: 12, backgroundColor: 'white', borderTop: '1px solid #ccc', boxShadow: '0 8px 16px rgba(0,0,0,0.15)', padding: 16, height: '60vh', width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                  <button
-                    onClick={() => setActiveTab('quest')}
-                    disabled={activeTab === 'quest'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'quest' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'quest' ? '#cce4ff' : 'white',
-                      color: activeTab === 'quest' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Quest
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('merchant')}
-                    disabled={activeTab === 'merchant'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'merchant' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'merchant' ? '#cce4ff' : 'white',
-                      color: activeTab === 'merchant' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Merchant
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('crafting')}
-                    disabled={activeTab === 'crafting'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'crafting' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'crafting' ? '#cce4ff' : 'white',
-                      color: activeTab === 'crafting' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Crafting
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('collections')}
-                    disabled={activeTab === 'collections'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'collections' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'collections' ? '#cce4ff' : 'white',
-                      color: activeTab === 'collections' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Collections
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('planters')}
-                    disabled={activeTab === 'planters'}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      cursor: activeTab === 'planters' ? 'default' : 'pointer',
-                      backgroundColor: activeTab === 'planters' ? '#cce4ff' : 'white',
-                      color: activeTab === 'planters' ? 'black' : '#333',
-                      border: '1px solid #ccc',
-                      borderRadius: 4,
-                    }}
-                  >
-                    Planters
-                  </button>
+                  {['quest','merchant','crafting','collections','planters'].map(tab => (
+                    <button key={tab} onClick={() => setActiveTab(tab as any)} disabled={activeTab === tab} style={{ flex:1, padding:'8px 12px', cursor: activeTab===tab?'default':'pointer', backgroundColor: activeTab===tab?'#cce4ff':'white', color: activeTab===tab?'black':'#333', border:'1px solid #ccc', borderRadius:4 }}>
+                      {tab.charAt(0).toUpperCase()+tab.slice(1)}
+                    </button>
+                  ))}
                 </div>
-
-                {/* Active Tab Content */}
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {activeTab === 'quest' && <QuestUI quests={quests} />}
-                  {activeTab === 'merchant' && (
-                    <Merchant
-                      refetch={refetchInventoryAndMerchant}
-                      refetchTrigger={merchantRefetchTrigger}
-                      refreshOther={refreshCrafting}
-                    />
-                  )}
-                  {activeTab === 'crafting' && (
-                    <Crafting
-                      refetch={refetchInventoryAndCrafting}
-                      refetchTrigger={craftingRefetchTrigger}
-                      refreshOther={refreshMerchant}
-                    />
-                  )}
-                  {activeTab === 'collections' && <Collections />}
-                  {activeTab === 'planters' && (
-                    <Planters refreshTrigger={plantersRefetchTrigger} />
-                  )}
+                <div style={{ flex:1, overflowY:'auto' }}>
+                  {activeTab==='quest' && <QuestUI quests={quests} />}
+                  {activeTab==='merchant' && <Merchant refetch={fetchInventory} refetchTrigger={refetchTrigger.merchant} refreshOther={() => triggerRefetch(['crafting','planters'])} />}
+                  {activeTab==='crafting' && <Crafting refetch={fetchInventory} refetchTrigger={refetchTrigger.crafting} refreshOther={() => triggerRefetch(['merchant','planters'])} />}
+                  {activeTab==='collections' && <Collections />}
+                  {activeTab==='planters' && <Planters refreshInventory={fetchInventory} refreshTrigger={refetchTrigger.planters} />}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Left Side: Inventory + GearSelector */}
-          <div
-            style={{
-              position: 'fixed',
-              top: 80,
-              bottom: 16,
-              left: 16,
-              width: 450,
-              overflowY: 'auto',
-              paddingRight: 8,
-              zIndex: 500,
-            }}
-          >
-            {combinedData && (
-              <>
-                <FishingInventoryUI data={combinedData} loading={invLoading} error={error} />
-                <div style={{ marginTop: 16 }}>
-                  <GearSelector
-                    gear={combinedData.gear ?? []}
-                    bait={combinedData.bait ?? []}
-                    refetch={refetchInventory}
-                  />
-                </div>
-              </>
-            )}
+          <div style={{ position:'fixed', top:80, bottom:16, left:16, width:450, overflowY:'auto', paddingRight:8, zIndex:500 }}>
+            {combinedData && <>
+              <FishingInventory data={combinedData} />
+              <div style={{ marginTop:16 }}>
+                <GearSelector gear={combinedData.gear||[]} bait={combinedData.bait||[]} refetch={fetchInventory} />
+              </div>
+            </>}
           </div>
 
-          {/* Center Column: Fishing Minigame + Consumables */}
-          <div
-            style={{
-              margin: '0 auto',
-              paddingTop: 80,
-              maxWidth: 700,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-              zIndex: 500,
-            }}
-          >
+          <div style={{ margin:'0 auto', paddingTop:80, maxWidth:700, display:'flex', flexDirection:'column', gap:12, zIndex:500 }}>
             <FishingMinigameUI
+              refetchInventory={fetchInventory}
               refetchTime={refresh}
-              refetchInventory={refetchInventory}
-              refetchMerchant={refreshMerchant}
-              refetchCrafting={refreshCrafting}
+              refetchMerchant={() => triggerRefetch(['merchant'])}
+              refetchCrafting={() => triggerRefetch(['crafting'])}
               currentZoneId={currentZoneId}
               setCurrentZoneId={setCurrentZoneId}
             />
-            <Consumables refetch={refetchInventory} refreshTrigger={craftingRefetchTrigger} />
+            <Consumables refetch={fetchInventory} refreshTrigger={refetchTrigger.crafting} />
           </div>
 
-          <XPBar />
+          {data && data.level != null && data.xp != null && (
+            <XPBar level={data.level} xp={data.xp} />
+          )}
         </>
       )}
     />

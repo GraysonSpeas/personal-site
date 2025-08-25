@@ -17,6 +17,14 @@ type AchievementTemplate = {
   reward_xp: number;
 };
 
+type BiggestFish = {
+  species: string;
+  rarity: string;
+  max_weight?: number;
+  max_length?: number;
+  caught_at?: string;
+};
+
 const collectionTemplates: CollectionTemplate[] = [
   // Jungle
   { key: 'jungle_common', species: ['jungle_common_day_fish','jungle_common_night_fish','jungle_common_rain_fish'], reward_gold: 100, reward_xp: 50 },
@@ -75,8 +83,11 @@ export async function getCollectionsService(c: Context<{ Bindings: any }>) {
   const userId = user.id;
 
   // Biggest fish
-  const fishRows = await db.prepare(`SELECT species, rarity FROM biggest_fish WHERE user_id = ?`).bind(userId).all();
-  const biggestFish = (fishRows as any).results as { species: string; rarity: string }[];
+const fishRows = await db
+  .prepare(`SELECT species, rarity, max_weight, max_length, caught_at FROM biggest_fish WHERE user_id = ?`)
+  .bind(userId)
+  .all();
+  const biggestFish = (fishRows as any).results as BiggestFish[];
   const speciesCaught = new Set(biggestFish.map(f => f.species));
 
   // --- Collections ---
@@ -112,6 +123,12 @@ export async function getCollectionsService(c: Context<{ Bindings: any }>) {
       reward_gold: col.reward_gold,
       reward_xp: col.reward_xp,
       claimable: completed && !colRow.claimed ? true : false,
+      biggestFish: col.species.map(s => {
+        const fish = biggestFish.find(f => f.species === s);
+        return fish
+          ? { ...fish, caught: true }
+          : { species: s, rarity: 'none', max_weight: 0, max_length: 0, caught_at: '', caught: false };
+      }),
     });
   }
 
@@ -138,7 +155,6 @@ export async function getCollectionsService(c: Context<{ Bindings: any }>) {
 
     const newProgress = count;
 
-    // Collect claimable stages individually
     const claimable: { stage: number; reward_gold: number; reward_xp: number }[] = [];
     for (const threshold of template.thresholds) {
       if (newProgress >= threshold && !claimedStages.includes(threshold)) {
@@ -152,7 +168,6 @@ export async function getCollectionsService(c: Context<{ Bindings: any }>) {
 
     const completedStage = template.thresholds.filter(t => newProgress >= t).slice(-1)[0] || 0;
 
-    // Compute next threshold and rewards
     const nextThreshold = template.thresholds.find(t => t > newProgress) || 0;
     const nextRewardGold = nextThreshold ? template.reward_gold : 0;
     const nextRewardXp = nextThreshold ? template.reward_xp : 0;
