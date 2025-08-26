@@ -259,18 +259,18 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
         })}
       </div>
 
-      {harvested.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold">Harvested Items:</h3>
-          <ul className="text-sm">
-            {harvested.map((item, idx) => (
-              <li key={idx}>
-                {item.quantity}x {item.name} ({item.type})
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+{harvested.length > 0 && (
+  <div className="mb-4">
+    <h3 className="text-sm font-semibold text-black">Harvested Items:</h3>
+    <ul className="text-sm text-black">
+      {harvested.map((item, idx) => (
+        <li key={idx} className="text-black">
+          {item.quantity}x {item.name} ({item.type})
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
 
       {message && <p className="mt-4 text-center text-sm text-black">{message}</p>}
     </div>

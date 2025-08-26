@@ -74,6 +74,7 @@ export function getWorldState(now = Date.now()): WorldState {
 
   const isDay = cycleMin < 120;
   const phase = isDay ? 'day' : 'night';
+  //const phase = 'night'; // force night/day
 
   let isRaining = false;
   let rainStartMin: number | null = null;

@@ -13,8 +13,8 @@ type AchievementTemplate = {
   key: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
   thresholds: number[];
-  reward_gold: number;
-  reward_xp: number;
+  reward_gold: number[];
+  reward_xp: number[];
 };
 
 type BiggestFish = {
@@ -59,139 +59,209 @@ const collectionTemplates: CollectionTemplate[] = [
 ];
 
 const achievementTemplates: AchievementTemplate[] = [
-  { key: 'common_fish_collector', rarity: 'common', thresholds: [5, 10, 20], reward_gold: 50, reward_xp: 25 },
-  { key: 'uncommon_fish_collector', rarity: 'uncommon', thresholds: [5, 10, 20], reward_gold: 75, reward_xp: 35 },
-  { key: 'rare_fish_collector', rarity: 'rare', thresholds: [5, 10, 20], reward_gold: 100, reward_xp: 50 },
-  { key: 'epic_fish_collector', rarity: 'epic', thresholds: [5, 10, 20], reward_gold: 150, reward_xp: 75 },
-  { key: 'legendary_fish_collector', rarity: 'legendary', thresholds: [5, 10, 20], reward_gold: 200, reward_xp: 100 },
-  { key: 'mythic_fish_collector', rarity: 'mythic', thresholds: [5, 10, 20], reward_gold: 250, reward_xp: 125 },
+  { key: 'common_fish_collector', rarity: 'common', thresholds: [5, 15, 35], reward_gold: [50, 100, 200], reward_xp: [25, 50, 100] },
+  { key: 'uncommon_fish_collector', rarity: 'uncommon', thresholds: [5, 15, 35], reward_gold: [75, 150, 300], reward_xp: [35, 70, 140] },
+  { key: 'rare_fish_collector', rarity: 'rare', thresholds: [5, 15, 35], reward_gold: [100, 200, 400], reward_xp: [50, 100, 200] },
+  { key: 'epic_fish_collector', rarity: 'epic', thresholds: [5, 15, 35], reward_gold: [150, 300, 600], reward_xp: [75, 150, 300] },
+  { key: 'legendary_fish_collector', rarity: 'legendary', thresholds: [5, 15, 35], reward_gold: [200, 400, 800], reward_xp: [100, 200, 400] },
+  { key: 'mythic_fish_collector', rarity: 'mythic', thresholds: [5, 15, 35], reward_gold: [250, 500, 1000], reward_xp: [125, 250, 500] },
 ];
 
 export async function getCollectionsService(c: Context<{ Bindings: any }>) {
   const session = getCookie(c, 'session');
   if (!session) return { error: 'Unauthorized' };
-
   let email: string;
   try { email = atob(session); } catch { return { error: 'Invalid session' }; }
 
   const db = c.env.DB;
-
-  // Get user
-  const userRow = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
-  const user = userRow as { id: number } | null;
-  if (!user) return { error: 'User not found' };
-  const userId = user.id;
+  const userRow = await db.prepare('SELECT id, xp, level FROM users WHERE email = ?').bind(email).first() as { id: number; xp: number; level: number } | null;
+  if (!userRow) return { error: 'User not found' };
+  const userId = userRow.id;
 
   // Biggest fish
-const fishRows = await db
-  .prepare(`SELECT species, rarity, max_weight, max_length, caught_at FROM biggest_fish WHERE user_id = ?`)
-  .bind(userId)
-  .all();
+  const fishRows = await db.prepare('SELECT species, rarity, max_weight, max_length, caught_at FROM biggest_fish WHERE user_id = ?').bind(userId).all();
   const biggestFish = (fishRows as any).results as BiggestFish[];
   const speciesCaught = new Set(biggestFish.map(f => f.species));
 
-  // --- Collections ---
+  // Collections
   const collections: any[] = [];
   for (const col of collectionTemplates) {
     const caughtCount = col.species.filter(s => speciesCaught.has(s)).length;
     const completed = caughtCount >= col.species.length ? 1 : 0;
 
-    let colRow = await db
-      .prepare(`SELECT * FROM collections WHERE user_id = ? AND collection_key = ?`)
-      .bind(userId, col.key)
-      .first();
+let colRow = await db
+  .prepare('SELECT * FROM collections WHERE user_id = ? AND collection_key = ?')
+  .bind(userId, col.key)
+  .first() as { progress: number; completed: number; claimed: number; completed_at?: string } | null;
 
-    colRow = colRow as { progress: number; completed: number; claimed: number } | null;
     if (!colRow) {
-      await db.prepare(`INSERT INTO collections (user_id, collection_key, progress, completed, claimed) VALUES (?, ?, 0, 0, 0)`)
-        .bind(userId, col.key).run();
+      await db.prepare('INSERT INTO collections (user_id, collection_key, progress, completed, claimed) VALUES (?, ?, 0, 0, 0)').bind(userId, col.key).run();
       colRow = { progress: 0, completed: 0, claimed: 0 };
     }
 
-    if (colRow.progress !== caughtCount || colRow.completed !== completed) {
-      await db.prepare(`UPDATE collections SET progress = ?, completed = ? WHERE user_id = ? AND collection_key = ?`)
-        .bind(caughtCount, completed, userId, col.key).run();
-    }
+if (colRow.progress !== caughtCount || colRow.completed !== completed) {
+  await db.prepare(
+    `UPDATE collections 
+     SET progress = ?, completed = ?, completed_at = CASE WHEN ? = 1 THEN datetime('now') ELSE completed_at END 
+     WHERE user_id = ? AND collection_key = ?`
+  ).bind(caughtCount, completed, completed, userId, col.key).run();
+}
 
-    collections.push({
-      key: col.key,
-      species: col.species,
-      total: col.species.length,
-      caught: caughtCount,
-      completed,
-      claimed: colRow.claimed,
-      reward_gold: col.reward_gold,
-      reward_xp: col.reward_xp,
-      claimable: completed && !colRow.claimed ? true : false,
-      biggestFish: col.species.map(s => {
-        const fish = biggestFish.find(f => f.species === s);
-        return fish
-          ? { ...fish, caught: true }
-          : { species: s, rarity: 'none', max_weight: 0, max_length: 0, caught_at: '', caught: false };
-      }),
-    });
+   collections.push({
+  key: col.key,
+  species: col.species,
+  total: col.species.length,
+  caught: caughtCount,
+  completed,
+  claimed: colRow.claimed,
+  completed_at: colRow.completed_at, // <-- add this
+  reward_gold: col.reward_gold,
+  reward_xp: col.reward_xp,
+  claimable: completed && !colRow.claimed,
+  biggestFish: col.species.map(s => {
+    const fish = biggestFish.find(f => f.species === s);
+    return fish ? { ...fish, caught: true } : { species: s, rarity: 'none', max_weight: 0, max_length: 0, caught_at: '', caught: false };
+  }),
+});
   }
 
-  // --- Achievements ---
-  const achievements: any[] = [];
-  for (const template of achievementTemplates) {
-    const count = biggestFish.filter(f => f.rarity === template.rarity).length;
+const achievements: any[] = [];
+for (const template of achievementTemplates) {
+  const progressRow = await db
+    .prepare('SELECT total_caught FROM user_rarity_progress WHERE user_id = ? AND rarity = ?')
+    .bind(userId, template.rarity)
+    .first() as { total_caught: number } | undefined;
 
-    let achRow = await db
-      .prepare(`SELECT * FROM achievements WHERE user_id = ? AND achievement_key = ?`)
+  const count = progressRow ? progressRow.total_caught : 0;
+
+  let achRow = await db.prepare('SELECT * FROM achievements WHERE user_id = ? AND achievement_key = ?')
+    .bind(userId, template.key)
+    .first() as { id: number; progress: number; completed: number; claimed_stages: string } | null;
+  if (!achRow) {
+    await db.prepare('INSERT INTO achievements (user_id, achievement_key, progress, completed, claimed_stages) VALUES (?, ?, 0, 0, "[]")')
       .bind(userId, template.key)
-      .first();
-
-    achRow = achRow as { id: number; progress: number; completed: number; claimed_stages: string } | null;
-    if (!achRow) {
-      await db.prepare(
-        `INSERT INTO achievements (user_id, achievement_key, progress, completed, claimed_stages) VALUES (?, ?, 0, 0, '[]')`
-      ).bind(userId, template.key).run();
-      achRow = { id: 0, progress: 0, completed: 0, claimed_stages: '[]' };
-    }
-
-    let claimedStages: number[] = [];
-    try { claimedStages = JSON.parse(achRow.claimed_stages); } catch {}
-
-    const newProgress = count;
-
-    const claimable: { stage: number; reward_gold: number; reward_xp: number }[] = [];
-    for (const threshold of template.thresholds) {
-      if (newProgress >= threshold && !claimedStages.includes(threshold)) {
-        claimable.push({
-          stage: threshold,
-          reward_gold: template.reward_gold,
-          reward_xp: template.reward_xp,
-        });
-      }
-    }
-
-    const completedStage = template.thresholds.filter(t => newProgress >= t).slice(-1)[0] || 0;
-
-    const nextThreshold = template.thresholds.find(t => t > newProgress) || 0;
-    const nextRewardGold = nextThreshold ? template.reward_gold : 0;
-    const nextRewardXp = nextThreshold ? template.reward_xp : 0;
-
-    if (achRow.progress !== newProgress || achRow.completed !== completedStage) {
-      await db.prepare(`
-        UPDATE achievements
-        SET progress = ?, completed = ?, completed_at = CASE WHEN ? > 0 THEN datetime('now') ELSE NULL END
-        WHERE user_id = ? AND achievement_key = ?
-      `).bind(newProgress, completedStage, completedStage, userId, template.key).run();
-    }
-
-    achievements.push({
-      key: template.key,
-      rarity: template.rarity,
-      thresholds: template.thresholds,
-      progress: newProgress,
-      completed: completedStage,
-      claimable_stages: claimable,
-      next_threshold: nextThreshold,
-      next_reward_gold: nextRewardGold,
-      next_reward_xp: nextRewardXp,
-    });
+      .run();
+    achRow = { id: 0, progress: 0, completed: 0, claimed_stages: '[]' };
   }
 
+  let claimedStages: number[] = [];
+  try { claimedStages = JSON.parse(achRow.claimed_stages); } catch {}
+
+  const newProgress = count;
+  const claimable: { stage: number; reward_gold: number; reward_xp: number }[] = [];
+  for (let i = 0; i < template.thresholds.length; i++) {
+    const threshold = template.thresholds[i];
+    if (newProgress >= threshold && !claimedStages.includes(threshold)) {
+      claimable.push({
+        stage: threshold,
+        reward_gold: template.reward_gold[i],
+        reward_xp: template.reward_xp[i],
+      });
+    }
+  }
+
+  const completedStage = template.thresholds.filter(t => newProgress >= t).slice(-1)[0] || 0;
+  const nextThresholdIndex = template.thresholds.findIndex(t => t > newProgress);
+  const nextThreshold = nextThresholdIndex !== -1 ? template.thresholds[nextThresholdIndex] : 0;
+
+  if (achRow.progress !== newProgress || achRow.completed !== completedStage) {
+    await db.prepare(`
+      UPDATE achievements
+      SET progress = ?, completed = ?, completed_at = CASE WHEN ? > 0 THEN datetime('now') ELSE completed_at END
+      WHERE user_id = ? AND achievement_key = ?
+    `).bind(newProgress, completedStage, completedStage, userId, template.key).run();
+  }
+
+achievements.push({
+  key: template.key,
+  rarity: template.rarity,
+  thresholds: template.thresholds,
+  progress: newProgress,
+  completed: completedStage,
+  claimable_stages: claimable,
+  reward_gold: template.reward_gold,
+  reward_xp: template.reward_xp,
+  next_threshold: nextThreshold,
+  next_reward_gold: nextThreshold ? template.reward_gold : 0,
+  next_reward_xp: nextThreshold ? template.reward_xp : 0,
+});
+}
   return { collections, achievements };
+}
+
+export async function claimRewardService(
+  c: Context<{ Bindings: { DB: D1Database } }>,
+  body: { type: 'collection' | 'achievement'; key: string; stage?: number }
+) {
+  const session = getCookie(c, 'session');
+  if (!session) return { error: 'Unauthorized' };
+  let email: string;
+  try { email = atob(session); } catch { return { error: 'Invalid session' }; }
+
+  const db = c.env.DB;
+  const userRow = await db.prepare('SELECT id, xp, level FROM users WHERE email = ?').bind(email).first() as { id: number; xp: number; level: number } | null;
+  if (!userRow) return { error: 'User not found' };
+  const userId = userRow.id;
+
+  const recalcLevel = async () => {
+    const user = await db.prepare('SELECT xp, level FROM users WHERE id = ?').bind(userId).first<{ xp: number; level: number }>();
+    if (!user) return;
+    const xpToLevel = (n: number) => Math.round(10 * Math.pow(1.056, n - 1));
+    const totalXp = (n: number) => { let sum = 0; for (let i = 1; i < n; i++) sum += xpToLevel(i); return sum; };
+    let lvl = user.level;
+    while (user.xp >= totalXp(lvl + 1)) lvl++;
+    if (lvl > user.level) await db.prepare('UPDATE users SET level = ? WHERE id = ?').bind(lvl, userId).run();
+  };
+
+  if (body.type === 'collection') {
+    const row = await db.prepare('SELECT completed, claimed FROM collections WHERE user_id = ? AND collection_key = ?').bind(userId, body.key).first() as { completed: number; claimed: number } | null;
+    if (!row) return { error: 'Collection not found' };
+    if (!row.completed) return { error: 'Not completed yet' };
+    if (row.claimed) return { error: 'Already claimed' };
+
+    const template = collectionTemplates.find(t => t.key === body.key);
+    if (!template) return { error: 'Template not found' };
+
+    await db.prepare('UPDATE collections SET claimed = 1 WHERE user_id = ? AND collection_key = ?').bind(userId, body.key).run();
+    await db.prepare('INSERT INTO currencies(user_id, gold) VALUES(?, 0) ON CONFLICT(user_id) DO NOTHING').bind(userId).run();
+    await db.prepare('UPDATE currencies SET gold = gold + ? WHERE user_id = ?').bind(template.reward_gold, userId).run();
+    await db.prepare('UPDATE users SET xp = xp + ? WHERE id = ?').bind(template.reward_xp, userId).run();
+    await recalcLevel();
+
+    return { success: true, type: 'collection', key: body.key, reward_gold: template.reward_gold, reward_xp: template.reward_xp };
+  }
+
+if (body.type === 'achievement') {
+  if (!body.stage) return { error: 'Stage required' };
+
+  const row = await db.prepare('SELECT claimed_stages, progress FROM achievements WHERE user_id = ? AND achievement_key = ?')
+    .bind(userId, body.key).first<{ claimed_stages: string; progress: number }>();
+  if (!row) return { error: 'Achievement not found' };
+
+  let claimedStages: number[] = [];
+  try { claimedStages = JSON.parse(row.claimed_stages); } catch {}
+  if (claimedStages.includes(body.stage)) return { error: 'Stage already claimed' };
+  if (row.progress < body.stage) return { error: 'Not enough progress yet' };
+
+  const template = achievementTemplates.find(t => t.key === body.key);
+  if (!template) return { error: 'Template not found' };
+
+  // pick index of the stage in thresholds
+  const stageIndex = template.thresholds.indexOf(body.stage);
+  if (stageIndex === -1) return { error: 'Invalid stage' };
+
+  const rewardGold = template.reward_gold[stageIndex];
+  const rewardXp = template.reward_xp[stageIndex];
+
+  claimedStages.push(body.stage);
+  await db.prepare('UPDATE achievements SET claimed_stages = ? WHERE user_id = ? AND achievement_key = ?')
+    .bind(JSON.stringify(claimedStages), userId, body.key).run();
+  await db.prepare('INSERT INTO currencies(user_id, gold) VALUES(?, 0) ON CONFLICT(user_id) DO NOTHING').bind(userId).run();
+  await db.prepare('UPDATE currencies SET gold = gold + ? WHERE user_id = ?').bind(rewardGold, userId).run();
+  await db.prepare('UPDATE users SET xp = xp + ? WHERE id = ?').bind(rewardXp, userId).run();
+
+  return { success: true, type: 'achievement', key: body.key, stage: body.stage, reward_gold: rewardGold, reward_xp: rewardXp };
+}
+
+  return { error: 'Invalid type' };
 }

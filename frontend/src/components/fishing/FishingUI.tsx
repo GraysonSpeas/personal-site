@@ -116,7 +116,7 @@ export function FishingUI() {
                   {activeTab==='quest' && <QuestUI quests={quests} />}
                   {activeTab==='merchant' && <Merchant refetch={fetchInventory} refetchTrigger={refetchTrigger.merchant} refreshOther={() => triggerRefetch(['crafting','planters'])} />}
                   {activeTab==='crafting' && <Crafting refetch={fetchInventory} refetchTrigger={refetchTrigger.crafting} refreshOther={() => triggerRefetch(['merchant','planters'])} />}
-                  {activeTab==='collections' && <Collections />}
+                  {activeTab==='collections' && <Collections refreshInventory={fetchInventory} />}
                   {activeTab==='planters' && <Planters refreshInventory={fetchInventory} refreshTrigger={refetchTrigger.planters} />}
                 </div>
               </div>

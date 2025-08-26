@@ -214,12 +214,12 @@ const formatTimeRemaining = (seconds: number) => {
       ))}
 
       {/* Rain Display */}
-      {isRaining && (
-        <div className="mt-4 p-3 bg-blue-200 rounded text-blue-900 font-semibold">
-          Raining — Luck +20%, Bait +5%<br />
-          Time remaining: {formatTimeRemaining(rainTimeRemaining)}
-        </div>
-      )}
+      {isRaining && rainTimeRemaining > 0 && (
+  <div className="mt-4 p-3 bg-blue-200 rounded text-blue-900 font-semibold">
+    Raining — Luck +20%, Bait +5%<br />
+    Time remaining: {formatTimeRemaining(rainTimeRemaining)}
+  </div>
+)}
 
       <h3 className="text-lg font-medium mt-6 mb-2 text-black">Use New Consumable</h3>
       <select
