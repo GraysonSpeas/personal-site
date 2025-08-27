@@ -43,7 +43,6 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
   const [gold, setGold] = useState<number>(0);
   const [harvested, setHarvested] = useState<HarvestedItem[]>([]);
 
-  // Fetch slots and seed types (local to Planters)
   const fetchSlots = async () => {
     const res = await fetch(`${API_BASE}/planters/slots`, { credentials: 'include' });
     const data = await res.json();
@@ -72,12 +71,14 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
     setInventory(seedsMap);
   };
 
+  // Fetch once on mount
   useEffect(() => {
     fetchSlots();
     fetchSeedTypes();
     fetchInventoryLocal();
   }, []);
 
+  // Refetch on refreshTrigger
   useEffect(() => {
     if (refreshTrigger !== undefined) {
       fetchSlots();
@@ -86,24 +87,18 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
     }
   }, [refreshTrigger]);
 
-  // Local countdown for planted seeds
+  // Local timer countdown
   useEffect(() => {
     const interval = setInterval(() => {
       setSlots(prev =>
-        prev.map(s => {
-          if (!s.hasPlantedSeed) return s;
-          const time = Math.max(s.timeRemaining - 1, 0);
-          return { ...s, timeRemaining: time };
-        })
+        prev.map(s => ({
+          ...s,
+          timeRemaining: s.hasPlantedSeed ? Math.max(s.timeRemaining - 1, 0) : 0,
+        }))
       );
     }, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  const getSeedName = (seedTypeId?: number) => {
-    const seed = seedTypes.find(s => s.id === seedTypeId);
-    return seed ? `${seed.name} ${seed.emoji ?? '🌱'}` : '';
-  };
 
   const handlePurchase = async (slotIndex: number) => {
     setLoading(true);
@@ -138,7 +133,7 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
     setSelectedSlot(null);
     setSelectedSeed(null);
     await fetchSlots();
-    if (refreshInventory) await refreshInventory(); // refresh inventory after planting
+    if (refreshInventory) await refreshInventory();
     setLoading(false);
   };
 
@@ -151,25 +146,19 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
         credentials: 'include',
         body: JSON.stringify({ plantedId }),
       });
-      const data: { success?: boolean; error?: string; outputs?: { type: string; typeId: number; quantity: number }[] } = await res.json();
+      const data: { success?: boolean; error?: string; outputs?: HarvestedItem[] } = await res.json();
 
       if (data.success) {
-        const items: HarvestedItem[] = (data.outputs || []).map(i => ({
-          type: i.type,
-          typeId: i.typeId,
-          quantity: i.quantity,
-          name: getSeedName(i.typeId),
-        }));
-        const msg = items.map(i => `${i.quantity}x ${i.name} (${i.type})`).join(', ');
-        setMessage(`Harvested: ${msg}`);
+        const items: HarvestedItem[] = data.outputs || [];
         setHarvested(items);
+        const msg = items.map(i => `${i.quantity}x ${i.name}`).join(', ');
+        setMessage(`You obtained ${msg}`);
       } else {
         setMessage(data.error || 'Failed to harvest.');
       }
-
       await fetchSlots();
-      if (refreshInventory) await refreshInventory(); // refresh inventory after harvesting
-    } catch (err) {
+      if (refreshInventory) await refreshInventory();
+    } catch {
       setMessage('Error harvesting.');
     } finally {
       setLoading(false);
@@ -185,6 +174,7 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
         {Array.from({ length: MAX_SLOTS }).map((_, i) => {
           const slot = slots.find(s => s.slotIndex === i);
           if (slot) {
+            const seedType = seedTypes.find(s => s.id === slot.seedTypeId);
             return (
               <div key={i} className={`p-4 border rounded text-center cursor-pointer ${slot.hasPlantedSeed ? 'bg-green-200' : 'bg-orange-200'}`}>
                 Slot {slot.slotIndex + 1} {slot.level ? `(Lv ${slot.level})` : ''}
@@ -192,7 +182,7 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
                 {slot.hasPlantedSeed && (
                   <>
                     <div>{slot.timeRemaining > 0 ? `${slot.timeRemaining}s left` : '🌟 Ready!'}</div>
-                    <div>{getSeedName(slot.seedTypeId)}</div>
+                    <div>{seedType?.emoji} {seedType?.name || 'Loading...'}</div>
                     {slot.timeRemaining === 0 && slot.plantedId && (
                       <button
                         className="mt-1 p-1 rounded text-sm bg-green-400"
@@ -259,18 +249,18 @@ export function Planters({ refreshInventory, refreshTrigger }: PlantersProps) {
         })}
       </div>
 
-{harvested.length > 0 && (
-  <div className="mb-4">
-    <h3 className="text-sm font-semibold text-black">Harvested Items:</h3>
-    <ul className="text-sm text-black">
-      {harvested.map((item, idx) => (
-        <li key={idx} className="text-black">
-          {item.quantity}x {item.name} ({item.type})
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+      {harvested.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-black">Harvested Items:</h3>
+          <ul className="text-sm text-black">
+            {harvested.map((item, idx) => (
+              <li key={idx} className="text-black">
+                {item.quantity}x {item.name} ({item.type})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {message && <p className="mt-4 text-center text-sm text-black">{message}</p>}
     </div>

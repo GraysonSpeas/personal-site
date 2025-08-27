@@ -1,4 +1,4 @@
-// src/seeding/seedService.ts
+// src/services/planterService.ts
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
 import type { D1Database } from '@cloudflare/workers-types';
@@ -183,7 +183,7 @@ export async function harvestSeedService(c: Context<{ Bindings: any }>, plantedI
   const multiplier = dropMultipliers[levelIndex];
 
   interface OutputDef {
-    type: 'bait' | 'resource';
+    type: 'bait' | 'resource' | 'consumable';
     type_id: number;
     min: number;
     max: number;
@@ -193,27 +193,38 @@ export async function harvestSeedService(c: Context<{ Bindings: any }>, plantedI
   const outputs: OutputDef[] = JSON.parse(planted.outputs || '[]');
   const results: { type: string; typeId: number; quantity: number; name: string }[] = [];
 
-  const insertOutput = async (output: OutputDef, qty: number) => {
-    let name: string;
-    if (output.type === 'bait') {
-      const bait = await db.prepare(`SELECT name FROM baitTypes WHERE id = ?`).bind(output.type_id).first<{ name: string }>();
-      name = bait?.name || `Unknown bait #${output.type_id}`;
-      await db.prepare(
-        `INSERT INTO bait (user_id, type_id, quantity)
-         VALUES (?, ?, ?)
-         ON CONFLICT(user_id, type_id) DO UPDATE SET quantity = quantity + ?`
-      ).bind(userId, output.type_id, qty, qty).run();
-    } else {
-      const res = await db.prepare(`SELECT name FROM resourceTypes WHERE id = ?`).bind(output.type_id).first<{ name: string }>();
-      name = res?.name || `Unknown resource #${output.type_id}`;
-      await db.prepare(
-        `INSERT INTO resources (user_id, name, quantity)
-         SELECT ?, name, ? FROM resourceTypes WHERE id = ?
-         ON CONFLICT(user_id, name) DO UPDATE SET quantity = quantity + ?`
-      ).bind(userId, qty, output.type_id, qty).run();
-    }
-    results.push({ type: output.type, typeId: output.type_id, quantity: qty, name });
-  };
+const insertOutput = async (output: OutputDef, qty: number) => {
+  let name: string;
+  if (output.type === 'bait') {
+    const bait = await db.prepare(`SELECT name FROM baitTypes WHERE id = ?`)
+      .bind(output.type_id).first<{ name: string }>();
+    name = bait?.name || `Unknown bait #${output.type_id}`;
+    await db.prepare(
+      `INSERT INTO bait (user_id, type_id, quantity)
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, type_id) DO UPDATE SET quantity = quantity + ?`
+    ).bind(userId, output.type_id, qty, qty).run();
+  } else if (output.type === 'consumable') {
+    const con = await db.prepare(`SELECT name FROM consumableTypes WHERE id = ?`)
+      .bind(output.type_id).first<{ name: string }>();
+    name = con?.name || `Unknown consumable #${output.type_id}`;
+    await db.prepare(
+      `INSERT INTO consumables (user_id, type_id, quantity)
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, type_id) DO UPDATE SET quantity = quantity + ?`
+    ).bind(userId, output.type_id, qty, qty).run();
+  } else {
+    const res = await db.prepare(`SELECT name FROM resourceTypes WHERE id = ?`)
+      .bind(output.type_id).first<{ name: string }>();
+    name = res?.name || `Unknown resource #${output.type_id}`;
+    await db.prepare(
+      `INSERT INTO resources (user_id, name, quantity)
+       SELECT ?, name, ? FROM resourceTypes WHERE id = ?
+       ON CONFLICT(user_id, name) DO UPDATE SET quantity = quantity + ?`
+    ).bind(userId, qty, output.type_id, qty).run();
+  }
+  results.push({ type: output.type, typeId: output.type_id, quantity: qty, name });
+};
 
   // roll each output
   for (const output of outputs) {
