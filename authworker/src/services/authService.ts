@@ -1,9 +1,9 @@
 // src/services/authService.ts
-import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
+import { setCookie, deleteCookie } from 'hono/cookie'
 import { getInventoryService } from './getInventoryService'
-import { assignNewQuests, getQuestKeys, getAllQuests } from '../services/questService';
 import { Resend } from 'resend';
 import type { Context } from 'hono'
+import { getUserEmail, generateEmailHtml, getUserIdByEmail } from './authHelperService'
 
 // Bindings type for environment variables and DB access
 type Bindings = {
@@ -61,8 +61,8 @@ async function sendEmail(
 
 // User signup handler: validate, create user, send verification email
 export async function signup(c: Context<{ Bindings: Bindings }>) {
-  const { password, name } = await c.req.json();
-  const email = (await c.req.json()).email?.toLowerCase();
+  const { email: rawEmail, password, name } = await c.req.json();
+  const email = rawEmail?.toLowerCase();
   if (!email || !password) return c.json({ message: 'Missing fields' }, 400)
   if (!validatePassword(password))
     return c.json(
@@ -95,8 +95,7 @@ await c.env.DB
   .run()
 
 // Get the new user's id
-const userRow = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
-const userId = userRow?.id
+const userId = await getUserIdByEmail(c.env.DB, email)
 
 if (userId) {
   // Gear and bait stats from seed data HARDCODE
@@ -151,25 +150,12 @@ await c.env.DB.prepare(
 const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${verification_token}`;
   try {
     await sendEmail(
-      c,
-      email,
-      'Welcome to Speas.org – Verify Your Email',
-      `Hi ${name || ''},\n\nClick this link to verify your email: ${verificationUrl}`,
-      `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-        <h2 style="color: #111;">Welcome to <span style="color: #6366f1;">Speas.org</span></h2>
-        <p>Hi ${name || ''},</p>
-        <p>Thanks for signing up. Please verify your email by clicking the button below:</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${verificationUrl}" style="background: #6366f1; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Verify Email</a>
-        </p>
-        <p>If the button doesn’t work, copy and paste this URL into your browser:</p>
-        <p><a href="${verificationUrl}" style="color: #6366f1;">${verificationUrl}</a></p>
-        <hr />
-        <p style="font-size: 12px; color: #999;">If you didn’t create an account, you can safely ignore this email.</p>
-      </div>
-      `
-    );
+  c,
+  email,
+  'Welcome to Speas.org – Verify Your Email',
+  `Hi ${name || ''},\n\nClick this link to verify your email: ${verificationUrl}`,
+  generateEmailHtml(name, verificationUrl, 'Welcome to Speas.org', 'Verify Email')
+);
   } catch (err) {
     console.error(err)
     return c.json({ message: 'Failed to send verification email' }, 500)
@@ -211,17 +197,13 @@ export async function verifyEmail(c: Context<{ Bindings: Bindings }>) {
 
 // Login handler: verify credentials and email verification, set session cookie
 export async function login(c: Context<{ Bindings: Bindings }>) {
-  const { password, name } = await c.req.json();
-  const email = (await c.req.json()).email?.toLowerCase();
+  const { email: rawEmail, password, name } = await c.req.json();
+  const email = rawEmail?.toLowerCase();
   if (!email || !password)
     return c.json({ message: 'Missing credentials' }, 400)
 
   const user = (await c.env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first()) as
-    | {
-        email: string
-        password_hash: string
-        email_verified: number
-      }
+    | { email: string; password_hash: string; email_verified: number }
     | undefined
 
   if (!user)
@@ -246,25 +228,18 @@ export async function login(c: Context<{ Bindings: Bindings }>) {
 
 // Get current session: decode session cookie, return user email or null
 export async function getSession(c: Context<{ Bindings: Bindings }>) {
-  const session = getCookie(c, 'session')
-  if (!session) return c.json({ user: null, inventory: [] })
+  const email = await getUserEmail(c)
+  if (!email) return c.json({ user: null, inventory: [] })
 
-  try {
-    const email = atob(session)
+  // Call your inventory service
+  const inventoryResponse = await getInventoryService(c)
 
-    // Call your inventory service
-    const inventoryResponse = await getInventoryService(c)
+  const inventory =
+    inventoryResponse && 'inventory' in inventoryResponse
+      ? inventoryResponse.inventory
+      : []
 
-    // Check if inventory exists in the response
-    const inventory =
-      inventoryResponse && 'inventory' in inventoryResponse
-        ? inventoryResponse.inventory
-        : []
-
-    return c.json({ user: { email }, inventory })
-  } catch {
-    return c.json({ user: null, inventory: [] })
-  }
+  return c.json({ user: { email }, inventory })
 }
 
 // Logout handler: delete session cookie
@@ -291,24 +266,12 @@ export async function requestPasswordReset(c: Context<{ Bindings: Bindings }>) {
   const resetUrl = `${c.env.BASE_URL}/reset-password?token=${token}`
   try {
     await sendEmail(
-      c,
-      email,
-      'Password Reset Request - Speas.org',
-      `Click this link to reset your password: ${resetUrl}`,
-      `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-        <h2 style="color: #111;">Password Reset</h2>
-        <p>Click the button below to reset your password:</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background: #6366f1; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Reset Password</a>
-        </p>
-        <p>If the button doesn’t work, copy and paste this URL into your browser:</p>
-        <p><a href="${resetUrl}" style="color: #6366f1;">${resetUrl}</a></p>
-        <hr />
-        <p style="font-size: 12px; color: #999;">If you didn’t request this email, you can safely ignore it.</p>
-      </div>
-      `
-    );
+  c,
+  email,
+  'Password Reset Request - Speas.org',
+  `Click this link to reset your password: ${resetUrl}`,
+  generateEmailHtml(undefined, resetUrl, 'Password Reset', 'Reset Password')
+);
   } catch (err) {
     console.error(err)
     return c.json({ message: 'Failed to send password reset email' }, 500)
@@ -357,32 +320,19 @@ export async function resendVerification(c: Context<{ Bindings: Bindings }>) {
     .bind(token, expiry, email)
     .run()
 
-  // Send verification email
-  const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${token}`
-  try {
-    await sendEmail(
-      c,
-      email,
-      'Resend Verification Email - Speas.org',
-      `Hi ${user.name || ''},\n\nClick this link to verify your email: ${verificationUrl}`,
-      `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-        <h2 style="color: #111;">Verify Your Email at <span style="color: #6366f1;">Speas.org</span></h2>
-        <p>Hi ${user.name || ''},</p>
-        <p>Please verify your email by clicking the button below:</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${verificationUrl}" style="background: #6366f1; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Verify Email</a>
-        </p>
-        <p>If the button doesn’t work, copy and paste this URL into your browser:</p>
-        <p><a href="${verificationUrl}" style="color: #6366f1;">${verificationUrl}</a></p>
-        <hr />
-        <p style="font-size: 12px; color: #999;">If you didn’t request this email, you can safely ignore it.</p>
-      </div>
-      `
-    );
-  } catch (err) {
-    console.error(err)
-    return c.json({ message: 'Failed to send verification email' }, 500)
-  }
-  return c.json({ message: 'Verification email resent' })
+// Send verification email
+const verificationUrl = `${c.env.BASE_URL}/verify-email?token=${token}`;
+try {
+  await sendEmail(
+    c,
+    email,
+    'Resend Verification Email - Speas.org',
+    `Hi ${user.name || ''},\n\nClick this link to verify your email: ${verificationUrl}`,
+    generateEmailHtml(user.name || undefined, verificationUrl, 'Verify Your Email', 'Verify Email')
+  );
+} catch (err) {
+  console.error(err);
+  return c.json({ message: 'Failed to send verification email' }, 500);
+}
+return c.json({ message: 'Verification email resent' });
 }
