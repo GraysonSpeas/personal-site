@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { FishingUI } from "./FishingUI";
 import HorizontalHeader from "../horizontal-gallery/HorizontalHeader";
@@ -8,21 +8,27 @@ export default function FishingPage() {
   const { user, loading, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // 🔑 auto-close modal when user becomes authenticated
+  useEffect(() => {
+    if (user && showAuthModal) setShowAuthModal(false);
+  }, [user, showAuthModal]);
+
   if (loading) {
     return (
-      <p className="text-center mt-24 text-lg text-gray-400">Checking your session…</p>
+      <p className="text-center mt-24 text-lg text-gray-400">
+        Checking your session…
+      </p>
     );
   }
 
   return (
     <>
-  <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9000 }}>
-  <HorizontalHeader
-    onLogoClick={() => window.location.assign("/")}
-    onNavigate={(page) => window.location.assign(`/${page}`)}
-  />
-</div>
-
+      <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9000 }}>
+        <HorizontalHeader
+          onLogoClick={() => window.location.assign("/")}
+          onNavigate={(page) => window.location.assign(`/${page}`)}
+        />
+      </div>
 
       <div className="flex flex-col justify-center items-center min-h-screen bg-blue-900 pt-20 px-4">
         {!user ? (
@@ -51,7 +57,7 @@ export default function FishingPage() {
       {showAuthModal && (
         <AuthModal
           onClose={() => setShowAuthModal(false)}
-          centered={true} // center modal on fishing page
+          centered
         />
       )}
     </>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "../../styles/horizontalgallery.css";
 import type { Page } from "../../types/pages";
 
@@ -17,6 +17,7 @@ const navigationItems: { label: string; page: Page; href?: string }[] = [
 
 const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleMenuItemClick = (item: { label: string; page: Page; href?: string }) => {
     const currentPath = window.location.pathname.toLowerCase();
@@ -38,8 +39,26 @@ const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
     setIsMenuOpen(false);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMenuOpen]);
+
   return (
-    <div className="horizontal-header">
+    <div className="horizontal-header" ref={menuRef}>
       {/* Logo */}
       <button className="logo" onClick={onLogoClick} aria-label="Home">
         <img

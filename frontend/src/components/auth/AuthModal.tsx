@@ -103,7 +103,7 @@ export default function AuthModal({ onClose, inline = false, centered = false }:
       } else {
         if (mode === "login") {
           setIsLoggedIn(true);
-          await refetch();
+          await refetch({ silent: true });
         } else if (mode === "signup") {
           setMode("verifyEmail");
           setInfoMessage(`Signup successful! Please verify your email: ${email}`);

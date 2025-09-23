@@ -17,7 +17,7 @@ type User = {
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  refetch: () => Promise<void>;
+  refetch: (opts?: { silent?: boolean }) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -34,42 +34,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-// Fetch current user from the API
-const fetchUser = async () => {
-  console.log("📡 [Auth] fetchUser start; API_BASE =", API_BASE);
-  setLoading(true);
+  // Fetch current user from the API, optional silent mode
+  const fetchUser = async (opts?: { silent?: boolean }) => {
+    console.log("📡 [Auth] fetchUser start; API_BASE =", API_BASE);
+    if (!opts?.silent) setLoading(true); // <- only trigger global loading when not silent
 
-  try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      credentials: "include",
-    });
-    console.log("↩️ [Auth] /auth/me status:", res.status);
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        credentials: "include",
+      });
+      console.log("↩️ [Auth] /auth/me status:", res.status);
 
-    if (res.ok) {
-      const { user: fetchedUserRaw } = await res.json();
-      const { email } = fetchedUserRaw || {};
+      if (res.ok) {
+        const { user: fetchedUserRaw } = await res.json();
+        const { email } = fetchedUserRaw || {};
 
-      if (email) {
-        const sanitizedUser: User = { email };
-        setUser(sanitizedUser);
-        console.log("✅ [Auth] User fetched:", sanitizedUser);
+        if (email) {
+          const sanitizedUser: User = { email };
+          setUser(sanitizedUser);
+          console.log("✅ [Auth] User fetched:", sanitizedUser);
+        } else {
+          console.warn("⚠️ [Auth] Invalid user object:", fetchedUserRaw);
+          setUser(null);
+        }
       } else {
-        console.warn("⚠️ [Auth] Invalid user object:", fetchedUserRaw);
+        console.warn("⚠️ [Auth] Not authenticated (status:", res.status, ")");
         setUser(null);
       }
-    } else {
-      console.warn("⚠️ [Auth] Not authenticated (status:", res.status, ")");
+    } catch (err) {
+      console.error("💥 [Auth] Error fetching user:", err);
       setUser(null);
+    } finally {
+      console.log("⏹️ [Auth] fetchUser complete");
+      if (!opts?.silent) setLoading(false); // <- skip hiding loader if silent
     }
-  } catch (err) {
-    console.error("💥 [Auth] Error fetching user:", err);
-    setUser(null);
-  } finally {
-    console.log("⏹️ [Auth] fetchUser complete; setting loading=false");
-    setLoading(false);
-  }
-};
-
+  };
 
   // Log out the current user
   const logout = async () => {
@@ -84,7 +83,7 @@ const fetchUser = async () => {
       console.error("💥 [Auth] Logout failed:", err);
     } finally {
       setUser(null);
-      // Note: we leave `loading` untouched here, since we’re already authenticated flow
+      // keep loading state untouched
     }
   };
 
