@@ -18,23 +18,45 @@ const navigationItems: { label: string; page: Page; href?: string }[] = [
 const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const currentPath = window.location.pathname.toLowerCase();
+
+  // Hide Fishing + add Horizontal Gallery when on /fishing
+  const filteredItems = navigationItems
+    .filter(
+      (item) => !(currentPath.startsWith("/fishing") && item.page === "fishing")
+    )
+    .concat(
+      currentPath.startsWith("/fishing")
+        ? [
+            {
+              label: "Horizontal Gallery",
+              page: "horizontalgallery" as Page,
+              // note: still root, SPA picks up ?page=horizontalgallery
+              href: "/?page=horizontalgallery",
+            },
+          ]
+        : []
+    );
 
   const handleMenuItemClick = (item: { label: string; page: Page; href?: string }) => {
-    const currentPath = window.location.pathname.toLowerCase();
+    const current = window.location.pathname.toLowerCase();
 
-    // Going TO fishing: full reload
     if (item.page === "fishing") {
+      // full reload to fishing
       window.location.href = item.href!;
       return;
     }
 
-    // FROM fishing TO SPA page: reload root with query param for SPA to handle page
-    if (currentPath.startsWith("/fishing")) {
-      window.location.href = `/?page=${item.page}`;
+    if (current.startsWith("/fishing")) {
+      // return to SPA root with query so home app can show correct section
+      window.location.href =
+        item.page === "horizontalgallery"
+          ? "/?page=horizontalgallery"
+          : `/?page=${item.page}`;
       return;
     }
 
-    // Otherwise SPA navigation
+    // normal SPA navigation
     if (onNavigate) onNavigate(item.page);
     setIsMenuOpen(false);
   };
@@ -45,16 +67,12 @@ const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
         setIsMenuOpen(false);
       }
     };
-
     if (isMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
     }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMenuOpen]);
 
   return (
@@ -68,9 +86,9 @@ const HorizontalHeader = ({ onLogoClick, onNavigate }: HeaderProps) => {
         />
       </button>
 
-      {/* Navigation menu */}
+      {/* Navigation */}
       <nav className={`nav-menu ${isMenuOpen ? "open" : ""}`}>
-        {navigationItems.map((item) => (
+        {filteredItems.map((item) => (
           <a
             key={item.label}
             href={item.href ?? `#${item.page}`}

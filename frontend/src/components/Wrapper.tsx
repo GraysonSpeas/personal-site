@@ -32,12 +32,13 @@ function getPageFromPathOrQuery(): Page {
   if (path === "/fishing" || path === "/fishing/") return "fishing";
   if (path === "/horizontalgallery") return "horizontalgallery";
 
-  // Check ?page= query param
+  // ?page query
   const params = new URLSearchParams(window.location.search);
   const pageParam = params.get("page");
-  if (pageParam && SPApages.includes(pageParam)) return pageParam as Page;
+  if (pageParam && (SPApages.includes(pageParam) || pageParam === "horizontalgallery"))
+    return pageParam as Page;
 
-  // Otherwise check path segment
+  // path segment for SPA sub-pages
   const segment = path.split("/")[1];
   if (SPApages.includes(segment)) return segment as Page;
 
@@ -47,9 +48,10 @@ function getPageFromPathOrQuery(): Page {
 const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
   const [page, setPage] = useState<Page>(getPageFromPathOrQuery);
 
-  // Sync URL with state (only path, no query)
+  // Only pushState for pure SPA pages to avoid breaking ?page=horizontalgallery
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!SPApages.includes(page)) return; // skip fishing & horizontalgallery
     const desiredPath = page === "home" ? "/" : `/${page}`;
     if (window.location.pathname !== desiredPath) {
       window.history.pushState(null, "", desiredPath);
@@ -66,9 +68,7 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
       return;
     }
     setShouldShowLoader(true);
-    const minDurationTimer = setTimeout(() => {
-      setCanHideLoader(true);
-    }, 1000);
+    const minDurationTimer = setTimeout(() => setCanHideLoader(true), 1000);
     return () => clearTimeout(minDurationTimer);
   }, [useLoading]);
 
@@ -103,17 +103,22 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 
       {page === "horizontalgallery" && <HorizontalSections />}
 
-      {page !== "home" && page !== "horizontalgallery" && page !== "fishing" && SPApages.includes(page) && (
-        <div className="flex flex-col items-center justify-center h-screen text-center px-4">
-          <h1 className="text-3xl md:text-4xl font-bold mb-6">{`🚧 ${page} Page Is Under Construction 🚧`}</h1>
-          <button
-            onClick={() => setPage("home")}
-            className="bg-white text-black font-semibold px-6 py-3 rounded hover:bg-gray-200 transition"
-          >
-            Return Home
-          </button>
-        </div>
-      )}
+      {page !== "home" &&
+        page !== "horizontalgallery" &&
+        page !== "fishing" &&
+        SPApages.includes(page) && (
+          <div className="flex flex-col items-center justify-center h-screen text-center px-4">
+            <h1 className="text-3xl md:text-4xl font-bold mb-6">
+              {`🚧 ${page} Page Is Under Construction 🚧`}
+            </h1>
+            <button
+              onClick={() => setPage("home")}
+              className="bg-white text-black font-semibold px-6 py-3 rounded hover:bg-gray-200 transition"
+            >
+              Return Home
+            </button>
+          </div>
+        )}
     </div>
   );
 });
