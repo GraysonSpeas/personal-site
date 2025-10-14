@@ -13,27 +13,14 @@ import type { Page } from "../types/pages";
 import FishingPage from "./fishing/FishingPage";
 
 interface WrapperProps {
-  showLoader?: boolean;
+  useLoading?: boolean;
   children?: ReactNode;
 }
 
-// Prevent flash by waiting for client mount
-function AuthLoadingOverlay({ children, showLoader = true }: { children: ReactNode; showLoader?: boolean }) {
+function AuthLoadingWrapper({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) return null; // nothing renders until client mount
-
-  if (!showLoader) return <>{children}</>; // loader forced off
-
-  return (
-    <>
-      {children}
-      {loading && <LoadingScreen />}
-    </>
-  );
+  if (loading) return <LoadingScreen />;
+  return <>{children}</>;
 }
 
 const SPApages = ["home", "projects", "page2", "page3"];
@@ -45,38 +32,47 @@ function getPageFromPathOrQuery(): Page {
   if (path === "/fishing" || path === "/fishing/") return "fishing";
   if (path === "/horizontalgallery") return "horizontalgallery";
 
+  // ?page query
   const params = new URLSearchParams(window.location.search);
   const pageParam = params.get("page");
   if (pageParam && (SPApages.includes(pageParam) || pageParam === "horizontalgallery"))
     return pageParam as Page;
 
+  // path segment for SPA sub-pages
   const segment = path.split("/")[1];
   if (SPApages.includes(segment)) return segment as Page;
 
   return "home";
 }
 
-const MainContent = memo(function MainContent() {
-  const [page, setPage] = useState<Page>("home");
-  const [mounted, setMounted] = useState(false);
+const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
+  const [page, setPage] = useState<Page>(getPageFromPathOrQuery);
 
-  const handleNavigate = (newPage: Page) => setPage(newPage);
-
+  // Only pushState for pure SPA pages to avoid breaking ?page=horizontalgallery
   useEffect(() => {
-    setPage(getPageFromPathOrQuery());
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
+    if (typeof window === "undefined") return;
     if (!SPApages.includes(page)) return; // skip fishing & horizontalgallery
     const desiredPath = page === "home" ? "/" : `/${page}`;
     if (window.location.pathname !== desiredPath) {
       window.history.pushState(null, "", desiredPath);
     }
-  }, [page, mounted]);
+  }, [page]);
 
-  if (!mounted) return null; // prevents flash
+  const [shouldShowLoader, setShouldShowLoader] = useState(false);
+  const [canHideLoader, setCanHideLoader] = useState(false);
+
+  useEffect(() => {
+    if (!useLoading) {
+      setShouldShowLoader(false);
+      setCanHideLoader(true);
+      return;
+    }
+    setShouldShowLoader(true);
+    const minDurationTimer = setTimeout(() => setCanHideLoader(true), 1000);
+    return () => clearTimeout(minDurationTimer);
+  }, [useLoading]);
+
+  const handleNavigate = (newPage: Page) => setPage(newPage);
 
   return (
     <div
@@ -127,13 +123,13 @@ const MainContent = memo(function MainContent() {
   );
 });
 
-export default function Wrapper({ showLoader = true, children }: WrapperProps) {
+export default function Wrapper({ useLoading = true, children }: WrapperProps) {
   return (
     <AuthProvider>
-      <AuthLoadingOverlay showLoader={showLoader}>
-        <MainContent />
+      <AuthLoadingWrapper>
+        <MainContent useLoading={useLoading} />
         {children}
-      </AuthLoadingOverlay>
+      </AuthLoadingWrapper>
     </AuthProvider>
   );
 }
