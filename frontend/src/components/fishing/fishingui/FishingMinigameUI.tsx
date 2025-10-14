@@ -137,7 +137,8 @@ if (!res.ok) {
     setFeedback(txt)
     setCastBonus(bonus)
     setPhase('waiting')
-    setBiteTime(Date.now() + backendBiteDelayRef.current)
+    //setBiteTime(Date.now() + backendBiteDelayRef.current)
+    setBiteTime(Date.now() + Math.random() * 4000 + 4000) // 4-8s
   }
 
   const catchFish = () => {
@@ -158,6 +159,7 @@ if (!res.ok) {
         return
       }
       if (result === 'caught') {
+        setPhase('success')//instant now, wait for backend
         try {
           const res = await fetch(`${API_BASE}/minigame/catch`, {
             method: 'POST',
@@ -166,7 +168,7 @@ if (!res.ok) {
           const json = await res.json()
           if (!res.ok) throw new Error(json.error || 'Failed to catch')
           setCaughtFish(json.fish)
-          setPhase('success')
+          //setPhase('success')
 
           await refetchTime()
           await refetchInventory()
@@ -186,6 +188,7 @@ if (!res.ok) {
     [fishPreview, refetchInventory, refetchTime, refetchMerchant, refetchCrafting],
   )
 
+  /*
   useEffect(() => {
     if (phase !== 'waiting' || !biteTime) return
     const now = Date.now()
@@ -199,6 +202,17 @@ if (!res.ok) {
       setPhase('ready')
     }
   }, [biteTime, phase])
+*/
+// Transition to "ready" client-side
+useEffect(() => {
+  if (phase !== 'waiting' || !biteTime) return
+  const delay = biteTime - Date.now()
+  if (delay > 0) {
+    const timeout = setTimeout(() => setPhase('ready'), delay)
+    return () => clearTimeout(timeout)
+  }
+  setPhase('ready')
+}, [phase, biteTime])
 
   useEffect(() => {
     if (phase !== 'ready' || !biteTime) return
