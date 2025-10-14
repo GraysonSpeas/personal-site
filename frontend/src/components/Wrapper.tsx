@@ -13,19 +13,25 @@ import type { Page } from "../types/pages";
 import FishingPage from "./fishing/FishingPage";
 
 interface WrapperProps {
-  useLoading?: boolean;
+  showLoader?: boolean;
   children?: ReactNode;
 }
 
-// Loader overlay: page renders immediately, loader sits on top
-function AuthLoadingOverlay({ children }: { children: ReactNode }) {
+// Prevent flash by waiting for client mount
+function AuthLoadingOverlay({ children, showLoader = true }: { children: ReactNode; showLoader?: boolean }) {
   const { loading } = useAuth();
-  console.log(`[AuthLoadingOverlay] loading:`, loading, new Date().toISOString());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null; // nothing renders until client mount
+
+  if (!showLoader) return <>{children}</>; // loader forced off
 
   return (
     <>
-      {children}                   {/* render page immediately */}
-      {loading && <LoadingScreen />} {/* overlay loader */}
+      {children}
+      {loading && <LoadingScreen />}
     </>
   );
 }
@@ -50,13 +56,12 @@ function getPageFromPathOrQuery(): Page {
   return "home";
 }
 
-const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
+const MainContent = memo(function MainContent() {
   const [page, setPage] = useState<Page>("home");
   const [mounted, setMounted] = useState(false);
 
   const handleNavigate = (newPage: Page) => setPage(newPage);
 
-  // Run only on client after mount
   useEffect(() => {
     setPage(getPageFromPathOrQuery());
     setMounted(true);
@@ -71,8 +76,7 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
     }
   }, [page, mounted]);
 
-  // Show nothing until mounted to avoid hydration mismatch
-  if (!mounted) return null;
+  if (!mounted) return null; // prevents flash
 
   return (
     <div
@@ -123,12 +127,11 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
   );
 });
 
-export default function Wrapper({ useLoading = true, children }: WrapperProps) {
-  console.log("[Wrapper] mount", new Date().toISOString());
+export default function Wrapper({ showLoader = true, children }: WrapperProps) {
   return (
     <AuthProvider>
-      <AuthLoadingOverlay>
-        <MainContent useLoading={useLoading} />
+      <AuthLoadingOverlay showLoader={showLoader}>
+        <MainContent />
         {children}
       </AuthLoadingOverlay>
     </AuthProvider>
