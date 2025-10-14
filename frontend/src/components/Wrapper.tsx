@@ -17,11 +17,17 @@ interface WrapperProps {
   children?: ReactNode;
 }
 
-function AuthLoadingWrapper({ children }: { children: ReactNode }) {
+// Overlay loader instead of blocking
+function AuthLoadingOverlay({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
-  console.log(`[AuthLoadingWrapper] loading:`, loading, new Date().toISOString());
-  if (loading) return <LoadingScreen />;
-  return <>{children}</>;
+  console.log(`[AuthLoadingOverlay] loading:`, loading, new Date().toISOString());
+
+  return (
+    <>
+      {children}                      {/* render page immediately */}
+      {loading && <LoadingScreen />}   {/* overlay loader */}
+    </>
+  );
 }
 
 const SPApages = ["home", "projects", "page2", "page3"];
@@ -59,38 +65,10 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
     }
   }, [page]);
 
-  const [shouldShowLoader, setShouldShowLoader] = useState(false);
-  const [canHideLoader, setCanHideLoader] = useState(false);
-
-  useEffect(() => {
-    console.log(
-      `[Loader] useLoading:`,
-      useLoading,
-      "shouldShowLoader:",
-      shouldShowLoader,
-      "canHideLoader:",
-      canHideLoader,
-      new Date().toISOString()
-    );
-
-    if (!useLoading) {
-      setShouldShowLoader(false);
-      setCanHideLoader(true);
-      return;
-    }
-    setShouldShowLoader(true);
-    setCanHideLoader(true); // immediate hide, no delay
-  }, [useLoading]);
-
   const handleNavigate = (newPage: Page) => {
     console.log(`[MainContent] handleNavigate to:`, newPage, new Date().toISOString());
     setPage(newPage);
   };
-
-  // Optional: log when major components mount
-  useEffect(() => {
-    console.log("[Hero] component mount", new Date().toISOString());
-  }, []);
 
   return (
     <div
@@ -145,10 +123,10 @@ export default function Wrapper({ useLoading = true, children }: WrapperProps) {
   console.log("[Wrapper] mount", new Date().toISOString());
   return (
     <AuthProvider>
-      <AuthLoadingWrapper>
+      <AuthLoadingOverlay>
         <MainContent useLoading={useLoading} />
         {children}
-      </AuthLoadingWrapper>
+      </AuthLoadingOverlay>
     </AuthProvider>
   );
 }
