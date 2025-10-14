@@ -19,6 +19,7 @@ interface WrapperProps {
 
 function AuthLoadingWrapper({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
+  console.log(`[AuthLoadingWrapper] loading:`, loading, new Date().toISOString());
   if (loading) return <LoadingScreen />;
   return <>{children}</>;
 }
@@ -32,13 +33,11 @@ function getPageFromPathOrQuery(): Page {
   if (path === "/fishing" || path === "/fishing/") return "fishing";
   if (path === "/horizontalgallery") return "horizontalgallery";
 
-  // ?page query
   const params = new URLSearchParams(window.location.search);
   const pageParam = params.get("page");
   if (pageParam && (SPApages.includes(pageParam) || pageParam === "horizontalgallery"))
     return pageParam as Page;
 
-  // path segment for SPA sub-pages
   const segment = path.split("/")[1];
   if (SPApages.includes(segment)) return segment as Page;
 
@@ -47,43 +46,51 @@ function getPageFromPathOrQuery(): Page {
 
 const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
   const [page, setPage] = useState<Page>(getPageFromPathOrQuery);
+  console.log(`[MainContent] initial page:`, page, new Date().toISOString());
 
-  // Only pushState for pure SPA pages to avoid breaking ?page=horizontalgallery
   useEffect(() => {
+    console.log(`[MainContent] page changed:`, page, new Date().toISOString());
     if (typeof window === "undefined") return;
     if (!SPApages.includes(page)) return; // skip fishing & horizontalgallery
     const desiredPath = page === "home" ? "/" : `/${page}`;
     if (window.location.pathname !== desiredPath) {
       window.history.pushState(null, "", desiredPath);
+      console.log(`[MainContent] pushed history:`, desiredPath);
     }
   }, [page]);
 
   const [shouldShowLoader, setShouldShowLoader] = useState(false);
   const [canHideLoader, setCanHideLoader] = useState(false);
-/*
+
   useEffect(() => {
+    console.log(
+      `[Loader] useLoading:`,
+      useLoading,
+      "shouldShowLoader:",
+      shouldShowLoader,
+      "canHideLoader:",
+      canHideLoader,
+      new Date().toISOString()
+    );
+
     if (!useLoading) {
       setShouldShowLoader(false);
       setCanHideLoader(true);
       return;
     }
     setShouldShowLoader(true);
-    const minDurationTimer = setTimeout(() => setCanHideLoader(true), 1000);
-    return () => clearTimeout(minDurationTimer);
+    setCanHideLoader(true); // immediate hide, no delay
   }, [useLoading]);
-*/
+
+  const handleNavigate = (newPage: Page) => {
+    console.log(`[MainContent] handleNavigate to:`, newPage, new Date().toISOString());
+    setPage(newPage);
+  };
+
+  // Optional: log when major components mount
   useEffect(() => {
-  if (!useLoading) {
-    setShouldShowLoader(false);
-    setCanHideLoader(true);
-    return;
-  }
-  setShouldShowLoader(true);
-  setCanHideLoader(true); // immediately allow hiding loader
-}, [useLoading]);
-
-
-  const handleNavigate = (newPage: Page) => setPage(newPage);
+    console.log("[Hero] component mount", new Date().toISOString());
+  }, []);
 
   return (
     <div
@@ -135,6 +142,7 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 });
 
 export default function Wrapper({ useLoading = true, children }: WrapperProps) {
+  console.log("[Wrapper] mount", new Date().toISOString());
   return (
     <AuthProvider>
       <AuthLoadingWrapper>
