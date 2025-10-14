@@ -60,7 +60,7 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 
   const [shouldShowLoader, setShouldShowLoader] = useState(false);
   const [canHideLoader, setCanHideLoader] = useState(false);
-
+/*
   useEffect(() => {
     if (!useLoading) {
       setShouldShowLoader(false);
@@ -71,6 +71,17 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
     const minDurationTimer = setTimeout(() => setCanHideLoader(true), 1000);
     return () => clearTimeout(minDurationTimer);
   }, [useLoading]);
+*/
+  useEffect(() => {
+  if (!useLoading) {
+    setShouldShowLoader(false);
+    setCanHideLoader(true);
+    return;
+  }
+  setShouldShowLoader(true);
+  setCanHideLoader(true); // immediately allow hiding loader
+}, [useLoading]);
+
 
   const handleNavigate = (newPage: Page) => setPage(newPage);
 
