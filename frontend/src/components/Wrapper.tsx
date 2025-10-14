@@ -17,15 +17,15 @@ interface WrapperProps {
   children?: ReactNode;
 }
 
-// Overlay loader instead of blocking
+// Loader overlay: page renders immediately, loader sits on top
 function AuthLoadingOverlay({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
   console.log(`[AuthLoadingOverlay] loading:`, loading, new Date().toISOString());
 
   return (
     <>
-      {children}                      {/* render page immediately */}
-      {loading && <LoadingScreen />}   {/* overlay loader */}
+      {children}                   {/* render page immediately */}
+      {loading && <LoadingScreen />} {/* overlay loader */}
     </>
   );
 }
@@ -52,23 +52,16 @@ function getPageFromPathOrQuery(): Page {
 
 const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
   const [page, setPage] = useState<Page>(getPageFromPathOrQuery);
-  console.log(`[MainContent] initial page:`, page, new Date().toISOString());
+  const handleNavigate = (newPage: Page) => setPage(newPage);
 
   useEffect(() => {
-    console.log(`[MainContent] page changed:`, page, new Date().toISOString());
     if (typeof window === "undefined") return;
     if (!SPApages.includes(page)) return; // skip fishing & horizontalgallery
     const desiredPath = page === "home" ? "/" : `/${page}`;
     if (window.location.pathname !== desiredPath) {
       window.history.pushState(null, "", desiredPath);
-      console.log(`[MainContent] pushed history:`, desiredPath);
     }
   }, [page]);
-
-  const handleNavigate = (newPage: Page) => {
-    console.log(`[MainContent] handleNavigate to:`, newPage, new Date().toISOString());
-    setPage(newPage);
-  };
 
   return (
     <div
@@ -86,6 +79,7 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
         <Header onNavigate={handleNavigate} />
       )}
 
+      {/* Fishing page handles login internally */}
       {page === "fishing" && <FishingPage />}
 
       {page === "home" && (
