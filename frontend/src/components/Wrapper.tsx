@@ -51,17 +51,28 @@ function getPageFromPathOrQuery(): Page {
 }
 
 const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
-  const [page, setPage] = useState<Page>(getPageFromPathOrQuery);
+  const [page, setPage] = useState<Page>("home");
+  const [mounted, setMounted] = useState(false);
+
   const handleNavigate = (newPage: Page) => setPage(newPage);
 
+  // Run only on client after mount
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    setPage(getPageFromPathOrQuery());
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (!SPApages.includes(page)) return; // skip fishing & horizontalgallery
     const desiredPath = page === "home" ? "/" : `/${page}`;
     if (window.location.pathname !== desiredPath) {
       window.history.pushState(null, "", desiredPath);
     }
-  }, [page]);
+  }, [page, mounted]);
+
+  // Show nothing until mounted to avoid hydration mismatch
+  if (!mounted) return null;
 
   return (
     <div
@@ -79,7 +90,6 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
         <Header onNavigate={handleNavigate} />
       )}
 
-      {/* Fishing page handles login internally */}
       {page === "fishing" && <FishingPage />}
 
       {page === "home" && (
