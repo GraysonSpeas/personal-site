@@ -32,13 +32,11 @@ function getPageFromPathOrQuery(): Page {
   if (path === "/fishing" || path === "/fishing/") return "fishing";
   if (path === "/horizontalgallery") return "horizontalgallery";
 
-  // ?page query
   const params = new URLSearchParams(window.location.search);
   const pageParam = params.get("page");
   if (pageParam && (SPApages.includes(pageParam) || pageParam === "horizontalgallery"))
     return pageParam as Page;
 
-  // path segment for SPA sub-pages
   const segment = path.split("/")[1];
   if (SPApages.includes(segment)) return segment as Page;
 
@@ -48,10 +46,9 @@ function getPageFromPathOrQuery(): Page {
 const MainContent = memo(function MainContent({ useLoading }: { useLoading: boolean }) {
   const [page, setPage] = useState<Page>(getPageFromPathOrQuery);
 
-  // Only pushState for pure SPA pages to avoid breaking ?page=horizontalgallery
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!SPApages.includes(page)) return; // skip fishing & horizontalgallery
+    if (!SPApages.includes(page)) return;
     const desiredPath = page === "home" ? "/" : `/${page}`;
     if (window.location.pathname !== desiredPath) {
       window.history.pushState(null, "", desiredPath);
@@ -73,6 +70,12 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
   }, [useLoading]);
 
   const handleNavigate = (newPage: Page) => setPage(newPage);
+
+  console.time("MainContent render");
+
+  useEffect(() => {
+    console.timeEnd("MainContent render");
+  }, []);
 
   return (
     <div
@@ -124,12 +127,20 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 });
 
 export default function Wrapper({ useLoading = true, children }: WrapperProps) {
+  console.time("Wrapper total load");
+
+  useEffect(() => {
+    console.timeEnd("Wrapper total load");
+  }, []);
+
   return (
-    <AuthProvider>
-      <AuthLoadingWrapper>
-        <MainContent useLoading={useLoading} />
-        {children}
-      </AuthLoadingWrapper>
-    </AuthProvider>
+    <>
+      {/* <AuthProvider> */}
+      {/* <AuthLoadingWrapper> */}
+      <MainContent useLoading={useLoading} />
+      {children}
+      {/* </AuthLoadingWrapper> */}
+      {/* </AuthProvider> */}
+    </>
   );
 }
