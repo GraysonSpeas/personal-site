@@ -52,7 +52,9 @@ export default function Collections({ refreshInventory }: CollectionsProps) {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/collections`);
+      const res = await fetch(`${API_BASE}/collections`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       setCollections(data.collections || []);
       setAchievements(data.achievements || []);
@@ -72,6 +74,7 @@ const handleClaim = async (
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, key, stage }),
+      credentials: 'include',
     });
     const data = await res.json();
 
