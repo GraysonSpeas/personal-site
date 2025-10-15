@@ -160,37 +160,41 @@ const onResult = useCallback(
       return
     }
 
-    // Show client-side result immediately
-    if (result === 'caught') setPhase('success')
-    else setPhase('failed')
+    // Optimistically show caught or failed immediately
+    if (result === 'caught') {
+      setCaughtFish(fishPreview.data) // show immediately
+      setPhase('success')
+    } else {
+      setPhase('failed')
+    }
 
     // Clear preview and bonuses
     setFishPreview(null)
     setCastBonus(0)
     setReactionBonus(0)
 
-    // Only continue if caught to update backend
-    if (result !== 'caught') return
+    // Update backend in the background if caught
+    if (result === 'caught') {
+      try {
+        const res = await fetch(`${API_BASE}/minigame/catch`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Failed to catch')
 
-    try {
-      const res = await fetch(`${API_BASE}/minigame/catch`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to catch')
-
-      setCaughtFish(json.fish)
-
-      // Refetch client data
-      await refetchTime()
-      await refetchInventory()
-      await refetchMerchant()
-      await refetchCrafting()
-    } catch (e: any) {
-      setError(e.message)
-      setPhase('failed')
+        setCaughtFish(json.fish) // update with backend-confirmed data
+        await refetchTime()
+        await refetchInventory()
+        await refetchMerchant()
+        await refetchCrafting()
+      } catch (e: any) {
+        setError(e.message)
+        setPhase('failed')
+      }
     }
+
+    caughtCalledRef.current = false
   },
   [fishPreview, refetchInventory, refetchTime, refetchMerchant, refetchCrafting],
 )
