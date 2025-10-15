@@ -8,21 +8,21 @@ import React, {
 } from "react";
 import { API_BASE } from "../../config";
 
-export type User = {
+type User = {
   email: string;
   name?: string;
   created_at?: string;
 };
 
 type AuthContextType = {
-  user: User | null | undefined;
+  user: User | null;
   loading: boolean;
   refetch: (opts?: { silent?: boolean }) => Promise<void>;
   logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
-  user: undefined,
+  user: null,
   loading: true,
   refetch: async () => {},
   logout: async () => {},
@@ -30,51 +30,73 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-export function AuthProvider({
-  children,
-  initialUser,
-}: {
-  children: ReactNode;
-  initialUser?: User | null;
-}) {
-  const [user, setUser] = useState<User | null | undefined>(
-    initialUser ?? undefined
-  );
-  const [loading, setLoading] = useState(user === undefined);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch user client-side only if no initialUser
+  // Fetch current user from the API, optional silent mode
   const fetchUser = async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
+    console.log("📡 [Auth] fetchUser start; API_BASE =", API_BASE);
+    if (!opts?.silent) setLoading(true); // <- only trigger global loading when not silent
+
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, { credentials: "include" });
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        credentials: "include",
+      });
+      console.log("↩️ [Auth] /auth/me status:", res.status);
+
       if (res.ok) {
         const { user: fetchedUserRaw } = await res.json();
-        const email = fetchedUserRaw?.email;
-        setUser(email ? { email } : null);
+        const { email } = fetchedUserRaw || {};
+
+        if (email) {
+          const sanitizedUser: User = { email };
+          setUser(sanitizedUser);
+          console.log("✅ [Auth] User fetched:", sanitizedUser);
+        } else {
+          console.warn("⚠️ [Auth] Invalid user object:", fetchedUserRaw);
+          setUser(null);
+        }
       } else {
+        console.warn("⚠️ [Auth] Not authenticated (status:", res.status, ")");
         setUser(null);
       }
-    } catch {
+    } catch (err) {
+      console.error("💥 [Auth] Error fetching user:", err);
       setUser(null);
     } finally {
-      if (!opts?.silent) setLoading(false);
+      console.log("⏹️ [Auth] fetchUser complete");
+      if (!opts?.silent) setLoading(false); // <- skip hiding loader if silent
     }
   };
 
+  // Log out the current user
   const logout = async () => {
+    console.log("🔒 [Auth] Logging out");
     try {
-      await fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" });
-    } catch {}
-    setUser(null);
+      const res = await fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      console.log("↩️ [Auth] /auth/logout status:", res.status);
+    } catch (err) {
+      console.error("💥 [Auth] Logout failed:", err);
+    } finally {
+      setUser(null);
+      // keep loading state untouched
+    }
   };
 
-  // Only fetch user if not provided
+  // On mount, check session
   useEffect(() => {
-    if (user === undefined) void fetchUser();
+    console.log("🔌 [Auth] AuthProvider mounted; calling fetchUser()");
+    void fetchUser();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, refetch: fetchUser, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, refetch: fetchUser, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

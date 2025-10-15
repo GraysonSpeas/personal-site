@@ -149,44 +149,51 @@ if (!res.ok) {
     setPhase('in-minigame')
   }
 
-  const onResult = useCallback(
-    async (result: 'caught' | 'escaped') => {
-      if (caughtCalledRef.current) return
-      caughtCalledRef.current = true
-      if (!fishPreview) {
-        setPhase('idle')
-        caughtCalledRef.current = false
-        return
-      }
-      if (result === 'caught') {
-        setPhase('success')//instant now, wait for backend
-        try {
-          const res = await fetch(`${API_BASE}/minigame/catch`, {
-            method: 'POST',
-            credentials: 'include',
-          })
-          const json = await res.json()
-          if (!res.ok) throw new Error(json.error || 'Failed to catch')
-          setCaughtFish(json.fish)
-          //setPhase('success')
+const onResult = useCallback(
+  async (result: 'caught' | 'escaped') => {
+    if (caughtCalledRef.current) return
+    caughtCalledRef.current = true
 
-          await refetchTime()
-          await refetchInventory()
-          await refetchMerchant()
-          await refetchCrafting()
-        } catch (e: any) {
-          setError(e.message)
-          setPhase('failed')
-        }
-      } else {
-        setPhase('failed')
-      }
-      setFishPreview(null)
-      setCastBonus(0)
-      setReactionBonus(0)
-    },
-    [fishPreview, refetchInventory, refetchTime, refetchMerchant, refetchCrafting],
-  )
+    if (!fishPreview) {
+      setPhase('idle')
+      caughtCalledRef.current = false
+      return
+    }
+
+    // Show client-side result immediately
+    if (result === 'caught') setPhase('success')
+    else setPhase('failed')
+
+    // Clear preview and bonuses
+    setFishPreview(null)
+    setCastBonus(0)
+    setReactionBonus(0)
+
+    // Only continue if caught to update backend
+    if (result !== 'caught') return
+
+    try {
+      const res = await fetch(`${API_BASE}/minigame/catch`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to catch')
+
+      setCaughtFish(json.fish)
+
+      // Refetch client data
+      await refetchTime()
+      await refetchInventory()
+      await refetchMerchant()
+      await refetchCrafting()
+    } catch (e: any) {
+      setError(e.message)
+      setPhase('failed')
+    }
+  },
+  [fishPreview, refetchInventory, refetchTime, refetchMerchant, refetchCrafting],
+)
 
   /*
   useEffect(() => {
