@@ -1,11 +1,9 @@
 // src/index.ts
-// Overview: main entry point for the auth worker api routing
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { cors } from 'hono/cors'
 
-import { seedDatabase } from './seeding/seedService'
-// Import routers and mount routers
+// Import routers
 import authRouter from './routes/authRouter'
 import inventoryRouter from './routes/inventoryRouter'
 import minigameRouter from './routes/minigameRouter'
@@ -18,32 +16,28 @@ import consumableRouter from './routes/consumableRouter'
 import collectionsRouter from './routes/collectionsRouter'
 import planterRouter from './routes/planterRouter'
 
-// Bindings interface for environment variables and DB
+// Bindings interface
 interface Bindings {
   DB: D1Database
   SENDGRID_API_KEY: string
   SENDER_EMAIL: string
   BASE_URL: string
+  SOME_SECRET_KEY: string // for seed endpoint
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// Global CORS middleware
+app.use('*', cors({
+  origin: (origin) => {
+    const allowed = ['http://localhost:4321', 'https://speas.org']
+    return allowed.includes(origin ?? '') ? origin : undefined
+  },
+  credentials: true,
+}))
+app.options('*', (c) => c.text('ok'))
 
-// Global CORS middleware & preflight handling
-app.use(
-  '*',
-  cors({
-    origin: (origin) => {
-      console.log('Origin:', origin);
-      const allowed = ['http://localhost:4321', 'https://speas.org']
-      return allowed.includes(origin ?? '') ? origin : undefined;
-    },
-    credentials: true,
-  })
-)
-
-app.options('*', (c: Context) => c.text('ok'))
-// Mount nested routers
+// Mount routers
 app.route('/auth', authRouter)
 app.route('/inventory', inventoryRouter)
 app.route('/minigame', minigameRouter)
@@ -56,34 +50,34 @@ app.route('/consumables', consumableRouter)
 app.route('/collections', collectionsRouter)
 app.route('/planters', planterRouter)
 
+// Dedicated DB seeding endpoint
+app.get('/seed', async (c: Context) => {
+  // Optional security key
+  const secret = c.req.query('key')
+  if (secret !== c.env.SOME_SECRET_KEY) return c.json({ message: 'Forbidden' }, 403)
+
+  try {
+    const { seedDatabase } = await import('./seeding/seedService')
+    await seedDatabase(c.env.DB)
+    return c.json({ message: 'DB seeded successfully' })
+  } catch (err) {
+    console.error('Seeding error:', err)
+    return c.json({ message: 'Seeding failed', error: String(err) }, 500)
+  }
+})
+
 // Global error handler
 app.onError((err, c) => {
   console.error(err)
   return c.json({ message: 'Internal Server Error' }, 500)
 })
 
-// 404 fallback handler
+// 404 fallback
 app.notFound((c) => c.json({ message: 'Not found' }, 404))
 
-// Seeding flag
-let isSeeded = false;
-
-// Fetch handler with seeding logic
+// Export Worker fetch
 export default {
   async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
-    // Check if the seeding has already run
-    if (!isSeeded) {
-      try {
-        console.log('Seeding database...');
-        await seedDatabase(env.DB);
-        console.log('Database seeded successfully.');
-        isSeeded = true; // Set the flag to prevent re-seeding
-      } catch (error) {
-        console.error('Error during database seeding:', error);
-      }
-    }
-
-    // Delegate all other requests to Hono app
-    return app.fetch(request, env, ctx);
+    return app.fetch(request, env, ctx)
   },
-};
+}
