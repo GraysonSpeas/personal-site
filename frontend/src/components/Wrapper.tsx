@@ -17,9 +17,9 @@ interface WrapperProps {
   children?: ReactNode;
 }
 
-function AuthLoadingWrapper({ children }: { children: ReactNode }) {
+function AuthLoadingWrapper({ children, useLoading }: { children: ReactNode; useLoading: boolean }) {
   const { loading } = useAuth();
-  if (loading) return <LoadingScreen />;
+  if (loading && useLoading) return <LoadingScreen />;
   return <>{children}</>;
 }
 
@@ -126,7 +126,7 @@ const MainContent = memo(function MainContent({ useLoading }: { useLoading: bool
 export default function Wrapper({ useLoading = true, children }: WrapperProps) {
   return (
     <AuthProvider>
-      <AuthLoadingWrapper>
+      <AuthLoadingWrapper useLoading={useLoading}>
         <MainContent useLoading={useLoading} />
         {children}
       </AuthLoadingWrapper>
